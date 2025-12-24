@@ -1,84 +1,133 @@
 "use client";
 
-import { useState } from "react";
-import { ShoppingBag, Star, Smartphone, Laptop, Zap, Filter, ArrowRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { 
+  ShoppingBag, Star, Smartphone, Laptop, Zap, Filter, ArrowRight, 
+  Watch, Box, Image as ImageIcon, MapPin 
+} from "lucide-react";
 
 export default function SatisSayfasi() {
-  const [kategori, setKategori] = useState("hepsi");
+  const router = useRouter();
+  const [products, setProducts] = useState<any[]>([]);
+  const [category, setCategory] = useState("Tümü");
+  const [search, setSearch] = useState("");
 
-  // Örnek Ürün Verileri
-  const urunler = [
-    { id: 1, ad: "iPhone 13 Pro 128GB", tur: "telefon", fiyat: "38.500₺", etiket: "YENİLENMİŞ", resim: Smartphone, ozellik: ["Pil %100", "12 Ay Garanti"], renk: "purple" },
-    { id: 2, ad: "RTX 4060 Gaming PC", tur: "pc", fiyat: "28.999₺", etiket: "FIRSAT", resim: Laptop, ozellik: ["Ryzen 5 5600", "16GB RAM"], renk: "cyan" },
-    { id: 3, ad: "Roborock S7 Sonic", tur: "robot", fiyat: "14.250₺", etiket: "2. EL TEMİZ", resim: Zap, ozellik: ["Bakımlı", "6 Ay Garanti"], renk: "green" },
-    { id: 4, ad: "Samsung S23 Ultra", tur: "telefon", fiyat: "42.000₺", etiket: "OUTLET", resim: Smartphone, ozellik: ["Çiziksiz", "Kutulu"], renk: "purple" },
-    { id: 5, ad: "Monster Abra A5", tur: "pc", fiyat: "21.500₺", etiket: "ÖĞRENCİ", resim: Laptop, ozellik: ["GTX 1650", "8GB RAM"], renk: "cyan" },
-    { id: 6, ad: "Xiaomi Mop Pro 2", tur: "robot", fiyat: "8.500₺", etiket: "EKONOMİK", resim: Zap, ozellik: ["Yeni Fırça", "Batarya Sıfır"], renk: "green" },
+  const CATEGORIES = [
+      { id: "Tümü", label: "Tümü", icon: Filter },
+      { id: "Cep Telefonu", label: "Telefon", icon: Smartphone },
+      { id: "Robot Süpürge", label: "Robot", icon: Zap },
+      { id: "Bilgisayar", label: "Bilgisayar", icon: Laptop },
+      { id: "Akıllı Saat", label: "Saat", icon: Watch },
+      { id: "Yedek Parça / Outlet", label: "Outlet / Parça", icon: Box },
   ];
 
-  const filtreliUrunler = kategori === "hepsi" ? urunler : urunler.filter(u => u.tur === kategori);
+  useEffect(() => {
+    const storedProducts = localStorage.getItem("aura_store_products");
+    if (storedProducts) {
+        try {
+            const parsed = JSON.parse(storedProducts);
+            setProducts(parsed.filter((p: any) => p.status === "Satışta"));
+        } catch (e) { console.error("Veri hatası", e); }
+    }
+  }, []);
+
+  // İsimden URL (Slug) Oluşturma Fonksiyonu
+  const createSlug = (name: string) => {
+      return name
+        .toLowerCase()
+        .replace(/ /g, "-")
+        .replace(/[ıİ]/g, "i")
+        .replace(/[ğĞ]/g, "g")
+        .replace(/[üÜ]/g, "u")
+        .replace(/[şŞ]/g, "s")
+        .replace(/[öÖ]/g, "o")
+        .replace(/[çÇ]/g, "c")
+        .replace(/[^a-z0-9-]/g, "");
+  };
+
+  const filteredProducts = products.filter(p => {
+      const matchesCategory = category === "Tümü" || p.category === category;
+      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+      return matchesCategory && matchesSearch;
+  });
 
   return (
-    <main className="min-h-screen bg-[#0F172A] text-white pt-24 pb-20 relative">
-      <div className="container mx-auto px-6">
+    <main className="min-h-screen bg-[#0F172A] text-white pt-24 pb-20 relative font-sans">
+      
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-900/20 blur-[120px] rounded-full"></div>
+          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-cyan-900/10 blur-[120px] rounded-full"></div>
+      </div>
+
+      <div className="container mx-auto px-4 md:px-6 relative z-10">
         
-        {/* Başlık Alanı */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4 border-b border-white/10 pb-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-6 border-b border-white/10 pb-6">
            <div>
-              <div className="flex items-center gap-2 text-yellow-500 font-bold mb-2">
-                 <Star size={20} fill="currentColor" /> AURA STORE
+              <div className="flex items-center gap-2 text-cyan-400 font-bold mb-1 uppercase tracking-widest text-xs">
+                 <Star size={14} fill="currentColor" /> Güvenilir Mağaza
               </div>
-              <h1 className="text-4xl font-bold">Fırsat Ürünleri</h1>
-              <p className="text-slate-400 mt-2">Teknisyen onaylı, garantili ikinci el ve sıfır cihazlar.</p>
+              <h1 className="text-4xl font-black tracking-tight">AURA <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">STORE</span></h1>
            </div>
            
-           {/* Kategori Butonları */}
-           <div className="flex gap-2 overflow-x-auto pb-2 w-full md:w-auto">
-              <button onClick={() => setKategori("hepsi")} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${kategori === 'hepsi' ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>Tümü</button>
-              <button onClick={() => setKategori("telefon")} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${kategori === 'telefon' ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>Telefon</button>
-              <button onClick={() => setKategori("pc")} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${kategori === 'pc' ? 'bg-cyan-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>Bilgisayar</button>
-              <button onClick={() => setKategori("robot")} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${kategori === 'robot' ? 'bg-green-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>Robot Süpürge</button>
+           <div className="w-full md:w-auto relative group">
+               <input 
+                  type="text" 
+                  placeholder="İlanlarda ara..." 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full md:w-80 bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-cyan-500 transition-all placeholder:text-slate-500"
+               />
+               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
            </div>
+        </div>
+
+        {/* Kategoriler */}
+        <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
+            {CATEGORIES.map((cat) => (
+                <button 
+                    key={cat.id} 
+                    onClick={() => setCategory(cat.id)} 
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap border ${category === cat.id ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white'}`}
+                >
+                    <cat.icon size={16} /> {cat.label}
+                </button>
+            ))}
         </div>
 
         {/* Ürün Listesi */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-           {filtreliUrunler.map((urun) => (
-             <div key={urun.id} className="bg-[#1E293B] border border-slate-700 rounded-2xl p-4 hover:border-cyan-500/50 transition-all group hover:-translate-y-1">
-                {/* Resim Alanı */}
-                <div className="h-56 bg-slate-900 rounded-xl flex items-center justify-center relative mb-4 overflow-hidden">
-                   <urun.resim size={80} className={`text-slate-600 group-hover:text-${urun.renk}-400 transition-colors duration-500`} />
-                   <div className={`absolute top-3 left-3 bg-${urun.renk}-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg`}>
-                      {urun.etiket}
-                   </div>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredProducts.map((urun) => (
+                <div 
+                    key={urun.id} 
+                    onClick={() => router.push(`/satis/${createSlug(urun.name)}`)} // Linkleme Yapıldı
+                    className="bg-[#1E293B] border border-slate-700 rounded-xl overflow-hidden hover:border-cyan-500/50 transition-all group hover:-translate-y-1 hover:shadow-2xl cursor-pointer flex flex-col"
+                >
+                    <div className="h-56 bg-black relative flex items-center justify-center overflow-hidden border-b border-slate-700">
+                        {urun.images && urun.images.length > 0 ? (
+                            <img src={urun.images[0]} alt={urun.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        ) : (
+                            <ImageIcon size={48} className="text-slate-700"/>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8">
+                            <span className="flex items-center gap-1 text-[10px] text-slate-300"><MapPin size={10}/> İstanbul / Kadıköy</span>
+                        </div>
+                    </div>
 
-                {/* Bilgiler */}
-                <h3 className="text-lg font-bold text-white mb-2">{urun.ad}</h3>
-                <div className="flex gap-2 mb-4">
-                   {urun.ozellik.map((oz, i) => (
-                      <span key={i} className="bg-slate-800 text-xs text-slate-300 px-2 py-1 rounded">{oz}</span>
-                   ))}
+                    <div className="p-4 flex-1 flex flex-col">
+                        <h3 className="text-white font-bold text-base leading-snug line-clamp-2 mb-2 group-hover:text-cyan-400 transition-colors">{urun.name}</h3>
+                        <div className="mt-auto pt-3 border-t border-slate-700/50 flex justify-between items-center">
+                            <span className="text-xl font-black text-white">{Number(urun.price).toLocaleString('tr-TR')} TL</span>
+                            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-cyan-600 group-hover:text-white transition-colors">
+                                <ArrowRight size={16}/>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                {/* Fiyat ve Buton */}
-                <div className="flex items-center justify-between border-t border-slate-700 pt-4 mt-auto">
-                   <span className={`text-xl font-bold text-${urun.renk}-400`}>{urun.fiyat}</span>
-                   <button className="bg-white text-slate-900 p-2 rounded-lg hover:bg-cyan-500 hover:text-white transition-colors">
-                      <ShoppingBag size={20} />
-                   </button>
-                </div>
-             </div>
-           ))}
+            ))}
         </div>
-
-        {/* Boş Durum Kontrolü */}
-        {filtreliUrunler.length === 0 && (
-           <div className="text-center py-20 text-slate-500">
-              <Filter size={48} className="mx-auto mb-4 opacity-50" />
-              <p>Bu kategoride şu an ürün bulunmuyor.</p>
-           </div>
-        )}
 
       </div>
     </main>

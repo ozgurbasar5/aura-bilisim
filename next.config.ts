@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  reactStrictMode: true,
+  // Atölye ERP için gerekebilecek ek ayarlar
+  images: {
+    unoptimized: true, // Statik çıktılar veya hızlı yükleme için
+  },
+  // Varsa diğer özel ayarların
 };
 
 export default nextConfig;

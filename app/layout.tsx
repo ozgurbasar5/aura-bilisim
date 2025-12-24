@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { Cpu } from "lucide-react";
+import ClientLayout from "@/components/ClientLayout"; // Trafik polisi burada
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +20,7 @@ export default function RootLayout({
     <html lang="tr">
       <body className={`${inter.className} bg-[#0F172A] text-white antialiased min-h-screen`}>
         
-        {/* GLOBAL BACKGROUND */}
+        {/* GLOBAL BACKGROUND (Bu her yerde kalsın, panelde de havalı durur) */}
         <div className="fixed inset-0 -z-50 pointer-events-none overflow-hidden">
           <div className="absolute inset-0 bg-dot-pattern opacity-60"></div>
 
@@ -35,16 +34,11 @@ export default function RootLayout({
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#0F172A_100%)]"></div>
         </div>
 
-        {/* SAYFA İÇ YAPI */}
-        <div className="flex flex-col min-h-screen relative z-10">
-          <Navbar />
-
-          <main className="flex-grow w-full">
+        {/* İÇERİK YÖNETİMİ */}
+        {/* Navbar ve Footer kararını artık ClientLayout verecek */}
+        <ClientLayout>
             {children}
-          </main>
-
-          <Footer />
-        </div>
+        </ClientLayout>
 
       </body>
     </html>

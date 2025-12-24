@@ -4,11 +4,32 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase"; 
 import { useParams, useRouter } from "next/navigation"; 
 import { 
-  ArrowLeft, User, Phone, MapPin, Smartphone, Save, 
-  Trash2, Loader2, CheckCircle, ScanBarcode, PenTool, 
-  Printer, Building2, Clock, Wrench 
+  ArrowLeft, User, Phone, MapPin, Save, Trash2, Loader2, 
+  Printer, CheckSquare, PackageOpen, ScanBarcode, 
+  Lock, FileText, Banknote, Coins, History, ChevronDown
 } from "lucide-react";
 import Link from "next/link";
+
+// --- SABİT LİSTELER ---
+const AKSESUARLAR: any = {
+  telefon: ["Kutu", "Şarj Aleti", "Kılıf", "Sim Kart", "SD Kart", "Fatura"],
+  robot: ["Kutu", "Mop Aparatı", "Su Haznesi", "Toz Haznesi", "İstasyon", "Sarf Malzemeler"],
+  bilgisayar: ["Orijinal Adaptör", "Çanta", "Mouse", "Klavye", "Harici Disk", "Batarya"],
+  varsayilan: ["Kutu", "Güç Kablosu", "Aksesuar", "Garanti Belgesi"]
+};
+
+const STANDART_ISLEMLER = [
+  "Arızalı elektronik parça değişimi",
+  "Mekanik parça değişimi",
+  "Yazılım güncellemesi / Yükleme",
+  "Sıvı teması onarımı",
+  "Genel bakım ve temizlik",
+  "Anakart onarımı",
+  "Batarya değişimi",
+  "Ekran değişimi",
+  "Belirtilen hata gözlemlenmedi",
+  "Fiziksel hasar tespiti"
+];
 
 export default function TalepDetay() {
   const params = useParams();
@@ -17,15 +38,15 @@ export default function TalepDetay() {
 
   const [talep, setTalep] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [yeniDurum, setYeniDurum] = useState("");
   
-  // Kabul İşlemi State'leri (Gümrük Geçişi)
-  const [kabulModu, setKabulModu] = useState(false);
-  const [dogrulamaVerisi, setDogrulamaVerisi] = useState({
-    imei_no: "",
-    marka_model: "",
-    cihaz_kaynagi: "Son Kullanıcı"
-  });
+  // State
+  const [seciliAksesuarlar, setSeciliAksesuarlar] = useState<string[]>([]);
+  const [yapilanIslemler, setYapilanIslemler] = useState<string[]>([]); 
+  const [ozelNot, setOzelNot] = useState(""); 
+  const [islemDetay, setIslemDetay] = useState(""); 
+  const [finans, setFinans] = useState({ maliyet: 0, fiyat: 0 });
+  const [dogrulama, setDogrulama] = useState({ imei: "", model: "" });
+  const [yeniDurum, setYeniDurum] = useState("");
 
   useEffect(() => {
     const getir = async () => {
@@ -34,220 +55,268 @@ export default function TalepDetay() {
       if (data) {
         setTalep(data);
         setYeniDurum(data.durum || "beklemede");
-        setDogrulamaVerisi({ 
-            imei_no: data.imei_no || "", 
-            marka_model: data.marka_model,
-            cihaz_kaynagi: data.cihaz_kaynagi || "Son Kullanıcı"
-        });
+        setSeciliAksesuarlar(data.teslim_alinanlar || []);
+        setYapilanIslemler(data.yapilan_islemler || []);
+        setOzelNot(data.ozel_not || "");
+        setIslemDetay(data.yapilan_islemler_detay || ""); 
+        setFinans({ maliyet: data.maliyet || 0, fiyat: data.fiyat || 0 }); 
+        setDogrulama({ imei: data.imei_no || "", model: data.marka_model || "" });
       }
       setLoading(false);
     };
     getir();
   }, [id]);
 
-  // --- CİHAZ KABUL VE DOĞRULAMA FONKSİYONU ---
-  const serviseKabulEt = async () => {
-    if(!dogrulamaVerisi.marka_model) return alert("Usta, model bilgisini boş bırakma!");
-
-    const { error } = await supabase
-      .from('onarim_talepleri')
-      .update({ 
-        durum: 'onarim_isleminde', // Servis listesine düşmesi için durum değişiyor
-        marka_model: dogrulamaVerisi.marka_model,
-        imei_no: dogrulamaVerisi.imei_no,
-        cihaz_kaynagi: dogrulamaVerisi.cihaz_kaynagi
-      })
-      .eq('id', id);
-
-    if (!error) {
-      alert("✅ Cihaz doğrulandı ve Atölye Listesine alındı!");
-      router.push("/epanel"); 
-    }
+  const toggleList = (list: string[], setList: any, item: string) => {
+    if (list.includes(item)) setList(list.filter((i) => i !== item));
+    else setList([...list, item]);
   };
 
-  const durumuGuncelle = async () => {
-    const { error } = await supabase.from('onarim_talepleri').update({ durum: yeniDurum }).eq('id', id);
-    if (!error) { 
-        alert("Durum güncellendi usta! ✅"); 
-        setTalep({ ...talep, durum: yeniDurum });
-        router.refresh(); 
-    }
+  // --- KAYDETME ---
+  const teslimAl = async () => {
+    if(!dogrulama.model) return alert("Model girmeden teslim alamazsın!");
+    const { error } = await supabase.from('onarim_talepleri').update({ 
+        durum: 'onarim_isleminde',
+        teslim_alinanlar: seciliAksesuarlar,
+        ozel_not: ozelNot,
+        imei_no: dogrulama.imei,
+        marka_model: dogrulama.model
+      }).eq('id', id);
+    if (!error) { alert("Atölyeye Alındı! ✅"); router.push("/epanel"); }
+  };
+
+  const guncelle = async () => {
+    const { error } = await supabase.from('onarim_talepleri').update({ 
+        durum: yeniDurum, 
+        ozel_not: ozelNot, 
+        yapilan_islemler: yapilanIslemler,
+        yapilan_islemler_detay: islemDetay, 
+        maliyet: finans.maliyet,            
+        fiyat: finans.fiyat                 
+      }).eq('id', id);
+    if (!error) { alert("Kayıt Başarılı! ✅"); router.refresh(); }
   };
 
   const talebiSil = async () => {
-    if(!confirm("Bu kaydı silmek istediğine emin misin?")) return;
+    if(!confirm("Emin misin?")) return;
     const { error } = await supabase.from('onarim_talepleri').delete().eq('id', id);
     if (!error) router.push("/epanel"); 
   };
 
-  if (loading) return <div className="p-10 text-cyan-400 flex items-center gap-2"><Loader2 className="animate-spin"/> Yükleniyor...</div>;
+  if (loading) return <div className="p-10 text-cyan-400 font-bold text-xl flex items-center gap-3"><Loader2 className="animate-spin" size={30}/> Panel Hazırlanıyor...</div>;
   if (!talep) return <div className="p-10 text-red-400 font-bold">Kayıt bulunamadı!</div>;
 
+  const cihazTipi = talep.cihaz_tipi === "cep telefonu" ? "telefon" : talep.cihaz_tipi === "robot süpürge" ? "robot" : "varsayilan";
+  const aksesuarListesi = AKSESUARLAR[cihazTipi] || AKSESUARLAR["varsayilan"];
+  const isKabulModu = talep.durum === 'beklemede';
+
   return (
-    <div className="max-w-5xl mx-auto pb-20 px-4">
-      {/* ÜST BAŞLIK ALANI */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-            <Link href="/epanel" className="p-3 bg-slate-800 rounded-full hover:bg-slate-700 text-white transition-all shadow-lg border border-slate-700">
-                <ArrowLeft size={24} />
+    <div className="max-w-[1600px] mx-auto pb-24 px-6"> 
+      
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-8 border-b border-slate-800 pb-6">
+        <div className="flex items-center gap-6">
+            <Link href={isKabulModu ? "/epanel/basvurular" : "/epanel"} className="p-4 bg-slate-800 rounded-2xl hover:bg-slate-700 text-white transition-all shadow-xl border border-slate-700">
+                <ArrowLeft size={28} />
             </Link>
             <div>
-                <h1 className="text-3xl font-black text-white tracking-tight">Servis No #{talep.id}</h1>
-                <p className="text-slate-400 font-bold">Müşteri: {talep.ad_soyad}</p>
+                <h1 className="text-4xl font-black text-white tracking-tighter flex items-center gap-3">
+                    {isKabulModu ? "Gümrük Kapısı" : `Talep #${talep.id}`}
+                    {!isKabulModu && <span className="text-base bg-cyan-900/30 px-4 py-1.5 rounded-lg text-cyan-400 font-bold border border-cyan-500/30 tracking-wide">{talep.marka_model}</span>}
+                </h1>
+                <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest">
+                    {isKabulModu ? "Cihaz Kontrol & Teslim Alma" : "Aura Pro Teknik Servis Paneli"}
+                </p>
             </div>
         </div>
-        
-        {/* YAZDIRMA BUTONU */}
-        {talep.durum !== 'beklemede' && (
-            <button className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-2xl font-black flex items-center gap-2 transition-all border border-slate-700 shadow-xl group">
-                <Printer size={20} className="group-hover:text-cyan-400 transition-colors"/> <span>Servis Formu</span>
-            </button>
+        {!isKabulModu && (
+            <div className="flex gap-4">
+                <button className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-4 rounded-xl font-bold flex items-center gap-3 border border-slate-700 shadow-xl transition-all">
+                    <History size={20} className="text-slate-400"/> <span>Loglar</span>
+                </button>
+                <button 
+    onClick={() => window.open(`/epanel/yazdir/${id}`, '_blank')}
+    className="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 border border-cyan-500 shadow-lg shadow-cyan-900/20 text-sm transition-all"
+>
+    <Printer size={18}/> <span>Form Yazdır (PDF)</span>
+</button>
+            </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-12 gap-8">
         
-        {/* SOL KOLON: BİLGİLER */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-[#1E293B]/60 backdrop-blur-md p-8 rounded-3xl border border-slate-700 shadow-2xl relative overflow-hidden group">
-            <div className="absolute -top-6 -right-6 p-8 opacity-5 text-white group-hover:opacity-10 transition-opacity"><User size={120}/></div>
-            <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <User size={14} className="text-cyan-500"/> Müşteri Bilgileri
-            </h3>
-            <div className="text-3xl font-black text-white mb-2 tracking-tight">{talep.ad_soyad}</div>
-            <div className="text-cyan-400 font-mono text-xl flex items-center gap-2 mb-6 tracking-wider">
-                <Phone size={20}/> {talep.telefon}
+        {/* --- SOL TARAFTAKİ MÜŞTERİ KARTI (4 Kolon) --- */}
+        <div className="col-span-12 xl:col-span-3 space-y-6">
+            <div className="bg-[#1E293B] p-6 rounded-3xl border border-slate-700 shadow-2xl">
+                <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <User size={16} className="text-cyan-400"/> Müşteri Bilgileri
+                </h3>
+                <div className="text-2xl font-black text-white mb-2">{talep.ad_soyad}</div>
+                <div className="text-cyan-400 font-mono font-bold text-base flex items-center gap-2 mb-4 bg-cyan-950/30 p-2 rounded-lg border border-cyan-900/50 w-fit"><Phone size={16}/> {talep.telefon}</div>
+                <div className="bg-[#0F172A] p-4 rounded-2xl border border-slate-800 text-slate-400 text-sm font-bold leading-relaxed">{talep.adres || "Adres bilgisi yok."}</div>
             </div>
             
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded-full text-[10px] font-black uppercase tracking-widest">
-                <Building2 size={14}/> {talep.cihaz_kaynagi || "Son Kullanıcı"}
+            <div className="bg-[#1E293B] p-6 rounded-3xl border border-slate-700 shadow-2xl">
+                 <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-4">Müşteri Şikayeti</h3>
+                 <div className="text-slate-300 text-sm italic font-medium p-4 bg-[#0F172A] rounded-2xl border border-slate-800 leading-relaxed">"{talep.sorun_aciklamasi}"</div>
             </div>
-          </div>
 
-          <div className="bg-[#1E293B]/60 backdrop-blur-md p-8 rounded-3xl border border-slate-700 shadow-2xl">
-             <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <Wrench size={14} className="text-cyan-500"/> Cihaz Kimliği ve Arıza
-             </h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-[#0F172A] p-5 rounded-2xl border border-slate-800/50">
-                    <span className="text-slate-600 text-[10px] block mb-1 font-black uppercase">Fiziksel Model</span>
-                    <div className="text-white font-black text-lg">{talep.marka_model}</div>
-                </div>
-                <div className="bg-[#0F172A] p-5 rounded-2xl border border-slate-800/50">
-                    <span className="text-slate-600 text-[10px] block mb-1 font-black uppercase">IMEI / Seri Numarası</span>
-                    <div className="text-cyan-400 font-mono font-black text-lg">{talep.imei_no || "Kayıt Yok"}</div>
-                </div>
-             </div>
-             <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 text-slate-300 leading-relaxed font-medium relative">
-                <span className="text-6xl absolute -top-4 left-2 opacity-5 font-serif text-cyan-400">"</span>
-                {talep.sorun_aciklamasi}
-             </div>
-          </div>
+            {!isKabulModu && (
+                 <div className="bg-[#1E293B] p-6 rounded-3xl border border-slate-700 shadow-2xl">
+                    <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <PackageOpen size={16} className="text-orange-500"/> Teslim Alınanlar
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                        {talep.teslim_alinanlar && talep.teslim_alinanlar.length > 0 ? talep.teslim_alinanlar.map((t:string) => (
+                            <span key={t} className="text-xs bg-[#0F172A] border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300 font-bold uppercase">{t}</span>
+                        )) : <span className="text-xs text-slate-500 italic">Aksesuar teslim alınmadı.</span>}
+                    </div>
+                 </div>
+            )}
         </div>
 
-        {/* SAĞ KOLON: İŞLEM MERKEZİ */}
-        <div className="space-y-6">
-          <div className="bg-[#1E293B] p-8 rounded-3xl border border-cyan-500/20 shadow-2xl">
-            <h3 className="text-white font-black text-lg mb-6 border-b border-slate-800 pb-4 flex items-center gap-2">
-                <CheckCircle className="text-cyan-400" size={20}/> Servis Kontrolü
-            </h3>
-
-            {/* --- DURUM 1: BEKLEMEDE (GÜMRÜK KONTROLÜ) --- */}
-            {talep.durum === 'beklemede' ? (
-              <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                {!kabulModu ? (
-                   <div className="text-center">
-                      <p className="text-slate-500 text-sm mb-6 leading-relaxed font-bold">Cihaz şu an 'Online Talep' havuzunda. Fiziksel teslim alındı mı?</p>
-                      <button 
-                        onClick={() => setKabulModu(true)} 
-                        className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-orange-900/40 transition-all hover:scale-[1.02] active:scale-95 animate-pulse"
-                      >
-                        <CheckCircle size={24}/> CİHAZI TESLİM AL
-                      </button>
-                   </div>
-                ) : (
-                  <div className="space-y-5">
-                    <div className="bg-orange-500/5 p-4 rounded-xl border border-orange-500/20 text-orange-400 text-[10px] font-black text-center uppercase tracking-widest">
-                      Kayıt Doğrulama Formu
-                    </div>
-                    
-                    <div>
-                      <label className="text-[10px] text-slate-500 font-black uppercase ml-1 mb-2 block">Cihaz Modelini Teyit Et</label>
-                      <div className="relative">
-                        <PenTool className="absolute left-4 top-3.5 text-slate-600" size={16}/>
-                        <input 
-                            type="text" 
-                            value={dogrulamaVerisi.marka_model} 
-                            onChange={(e)=>setDogrulamaVerisi({...dogrulamaVerisi, marka_model: e.target.value})} 
-                            className="w-full bg-[#0F172A] border border-slate-700 rounded-xl py-3.5 pl-12 text-white focus:border-orange-500 outline-none transition-all text-sm font-bold"
-                        />
+        {/* --- ORTA VE SAĞ ALAN (8 Kolon) --- */}
+        <div className="col-span-12 xl:col-span-9">
+            
+            {/* MOD A: KABUL EKRANI */}
+            {isKabulModu ? (
+               <div className="bg-[#1E293B] p-10 rounded-3xl border border-slate-700 shadow-2xl">
+                  <div className="text-center py-12">
+                      <ScanBarcode className="mx-auto text-orange-500 mb-6" size={64}/>
+                      <h2 className="text-3xl font-black text-white mb-3">Cihaz Kabul Terminali</h2>
+                      <p className="text-slate-400 mb-8 text-lg">Sol taraftaki müşteri bilgilerini kontrol edip, aksesuar ve fiziksel durum girişini yapın.</p>
+                      
+                      {/* Kabul Butonu */}
+                      <div className="max-w-md mx-auto space-y-4 text-left">
+                          <div>
+                            <label className="text-xs font-black text-slate-500 uppercase ml-1 mb-2 block">Cihaz Modeli</label>
+                            <input type="text" value={dogrulama.model} onChange={(e)=>setDogrulama({...dogrulama, model: e.target.value})} className="w-full p-4 bg-[#0F172A] border border-slate-700 rounded-xl text-white font-bold outline-none focus:border-orange-500 transition-all"/>
+                          </div>
+                          <button onClick={teslimAl} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-5 rounded-2xl shadow-xl shadow-orange-900/40 text-lg transition-all active:scale-95">
+                             TESLİM AL VE KAYDET
+                          </button>
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-slate-500 font-black uppercase ml-1 mb-2 block">IMEI / S/N Kaydı</label>
-                      <div className="relative">
-                        <ScanBarcode className="absolute left-4 top-3.5 text-slate-600" size={16}/>
-                        <input 
-                            type="text" 
-                            placeholder="IMEI veya Seri No" 
-                            value={dogrulamaVerisi.imei_no} 
-                            onChange={(e)=>setDogrulamaVerisi({...dogrulamaVerisi, imei_no: e.target.value})} 
-                            className="w-full bg-[#0F172A] border border-slate-700 rounded-xl py-3.5 pl-12 text-white focus:border-orange-500 outline-none transition-all text-sm font-mono font-bold"
-                        />
-                      </div>
-                    </div>
-
-                    <button 
-                        onClick={serviseKabulEt} 
-                        className="w-full bg-green-600 hover:bg-green-500 text-white font-black py-4 rounded-2xl shadow-xl shadow-green-900/30 transition-all hover:scale-[1.02]"
-                    >
-                      KAYDI ATÖLYEYE GÖNDER
-                    </button>
-                    <button onClick={() => setKabulModu(false)} className="w-full text-slate-600 text-[10px] font-black uppercase hover:text-white transition-colors">İşlemi İptal Et</button>
                   </div>
-                )}
-              </div>
+               </div>
             ) : (
-              /* --- DURUM 2: SERVİSTE (GÜNCELLEME MODU) --- */
-              <div className="space-y-6">
-                 <div className="bg-[#0F172A] p-5 rounded-2xl space-y-4 border border-slate-800 shadow-inner">
-                    <div className="flex justify-between text-[10px] font-black uppercase">
-                      <span className="text-slate-500">Mevcut Durum</span>
-                      <span className="text-cyan-400 animate-pulse italic">Aktif Onarımda</span>
-                    </div>
-                    <select 
-                        value={yeniDurum} 
-                        onChange={(e) => setYeniDurum(e.target.value)} 
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:border-cyan-500 outline-none cursor-pointer font-black text-sm"
-                    >
-                        <option value="onarim_isleminde">⚙️ Onarım İşleminde</option>
-                        <option value="teklif_bekliyor">⏳ Teklif Bekleniyor</option>
-                        <option value="parca_bekliyor">🟣 Parça Bekliyor</option>
-                        <option value="fiyat_onayi">🟠 Fiyat Onayı Bekliyor</option>
-                        <option value="tamamlandi">🟢 Tamamlandı (Hazır)</option>
-                        <option value="teslim_edildi">🏁 Müşteriye Teslim Edildi</option>
-                        <option value="iptal">🔴 İptal / İade</option>
-                    </select>
-                 </div>
+               /* --- MOD B: FULL TEKNİK PANEL --- */
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+                  
+                  {/* SOL: FİNANS VE GİZLİ NOTLAR */}
+                  <div className="bg-[#1E293B] p-8 rounded-3xl border border-slate-700 shadow-2xl flex flex-col gap-8">
+                      
+                      {/* Özel Not (Büyütüldü) */}
+                      <div className="flex-1">
+                          <h3 className="text-red-400 font-black text-xs mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <Lock size={16}/> Özel Teknisyen Notu (Gizli)
+                          </h3>
+                          <textarea 
+                            className="w-full h-48 bg-[#0F172A] border border-slate-700 rounded-2xl p-5 text-white focus:border-red-500 outline-none text-sm leading-relaxed resize-none shadow-inner font-medium"
+                            value={ozelNot}
+                            onChange={(e) => setOzelNot(e.target.value)}
+                            placeholder="Müşteriye söylenmeyecek, teknik ekibin bilmesi gereken notlar..."
+                          ></textarea>
+                      </div>
 
-                 <button 
-                    onClick={durumuGuncelle} 
-                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-cyan-900/40 transition-all hover:scale-[1.02] active:scale-95"
-                 >
-                    <Save size={22}/> VERİLERİ GÜNCELLE
-                 </button>
-              </div>
+                      {/* Finansal Bilgiler (Kutular Büyütüldü) */}
+                      <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800">
+                          <h3 className="text-slate-500 font-black text-xs mb-4 uppercase flex items-center gap-2">
+                             <Banknote size={16} className="text-green-500"/> Maliyet & Ücretlendirme
+                          </h3>
+                          <div className="grid grid-cols-2 gap-6">
+                              <div>
+                                  <label className="text-xs text-slate-500 font-bold block mb-2 uppercase">Parça Maliyeti</label>
+                                  <div className="relative">
+                                      <Coins className="absolute left-4 top-3.5 text-slate-600" size={18}/>
+                                      <input 
+                                        type="number" 
+                                        value={finans.maliyet}
+                                        onChange={(e) => setFinans({...finans, maliyet: parseFloat(e.target.value)})}
+                                        className="w-full bg-[#1E293B] border border-slate-700 rounded-xl py-3 pl-12 text-white text-sm font-bold focus:border-green-500 outline-none"
+                                      />
+                                  </div>
+                              </div>
+                              <div>
+                                  <label className="text-xs text-slate-500 font-bold block mb-2 uppercase">Müşteri Fiyatı</label>
+                                  <div className="relative">
+                                      <Banknote className="absolute left-4 top-3.5 text-slate-600" size={18}/>
+                                      <input 
+                                        type="number" 
+                                        value={finans.fiyat}
+                                        onChange={(e) => setFinans({...finans, fiyat: parseFloat(e.target.value)})}
+                                        className="w-full bg-[#1E293B] border border-slate-700 rounded-xl py-3 pl-12 text-green-400 text-sm font-black focus:border-green-500 outline-none"
+                                      />
+                                  </div>
+                              </div>
+                          </div>
+                          <div className="mt-4 pt-4 border-t border-slate-800 text-xs text-slate-500 font-medium text-right">
+                             Tahmini Kâr: <span className="text-green-400 font-black text-lg ml-2">{(finans.fiyat - finans.maliyet).toLocaleString('tr-TR')} ₺</span>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* SAĞ: YAPILAN İŞLEMLER VE RAPOR */}
+                  <div className="bg-[#1E293B] p-8 rounded-3xl border border-cyan-500/20 shadow-2xl flex flex-col gap-6">
+                      
+                      {/* Checkbox Listesi */}
+                      <div className="flex-1">
+                          <h3 className="text-white font-black text-xs mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <FileText size={16} className="text-cyan-400"/> Yapılan İşlemler (Form)
+                          </h3>
+                          <div className="grid grid-cols-1 gap-3 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-700">
+                              {STANDART_ISLEMLER.map((islem) => (
+                                 <label key={islem} className={`cursor-pointer flex items-center gap-3 p-4 rounded-xl border transition-all ${yapilanIslemler.includes(islem) ? 'bg-cyan-900/20 border-cyan-500/50 text-white' : 'bg-[#0F172A] border-slate-800 text-slate-400 hover:border-slate-600'}`}>
+                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${yapilanIslemler.includes(islem) ? 'bg-cyan-500 border-cyan-500' : 'border-slate-600'}`}>
+                                        {yapilanIslemler.includes(islem) && <CheckSquare size={14} className="text-white"/>}
+                                    </div>
+                                    <input type="checkbox" className="hidden" onChange={() => toggleList(yapilanIslemler, setYapilanIslemler, islem)} checked={yapilanIslemler.includes(islem)} />
+                                    <span className="text-sm font-bold">{islem}</span>
+                                 </label>
+                              ))}
+                          </div>
+                      </div>
+
+                      {/* YENİ: Detaylı İşlem Açıklaması (Text Box Büyütüldü) */}
+                      <div>
+                          <label className="text-xs text-slate-400 font-bold mb-3 block uppercase tracking-wide">Diğer İşlemler / Detaylı Rapor</label>
+                          <textarea 
+                             value={islemDetay}
+                             onChange={(e) => setIslemDetay(e.target.value)}
+                             placeholder="Örn: Anakart üzerindeki mosfet değiştirildi, termal macun yenilendi..."
+                             className="w-full h-32 bg-[#0F172A] border border-slate-700 rounded-2xl p-4 text-white focus:border-cyan-500 outline-none text-sm font-medium resize-none shadow-inner"
+                          ></textarea>
+                      </div>
+                      
+                      {/* Alt Bar: Durum ve Kaydet */}
+                      <div className="pt-6 border-t border-slate-700/50 flex flex-col gap-4">
+                         {/* DROPDOWN FIX BURADA */}
+                         <div className="relative">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-slate-500 pointer-events-none">Durum</div>
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={18}/>
+                            <select 
+                                value={yeniDurum} 
+                                onChange={(e) => setYeniDurum(e.target.value)} 
+                                className="w-full bg-[#0F172A] border border-slate-700 rounded-xl py-4 pl-16 pr-10 text-white text-sm font-bold outline-none cursor-pointer appearance-none hover:border-cyan-500 transition-colors"
+                            >
+                                <option className="bg-[#0F172A] text-white" value="onarim_isleminde">İşlemde</option>
+                                <option className="bg-[#0F172A] text-white" value="teklif_bekliyor">Teklif Bekliyor</option>
+                                <option className="bg-[#0F172A] text-white" value="parca_bekliyor">Parça Bekliyor</option>
+                                <option className="bg-[#0F172A] text-white" value="fiyat_onayi">Fiyat Onayı</option>
+                                <option className="bg-[#0F172A] text-white" value="tamamlandi">Tamamlandı</option>
+                                <option className="bg-[#0F172A] text-white" value="teslim_edildi">Teslim Edildi</option>
+                                <option className="bg-[#0F172A] text-white" value="iptal">İptal</option>
+                            </select>
+                         </div>
+
+                         <button onClick={guncelle} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black py-4 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-cyan-900/40 transition-all active:scale-95 text-sm tracking-widest uppercase">
+                            <Save size={18}/> KAYDET VE GÜNCELLE
+                         </button>
+                      </div>
+                  </div>
+
+               </div>
             )}
-          </div>
-           
-          {/* SİLME BUTONU */}
-          <button 
-            onClick={talebiSil} 
-            className="w-full border border-red-500/10 text-red-500/30 hover:text-red-500 hover:bg-red-500/5 font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all text-[10px] uppercase tracking-widest"
-          >
-            <Trash2 size={16}/> Servis Kaydını Sil
-          </button>
         </div>
       </div>
     </div>
