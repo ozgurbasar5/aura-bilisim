@@ -8,11 +8,23 @@ import {
   Watch, Box, Image as ImageIcon, MapPin, Wrench
 } from "lucide-react";
 
+// !!! DİKKAT: Supabase Client'ı projene uygun şekilde import etmelisin.
+// Genelde @/lib/supabase veya @/utils/supabase konumunda olur.
+// Eğer hazır bir dosyan yoksa bu satır hata verebilir, dosya yolunu kendine göre düzelt.
+import { createClient } from '@supabase/supabase-js';
+
+// Eğer projenin .env dosyasında tanımlıysa bu şekilde client oluşturabilirsin:
+// (Bu kısmı kendi ayarına göre düzenle usta)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 export default function MagazaPage() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
   const [category, setCategory] = useState("Tümü");
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true); // Yükleniyor durumu ekledik
 
   const CATEGORIES = [
       { id: "Tümü", label: "Tümü", icon: Filter },
@@ -24,21 +36,44 @@ export default function MagazaPage() {
   ];
 
   useEffect(() => {
-    const checkSources = () => {
-        const magazaData = localStorage.getItem("aura_magaza_urunleri");
-        const storeData = localStorage.getItem("aura_store_products");
-        
-        let allProducts = [];
-        
-        if (magazaData) allProducts = JSON.parse(magazaData);
-        else if (storeData) allProducts = JSON.parse(storeData);
+    // FONKSİYON: Verileri SQL (Supabase) 'urunler' tablosundan çeker
+    const fetchProductsFromSQL = async () => {
+        try {
+            setLoading(true);
+            
+            // 1. SQL'den veriyi çekiyoruz
+            let { data, error } = await supabase
+                .from('urunler')
+                .select('*')
+                .order('created_at', { ascending: false }); // En yeni eklenen en üstte
 
-        if (allProducts.length > 0) {
-            const active = allProducts.filter((p: any) => p.status === "Satışta" || !p.status);
-            setProducts(active.reverse());
+            if (error) {
+                console.error("Veri çekme hatası:", error);
+                return;
+            }
+
+            if (data) {
+                // 2. SQL sütunlarını (Türkçe) Frontend'in anladığı dile (İngilizce) çeviriyoruz (Mapping)
+                const mappedProducts = data.map((item: any) => ({
+                    id: item.id,
+                    name: item.ad,           // SQL: ad -> UI: name
+                    price: item.fiyat,       // SQL: fiyat -> UI: price
+                    category: item.kategori, // SQL: kategori -> UI: category
+                    image: item.resim_url,   // SQL: resim_url -> UI: image
+                    description: item.aciklama,
+                    status: item.stok_durumu ? "Stokta" : "Tükendi" 
+                }));
+
+                setProducts(mappedProducts);
+            }
+        } catch (err) {
+            console.error("Beklenmeyen hata:", err);
+        } finally {
+            setLoading(false);
         }
-    }
-    checkSources();
+    };
+
+    fetchProductsFromSQL();
   }, []);
 
   const createSlug = (name: string) => {
@@ -58,7 +93,7 @@ export default function MagazaPage() {
   return (
     <main className="min-h-screen bg-[#020617] text-white pt-24 relative font-sans selection:bg-cyan-500/30">
       
-      {/* NAVBAR DÜZELTİLDİ: Blur kaldırıldı, Tam Opak Yapıldı */}
+      {/* NAVBAR */}
       <nav className="fixed top-0 left-0 right-0 h-20 bg-[#020617] border-b border-white/10 z-50">
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
           
@@ -123,19 +158,22 @@ export default function MagazaPage() {
         </div>
 
         {/* Ürün Listesi */}
-        {filteredProducts.length === 0 ? (
+        {loading ? (
+             <div className="flex justify-center py-20">
+                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+             </div>
+        ) : filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-500 border border-dashed border-slate-800 rounded-3xl bg-slate-900/30">
                 <ShoppingBag size={48} className="mb-4 opacity-50"/>
-                <p>Aradığınız kriterlere uygun ürün bulunamadı.</p>
+                <p>Aradığınız kriterlere uygun ürün bulunamadı veya henüz ürün eklenmedi.</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
                 {filteredProducts.map((urun) => {
-                    let rawImage = "";
-                    if (urun.images && Array.isArray(urun.images) && urun.images.length > 0) rawImage = urun.images[0];
-                    else rawImage = urun.image || urun.img || urun.gorsel || urun.url;
-
-                    const hasImage = rawImage && rawImage.length > 5 && !rawImage.startsWith('bg-');
+                    // Resim kontrolü
+                    let rawImage = urun.image || ""; 
+                    // Eğer veritabanında resim_url boşsa varsayılan görseli engellemek için kontrol
+                    const hasImage = rawImage && rawImage.length > 5;
 
                     return (
                         <div 
