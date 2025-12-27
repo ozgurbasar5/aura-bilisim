@@ -9,6 +9,11 @@ import {
 } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
+// !!! BURAYI DOLDUR USTA !!!
+// .env dosyasındaki linkini ve şifreni tırnak içine yapıştır.
+const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; // Kendi URL'ini yapıştır
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";      // Kendi ANON KEY'ini yapıştır
+
 export default function MagazaPage() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
@@ -30,21 +35,8 @@ export default function MagazaPage() {
         try {
             setLoading(true);
 
-            // 1. EMNİYET KİLİDİ:
-            // Eğer Vercel env'leri okuyamazsa build patlamasın diye "boş" değer atıyoruz.
-            // Bu sayede site açılır (ama ürün gelmezse ayarlara bakmamız gerekir).
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-            const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-            // Eğer URL yoksa işlemi durdur, hata verdirtme.
-            if (!supabaseUrl || !supabaseUrl.startsWith("http")) {
-                console.warn("Supabase Bağlantısı: URL eksik veya hatalı. (Build sırasında bu normal olabilir)");
-                setLoading(false);
-                return;
-            }
-
             // Client'ı SADECE geçerli bir URL varsa oluşturuyoruz.
-            const supabase = createClient(supabaseUrl, supabaseKey || "");
+            const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
             
             let { data, error } = await supabase
                 .from('urunler')
@@ -159,7 +151,9 @@ export default function MagazaPage() {
             <div className="flex flex-col items-center justify-center py-20 text-slate-500 border border-dashed border-slate-800 rounded-3xl bg-slate-900/30">
                 <ShoppingBag size={48} className="mb-4 opacity-50"/>
                 <p>
-                   Veriye ulaşılamadı. (API Key Eksik Olabilir)
+                    {(!SUPABASE_URL || !SUPABASE_KEY) 
+                        ? "Sistem bağlantısı yapılamadı. (API Anahtarları Eksik)" 
+                        : "Aradığınız kriterlere uygun ürün bulunamadı."}
                 </p>
             </div>
         ) : (

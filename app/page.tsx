@@ -9,6 +9,15 @@ import {
   HeartPulse, MessageCircle, MonitorPlay, Send, Award
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { createClient } from '@supabase/supabase-js';
+
+// !!! BURAYI DOLDUR USTA !!!
+// .env dosyasındaki linkini ve şifreni tırnak içine yapıştır.
+const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; // Kendi URL'ini yapıştır
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";      // Kendi ANON KEY'ini yapıştır
+
+// Client oluştur
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // URL oluşturucu
 const slugify = (text: string) => {
@@ -23,36 +32,42 @@ export default function Home() {
   const router = useRouter();
   const [takipNo, setTakipNo] = useState("");
   const [vitrinUrunleri, setVitrinUrunleri] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // MARKA LİSTESİ (Sonsuz döngü için 4 kere tekrar ettik)
+  // MARKA LİSTESİ
   const brandsSource = ["APPLE", "SAMSUNG", "XIAOMI", "ROBOROCK", "DYSON", "HUAWEI", "OPPO", "MONSTER", "ASUS", "LENOVO"];
   const brands = [...brandsSource, ...brandsSource, ...brandsSource, ...brandsSource];
 
-  const demoProducts = [
-    { id: "d1", name: "iPhone 20W Hızlı Şarj", price: "450₺", tag: "Çok Satan", image: "https://st-troy.mncdn.com/mnresize/1500/1500/Content/media/ProductImg/original/mhje3tua-apple-20-w-usb-c-guc-adaptoru-mhje3tua-637633098675373892.jpg" },
-    { id: "d2", name: "Roborock Yan Fırça", price: "250₺", tag: "Orijinal", image: "bg-gradient-to-br from-orange-600 to-red-900" }, 
-    { id: "d3", name: "Termal Macun MX-6", price: "320₺", tag: "Performans", image: "https://img.epttavm.com/pimages/592/264/357/63e390c50d37e.jpg?v=201910111528" },
-    { id: "d4", name: "Dyson Batarya V11", price: "2.100₺", tag: "A Kalite", image: "bg-gradient-to-br from-purple-600 to-blue-900" }, 
-  ];
-
+  // Veritabanından vitrin ürünlerini çek
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const magazaData = localStorage.getItem("aura_magaza_urunleri"); 
-      const storeData = localStorage.getItem("aura_store_products");   
-      const productData = localStorage.getItem("aura_products_db");    
-      
-      let urunler = [];
-      if (storeData && JSON.parse(storeData).length > 0) urunler = JSON.parse(storeData);
-      else if (magazaData && JSON.parse(magazaData).length > 0) urunler = JSON.parse(magazaData);
-      else if (productData) urunler = JSON.parse(productData);
+    const fetchShowcase = async () => {
+      try {
+        let { data, error } = await supabase
+          .from('urunler')
+          .select('*')
+          .eq('stok_durumu', true) // Sadece stokta olanları göster
+          .order('created_at', { ascending: false })
+          .limit(4); // Ana sayfada sadece 4 veya 8 ürün gösterelim
 
-      if (urunler && urunler.length > 0) {
-        const siraliUrunler = urunler.reverse().slice(0, 8);
-        setVitrinUrunleri(siraliUrunler);
-      } else {
-        setVitrinUrunleri(demoProducts);
+        if (data) {
+           const mapped = data.map((item: any) => ({
+             id: item.id,
+             name: item.ad,
+             price: item.fiyat,
+             image: item.resim_url,
+             category: item.kategori,
+             tag: "Fırsat" // Vitrin için etiket
+           }));
+           setVitrinUrunleri(mapped);
+        }
+      } catch (e) {
+        console.error("Vitrin yüklenirken hata:", e);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+    
+    fetchShowcase();
   }, []);
 
   const sorgula = (e: React.FormEvent) => {
@@ -121,7 +136,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* GÜVEN BANDI (GÜNCELLENDİ) */}
+      {/* GÜVEN BANDI */}
       <div className="w-full bg-gradient-to-r from-[#020617] via-[#0a0e17] to-[#020617] border-y border-white/5 py-6 relative z-20 overflow-hidden">
         <div className="container mx-auto px-6 flex flex-wrap items-center justify-center md:justify-between gap-6 text-sm font-medium text-slate-300">
             <div className="flex items-center gap-2"><Award className="w-5 h-5 text-cyan-500" /> <span>İstanbul'un <strong>En Güvenilir</strong> Teknik Servisi</span></div>
@@ -130,10 +145,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* MARKA ŞERİDİ (SONSUZ DÖNGÜ GÜÇLENDİRİLDİ) */}
+      {/* MARKA ŞERİDİ */}
       <div className="w-full bg-[#020610] border-b border-white/5 py-12 overflow-hidden relative z-20 group">
         <div className="absolute inset-0 bg-gradient-to-r from-[#020610] via-transparent to-[#020610] z-10 pointer-events-none"></div>
-        {/* Yazıların bitmemesi için listeyi 2 kere yan yana koyduk ve animasyon süresini ayarladık */}
         <div className="flex w-max animate-infinite-scroll hover:[animation-play-state:paused]">
             {[...brands, ...brands].map((brand, index) => (
                 <div key={index} className="mx-16 text-3xl font-black text-slate-700/50 hover:text-cyan-400 transition-colors duration-300 cursor-default tracking-[0.25em] uppercase select-none drop-shadow-sm whitespace-nowrap">
@@ -156,6 +170,7 @@ export default function Home() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Kart 1: Telefon */}
             <Link href="/hizmetler/telefon" className="group relative block h-full">
                 <div className="absolute -inset-0.5 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-[2rem] blur-md opacity-0 group-hover:opacity-100 transition duration-500 group-hover:blur-[1px]"></div>
                 <div className="relative bg-[#0b0e14] p-[1px] rounded-[2rem] h-full">
@@ -168,6 +183,7 @@ export default function Home() {
                     </div>
                 </div>
             </Link>
+            {/* Kart 2: Robot */}
             <Link href="/hizmetler/robot" className="group relative block h-full">
                 <div className="absolute -inset-0.5 bg-gradient-to-b from-purple-500 to-pink-600 rounded-[2rem] blur-md opacity-0 group-hover:opacity-100 transition duration-500 group-hover:blur-[1px]"></div>
                 <div className="relative bg-[#0b0e14] p-[1px] rounded-[2rem] h-full">
@@ -180,6 +196,7 @@ export default function Home() {
                     </div>
                 </div>
             </Link>
+            {/* Kart 3: PC */}
             <Link href="/hizmetler/bilgisayar" className="group relative block h-full">
                 <div className="absolute -inset-0.5 bg-gradient-to-b from-green-500 to-emerald-600 rounded-[2rem] blur-md opacity-0 group-hover:opacity-100 transition duration-500 group-hover:blur-[1px]"></div>
                 <div className="relative bg-[#0b0e14] p-[1px] rounded-[2rem] h-full">
@@ -196,23 +213,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- NASIL ÇALIŞIR BÖLÜMÜ (AYDINLATILDI & CANLANDIRILDI) --- */}
+      {/* NASIL ÇALIŞIR */}
       <section className="py-24 relative overflow-hidden bg-[#0a0f18] border-y border-white/5">
-        {/* Arka Plan Glow Efektleri (Arttırıldı) */}
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-600/10 rounded-full blur-[150px] pointer-events-none"></div>
         <div className="absolute right-0 bottom-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none"></div>
 
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center mb-24">
-             <div className="inline-block mb-4 px-4 py-1.5 bg-cyan-950/30 rounded-full border border-cyan-500/20 text-xs font-bold text-cyan-400 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(6,182,212,0.2)]">Süreç Yönetimi</div>
-             <h2 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
+              <div className="inline-block mb-4 px-4 py-1.5 bg-cyan-950/30 rounded-full border border-cyan-500/20 text-xs font-bold text-cyan-400 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(6,182,212,0.2)]">Süreç Yönetimi</div>
+              <h2 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
                Nasıl <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Çalışır?</span>
-             </h2>
-             <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">Arızalı cihazınızın servisimize girişinden teslimatına kadar geçen şeffaf süreç.</p>
+              </h2>
+              <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">Arızalı cihazınızın servisimize girişinden teslimatına kadar geçen şeffaf süreç.</p>
           </div>
 
           <div className="relative">
-            {/* CONNECTING LINE */}
             <div className="hidden lg:block absolute top-[85px] left-0 w-full h-[3px] bg-slate-800/50 overflow-hidden rounded-full">
                <div className="absolute top-0 left-0 h-full w-1/2 bg-gradient-to-r from-transparent via-cyan-500 to-transparent animate-shimmer-fast opacity-50"></div>
             </div>
@@ -275,7 +290,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- AURA STORE VİTRİNİ (AYDINLATILDI) --- */}
+      {/* --- AURA STORE VİTRİNİ --- */}
       <section className="py-28 relative overflow-hidden bg-[#050810]">
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-pink-600/10 rounded-full blur-[150px] pointer-events-none"></div>
         <div className="container mx-auto px-6 relative z-10">
@@ -288,71 +303,56 @@ export default function Home() {
             </div>
 
             {/* ÜRÜN LİSTESİ */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {vitrinUrunleri.map((product, i) => {
-                    const displayTitle = product.name || product.title || product.urunAdi || "İsimsiz Ürün";
-                    const displayPrice = product.price || product.fiyat || "Fiyat Sorunuz";
-                    
-                    let rawImage = "";
-                    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-                        rawImage = product.images[0];
-                    } 
-                    else {
-                        rawImage = product.image || product.img || product.gorsel || product.resim || product.url || product.src;
-                    }
+            {loading ? (
+                <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-500"></div></div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {vitrinUrunleri.length > 0 ? vitrinUrunleri.map((product, i) => {
+                        const displayTitle = product.name;
+                        const displayPrice = product.price ? Number(product.price).toLocaleString('tr-TR') + ' ₺' : "Fiyat Sorunuz";
+                        let rawImage = product.image || "";
+                        const hasImage = rawImage && rawImage.length > 5;
+                        const productSlug = slugify(displayTitle); 
+                        const fallbackGradient = getRandomGradient(i);
 
-                    if (!rawImage) {
-                         const values = Object.values(product);
-                         for (let val of values) {
-                             if (typeof val === 'string' && (val.startsWith('http') || val.startsWith('data:image') || val.startsWith('/'))) {
-                                 rawImage = val;
-                                 break;
-                             }
-                         }
-                    }
+                        return (
+                          <Link href={`/magaza/${productSlug}`} key={i} className="group relative rounded-2xl block h-full cursor-pointer hover:-translate-y-2 transition-transform duration-500">
+                              <div className={`absolute -inset-[1px] bg-gradient-to-b from-indigo-500 to-purple-600 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-500 group-hover:blur-md`}></div>
+                              <div className="relative bg-[#11151d] rounded-2xl overflow-hidden h-full flex flex-col border border-white/5 group-hover:border-white/10 transition-colors">
+                                  {/* --- RESİM ALANI --- */}
+                                  <div className={`h-56 w-full relative flex items-center justify-center border-b border-white/5 overflow-hidden bg-[#161b25]`}>
+                                      
+                                      <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full border border-white/10 shadow-lg z-20">Fırsat</span>
+                                      
+                                      <div className={`absolute inset-0 flex flex-col items-center justify-center gap-2 ${fallbackGradient} group-hover:scale-110 transition-transform duration-700 z-0`}>
+                                         <Package size={48} className="text-white/40 drop-shadow-md"/>
+                                      </div>
 
-                    const isGradientClass = rawImage?.toString().startsWith("bg-");
-                    const hasImageSource = rawImage && rawImage.length > 5 && !isGradientClass;
-                    const productSlug = slugify(displayTitle); 
-                    const fallbackGradient = getRandomGradient(i);
-
-                    return (
-                      <Link href={`/magaza/${productSlug}`} key={i} className="group relative rounded-2xl block h-full cursor-pointer hover:-translate-y-2 transition-transform duration-500">
-                          <div className={`absolute -inset-[1px] bg-gradient-to-b from-indigo-500 to-purple-600 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-500 group-hover:blur-md`}></div>
-                          <div className="relative bg-[#11151d] rounded-2xl overflow-hidden h-full flex flex-col border border-white/5 group-hover:border-white/10 transition-colors">
-                              {/* --- RESİM ALANI --- */}
-                              <div className={`h-56 w-full relative flex items-center justify-center border-b border-white/5 overflow-hidden bg-[#161b25]`}>
-                                  
-                                  {product.tag && <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full border border-white/10 shadow-lg z-20">{product.tag}</span>}
-                                  
-                                  <div className={`absolute inset-0 flex flex-col items-center justify-center gap-2 ${isGradientClass ? rawImage : fallbackGradient} group-hover:scale-110 transition-transform duration-700 z-0`}>
-                                     {!isGradientClass && <Package size={48} className="text-white/40 drop-shadow-md"/>}
+                                      {hasImage && (
+                                        <img 
+                                          src={rawImage} 
+                                          alt={displayTitle} 
+                                          className="absolute inset-0 w-full h-full object-cover z-10 group-hover:scale-110 transition-transform duration-700" 
+                                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                      )}
                                   </div>
 
-                                  {hasImageSource && (
-                                    <img 
-                                      src={rawImage} 
-                                      alt={displayTitle} 
-                                      className="absolute inset-0 w-full h-full object-cover z-10 group-hover:scale-110 transition-transform duration-700" 
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                      }}
-                                    />
-                                  )}
-                              </div>
-
-                              <div className="p-6 flex-1 flex flex-col justify-between bg-[#11151d]">
-                                  <h3 className="text-white font-bold mb-2 text-lg truncate" title={displayTitle}>{displayTitle}</h3>
-                                  <div className="flex items-center justify-between mt-4">
-                                      <span className="text-xl font-black text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">{displayPrice}</span>
-                                      <button className="w-10 h-10 rounded-xl bg-slate-800/80 text-slate-400 flex items-center justify-center hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-600 hover:text-white transition-all shadow-lg hover:shadow-[0_0_15px_rgba(236,72,153,0.4)]"><ShoppingBag size={16}/></button>
+                                  <div className="p-6 flex-1 flex flex-col justify-between bg-[#11151d]">
+                                      <h3 className="text-white font-bold mb-2 text-lg truncate" title={displayTitle}>{displayTitle}</h3>
+                                      <div className="flex items-center justify-between mt-4">
+                                          <span className="text-xl font-black text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">{displayPrice}</span>
+                                          <button className="w-10 h-10 rounded-xl bg-slate-800/80 text-slate-400 flex items-center justify-center hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-600 hover:text-white transition-all shadow-lg hover:shadow-[0_0_15px_rgba(236,72,153,0.4)]"><ShoppingBag size={16}/></button>
+                                      </div>
                                   </div>
                               </div>
-                          </div>
-                      </Link>
-                    );
-                })}
-            </div>
+                          </Link>
+                        );
+                    }) : (
+                        <div className="col-span-4 text-center text-slate-500 py-10">Henüz vitrin ürünü yok.</div>
+                    )}
+                </div>
+            )}
         </div>
       </section>
 
