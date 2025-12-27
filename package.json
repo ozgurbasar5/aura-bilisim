@@ -6,16 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "next lint"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
     "lucide-react": "^0.344.0",
-    "next": "^16.1.1",
+    "next": "^14.2.0",
     "qrcode.react": "^4.2.0",
-    "react": "^19.2.3",
+    "react": "^18.2.0",
     "react-barcode": "^1.6.1",
-    "react-dom": "^19.2.3"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
@@ -24,7 +24,6 @@
     "autoprefixer": "^10.4.18",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.1.0",
-    "jiti": "^2.6.1",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3"
