@@ -5,8 +5,15 @@ import { useRouter } from "next/navigation";
 import { 
   Save, Image as ImageIcon, Tag, Globe, DollarSign, ArrowLeft, 
   UploadCloud, X, Box, ShieldCheck, RefreshCw, Instagram, 
-  Smartphone, Zap, Laptop, Watch, Grid, Layers
+  Grid, Layers
 } from "lucide-react";
+import { createClient } from '@supabase/supabase-js';
+
+// !!! BURAYI DOLDUR USTA !!!
+const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; 
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";      
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export default function YeniUrunEkle() {
   const router = useRouter();
@@ -35,11 +42,11 @@ export default function YeniUrunEkle() {
     notes: ""
   });
 
-  // --- GÜNCELLENMİŞ KATEGORİ LİSTESİ ---
+  // --- KATEGORİ LİSTESİ ---
   const CATEGORIES = [
       "Cep Telefonu", "Robot Süpürge", "Bilgisayar", 
-      "Akıllı Saat", "Tablet", "Ekosistem Ürünleri", // Yeni Eklendi
-      "Aksesuar", "Yedek Parça / Outlet"
+      "Akıllı Saat", "Tablet", "Ekosistem Ürünleri",
+      "Aksesuar", "Yedek Parça", "Sarf Malzeme"
   ];
 
   const CONDITIONS = ["Sıfır (Kapalı Kutu)", "İkinci El (Çok Temiz)", "İkinci El (Orta)", "Yenilenmiş", "Outlet / Hasarlı", "Yedek Parça"];
@@ -51,7 +58,11 @@ export default function YeniUrunEkle() {
         const newImages: string[] = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            if (file.size > 5 * 1024 * 1024) continue; 
+            // 2MB üzeri resimleri veritabanı şişmesin diye almıyoruz (Base64 limiti için)
+            if (file.size > 2 * 1024 * 1024) {
+                alert("Bazı resimler 2MB'dan büyük olduğu için yüklenmedi.");
+                continue;
+            } 
             const base64 = await new Promise<string>((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result as string);
@@ -70,37 +81,60 @@ export default function YeniUrunEkle() {
       }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.price || !formData.category) {
         alert("Ürün adı, kategori ve fiyat zorunludur!");
         return;
     }
     
-    if (formData.images.length === 0) {
-        alert("En az 1 adet ürün görseli yüklemelisiniz!");
-        return;
-    }
-
     setLoading(true);
 
-    const existing = JSON.parse(localStorage.getItem("aura_store_products") || "[]");
+    // Otomatik Stok Kodu Oluştur (Eğer boşsa)
     const finalStockCode = formData.stockCode || `STK-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const newProduct = {
-        id: Date.now(),
-        dateAdded: new Date().toLocaleDateString('tr-TR'),
-        ...formData,
-        stockCode: finalStockCode
-    };
+    // Detaylı Bilgileri "Açıklama" alanında birleştiriyoruz ki veri kaybı olmasın.
+    // Çünkü SQL tablomuzda şu an sadece 'aciklama' sütunu var.
+    const combinedDescription = `
+Marka: ${formData.brand}
+Durum: ${formData.condition}
+Garanti: ${formData.warranty ? 'Var' : 'Yok'} | Kutu: ${formData.box ? 'Var' : 'Yok'} | Takas: ${formData.exchange ? 'Olur' : 'Yok'}
+Stok Kodu: ${finalStockCode}
+Maliyet: ${formData.cost} TL
+
+Açıklama:
+${formData.notes}
+
+Platform Linkleri:
+${formData.sahibindenLink ? 'Sahibinden: ' + formData.sahibindenLink : ''}
+${formData.dolapLink ? 'Dolap: ' + formData.dolapLink : ''}
+${formData.instagramLink ? 'Instagram: ' + formData.instagramLink : ''}
+    `.trim();
 
     try {
-        localStorage.setItem("aura_store_products", JSON.stringify([newProduct, ...existing]));
-        setTimeout(() => {
-            alert("Ürün Başarıyla Yayınlandı!");
-            router.push("/epanel/magaza");
-        }, 500);
-    } catch (error) {
-        alert("Hata: Görseller çok büyük olduğu için kaydedilemedi.");
+        const { error } = await supabase
+            .from('urunler')
+            .insert([
+                {
+                    ad: formData.name,
+                    fiyat: parseFloat(formData.price),
+                    kategori: formData.category,
+                    // SQL tablosu tek resim alıyor, ilk resmi kapak yapıyoruz.
+                    resim_url: formData.images.length > 0 ? formData.images[0] : "",
+                    aciklama: combinedDescription,
+                    stok_durumu: formData.status === "Satışta",
+                    created_at: new Date().toISOString()
+                }
+            ]);
+
+        if (error) throw error;
+
+        alert("Ürün Başarıyla Veritabanına Kaydedildi!");
+        router.push("/epanel/magaza");
+
+    } catch (error: any) {
+        console.error("Hata:", error);
+        alert("Kayıt başarısız: " + error.message);
+    } finally {
         setLoading(false);
     }
   };
@@ -113,7 +147,7 @@ export default function YeniUrunEkle() {
           <button onClick={() => router.back()} className="p-3 bg-slate-800 rounded-xl hover:text-white transition-colors group"><ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform"/></button>
           <div>
             <h1 className="text-2xl font-black text-white">YENİ ÜRÜN GİRİŞİ</h1>
-            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">AURA STORE YÖNETİM</p>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">AURA STORE YÖNETİM (SQL)</p>
           </div>
           <div className="ml-auto">
               <button onClick={handleSave} disabled={loading} className="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-green-900/30 transition-all active:scale-95 flex items-center gap-2">
@@ -136,7 +170,7 @@ export default function YeniUrunEkle() {
                       <input type="file" accept="image/*" multiple ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
                       <div className="p-4 bg-slate-800 rounded-full mb-3 group-hover:bg-cyan-600 group-hover:text-white transition-colors shadow-lg"><UploadCloud size={32}/></div>
                       <p className="font-bold text-sm text-slate-300 group-hover:text-white">Görsel Yükle</p>
-                      <p className="text-[10px] text-slate-500 mt-1">Sürükle bırak veya seç</p>
+                      <p className="text-[10px] text-slate-500 mt-1">Sürükle bırak veya seç (İlk resim kapak olur)</p>
                   </div>
 
                   {/* Yüklenenler */}
