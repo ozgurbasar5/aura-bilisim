@@ -5,26 +5,21 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   ShoppingBag, Star, Smartphone, Laptop, Zap, Filter, ArrowRight, 
-  Watch, Box, Image as ImageIcon, MapPin, Wrench
+  Watch, Box, Image as ImageIcon, Wrench
 } from "lucide-react";
-
-// !!! DİKKAT: Supabase Client'ı projene uygun şekilde import etmelisin.
-// Genelde @/lib/supabase veya @/utils/supabase konumunda olur.
-// Eğer hazır bir dosyan yoksa bu satır hata verebilir, dosya yolunu kendine göre düzelt.
 import { createClient } from '@supabase/supabase-js';
 
-// Eğer projenin .env dosyasında tanımlıysa bu şekilde client oluşturabilirsin:
-// (Bu kısmı kendi ayarına göre düzenle usta)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// NOT: Değişkenleri burada tanımlıyoruz ama client'ı aşağıda oluşturacağız.
+// Bu sayede Vercel build alırken "Url yok" diye patlamayacak.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export default function MagazaPage() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
   const [category, setCategory] = useState("Tümü");
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true); // Yükleniyor durumu ekledik
+  const [loading, setLoading] = useState(true);
 
   const CATEGORIES = [
       { id: "Tümü", label: "Tümü", icon: Filter },
@@ -36,16 +31,25 @@ export default function MagazaPage() {
   ];
 
   useEffect(() => {
-    // FONKSİYON: Verileri SQL (Supabase) 'urunler' tablosundan çeker
     const fetchProductsFromSQL = async () => {
         try {
             setLoading(true);
+
+            // GÜVENLİK KONTROLÜ: Eğer Vercel'de anahtarlar girilmemişse fonksiyonu durdur.
+            // Bu sayede site çökmez, sadece ürünler gelmez.
+            if (!supabaseUrl || !supabaseKey) {
+                console.error("HATA: Supabase API anahtarları bulunamadı! Vercel ayarlarını kontrol et.");
+                setLoading(false);
+                return;
+            }
+
+            // Client'ı burada, ihtiyaç anında oluşturuyoruz.
+            const supabase = createClient(supabaseUrl, supabaseKey);
             
-            // 1. SQL'den veriyi çekiyoruz
             let { data, error } = await supabase
                 .from('urunler')
                 .select('*')
-                .order('created_at', { ascending: false }); // En yeni eklenen en üstte
+                .order('created_at', { ascending: false });
 
             if (error) {
                 console.error("Veri çekme hatası:", error);
@@ -53,13 +57,12 @@ export default function MagazaPage() {
             }
 
             if (data) {
-                // 2. SQL sütunlarını (Türkçe) Frontend'in anladığı dile (İngilizce) çeviriyoruz (Mapping)
                 const mappedProducts = data.map((item: any) => ({
                     id: item.id,
-                    name: item.ad,           // SQL: ad -> UI: name
-                    price: item.fiyat,       // SQL: fiyat -> UI: price
-                    category: item.kategori, // SQL: kategori -> UI: category
-                    image: item.resim_url,   // SQL: resim_url -> UI: image
+                    name: item.ad,
+                    price: item.fiyat,
+                    category: item.kategori,
+                    image: item.resim_url,
                     description: item.aciklama,
                     status: item.stok_durumu ? "Stokta" : "Tükendi" 
                 }));
@@ -93,17 +96,13 @@ export default function MagazaPage() {
   return (
     <main className="min-h-screen bg-[#020617] text-white pt-24 relative font-sans selection:bg-cyan-500/30">
       
-      {/* NAVBAR */}
       <nav className="fixed top-0 left-0 right-0 h-20 bg-[#020617] border-b border-white/10 z-50">
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-          
-          {/* SOL: LOGO */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/')}>
              <div className="w-10 h-10 bg-cyan-600 rounded-xl flex items-center justify-center shadow-lg"><Wrench size={20} className="text-white"/></div>
              <div><h1 className="text-xl font-black tracking-tight leading-none text-white">AURA<span className="text-cyan-500">BİLİŞİM</span></h1><p className="text-[10px] text-slate-400 tracking-widest font-bold uppercase">Teknik Laboratuvar</p></div>
           </div>
           
-          {/* ORTA: MENÜ */}
           <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-slate-400 h-full">
              <Link href="/" className="hover:text-cyan-400 transition-colors h-full flex items-center">Ana Sayfa</Link>
              <Link href="/sorgula" className="hover:text-cyan-400 transition-colors h-full flex items-center">Cihaz Sorgula</Link>
@@ -111,7 +110,6 @@ export default function MagazaPage() {
              <Link href="/iletisim" className="hover:text-cyan-400 transition-colors h-full flex items-center">İletişim</Link>
           </div>
 
-          {/* SAĞ: BUTONLAR */}
           <div className="flex items-center gap-4">
              <Link href="/magaza" className="hidden sm:flex items-center gap-2 text-white font-bold text-sm transition-all border border-purple-500 bg-purple-500/10 px-5 py-2.5 rounded-xl hover:bg-purple-500"><ShoppingBag size={18}/> Aura Store</Link>
              <Link href="/onarim-talebi" className="hidden sm:flex items-center gap-2 bg-[#1e293b] hover:bg-[#283547] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all border border-slate-700 hover:border-cyan-500/50"><Wrench size={18} className="text-cyan-400"/> Onarım Talebi</Link>
@@ -119,10 +117,7 @@ export default function MagazaPage() {
         </div>
       </nav>
 
-      {/* İÇERİK ALANI */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 relative z-10">
-        
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6 border-b border-white/10 pb-8 mt-4">
            <div>
               <div className="flex items-center gap-2 text-cyan-400 font-bold mb-2 uppercase tracking-widest text-xs">
@@ -144,7 +139,6 @@ export default function MagazaPage() {
            </div>
         </div>
 
-        {/* Kategoriler */}
         <div className="flex gap-3 overflow-x-auto pb-6 mb-2 scrollbar-hide">
             {CATEGORIES.map((cat) => (
                 <button 
@@ -157,7 +151,6 @@ export default function MagazaPage() {
             ))}
         </div>
 
-        {/* Ürün Listesi */}
         {loading ? (
              <div className="flex justify-center py-20">
                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
@@ -165,14 +158,16 @@ export default function MagazaPage() {
         ) : filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-500 border border-dashed border-slate-800 rounded-3xl bg-slate-900/30">
                 <ShoppingBag size={48} className="mb-4 opacity-50"/>
-                <p>Aradığınız kriterlere uygun ürün bulunamadı veya henüz ürün eklenmedi.</p>
+                <p>
+                    {(!supabaseUrl || !supabaseKey) 
+                        ? "Sistem bağlantısı yapılamadı. (API Anahtarları Eksik)" 
+                        : "Aradığınız kriterlere uygun ürün bulunamadı."}
+                </p>
             </div>
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
                 {filteredProducts.map((urun) => {
-                    // Resim kontrolü
                     let rawImage = urun.image || ""; 
-                    // Eğer veritabanında resim_url boşsa varsayılan görseli engellemek için kontrol
                     const hasImage = rawImage && rawImage.length > 5;
 
                     return (
