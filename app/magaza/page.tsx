@@ -9,11 +9,6 @@ import {
 } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
-// NOT: Değişkenleri burada tanımlıyoruz ama client'ı aşağıda oluşturacağız.
-// Bu sayede Vercel build alırken "Url yok" diye patlamayacak.
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
 export default function MagazaPage() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
@@ -35,16 +30,21 @@ export default function MagazaPage() {
         try {
             setLoading(true);
 
-            // GÜVENLİK KONTROLÜ: Eğer Vercel'de anahtarlar girilmemişse fonksiyonu durdur.
-            // Bu sayede site çökmez, sadece ürünler gelmez.
-            if (!supabaseUrl || !supabaseKey) {
-                console.error("HATA: Supabase API anahtarları bulunamadı! Vercel ayarlarını kontrol et.");
+            // 1. EMNİYET KİLİDİ:
+            // Eğer Vercel env'leri okuyamazsa build patlamasın diye "boş" değer atıyoruz.
+            // Bu sayede site açılır (ama ürün gelmezse ayarlara bakmamız gerekir).
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+            const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+            // Eğer URL yoksa işlemi durdur, hata verdirtme.
+            if (!supabaseUrl || !supabaseUrl.startsWith("http")) {
+                console.warn("Supabase Bağlantısı: URL eksik veya hatalı. (Build sırasında bu normal olabilir)");
                 setLoading(false);
                 return;
             }
 
-            // Client'ı burada, ihtiyaç anında oluşturuyoruz.
-            const supabase = createClient(supabaseUrl, supabaseKey);
+            // Client'ı SADECE geçerli bir URL varsa oluşturuyoruz.
+            const supabase = createClient(supabaseUrl, supabaseKey || "");
             
             let { data, error } = await supabase
                 .from('urunler')
@@ -159,9 +159,7 @@ export default function MagazaPage() {
             <div className="flex flex-col items-center justify-center py-20 text-slate-500 border border-dashed border-slate-800 rounded-3xl bg-slate-900/30">
                 <ShoppingBag size={48} className="mb-4 opacity-50"/>
                 <p>
-                    {(!supabaseUrl || !supabaseKey) 
-                        ? "Sistem bağlantısı yapılamadı. (API Anahtarları Eksik)" 
-                        : "Aradığınız kriterlere uygun ürün bulunamadı."}
+                   Veriye ulaşılamadı. (API Key Eksik Olabilir)
                 </p>
             </div>
         ) : (
