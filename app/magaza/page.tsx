@@ -9,10 +9,9 @@ import {
 } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
-// !!! BURAYI DOLDUR USTA !!!
-// .env dosyasındaki linkini ve şifreni tırnak içine yapıştır.
-const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; // Kendi URL'ini yapıştır
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";      // Kendi ANON KEY'ini yapıştır
+// GÜNCEL SUPABASE BAĞLANTI AYARLARI
+const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; 
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";
 
 export default function MagazaPage() {
   const router = useRouter();
@@ -34,36 +33,36 @@ export default function MagazaPage() {
     const fetchProductsFromSQL = async () => {
         try {
             setLoading(true);
-
-            // Client'ı SADECE geçerli bir URL varsa oluşturuyoruz.
             const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
             
+            // Veriyi senin oluşturduğun 'urunler' tablosundan çekiyoruz
             let { data, error } = await supabase
                 .from('urunler')
                 .select('*')
                 .order('created_at', { ascending: false });
 
             if (error) {
-                console.error("Veri çekme hatası:", error);
+                console.error("Veritabanı bağlantı hatası:", error.message);
                 return;
             }
 
             if (data) {
                 const mappedProducts = data.map((item: any) => ({
                     id: item.id,
-                    name: item.ad,
-                    price: item.fiyat,
-                    category: item.kategori,
-                    image: item.resim_url,
-                    description: item.aciklama,
+                    name: item.ad || "İsimsiz Ürün",
+                    price: item.fiyat || 0,
+                    category: item.kategori || "Genel",
+                    image: item.resim_url || "",
+                    description: item.aciklama || "",
                     status: item.stok_durumu ? "Stokta" : "Tükendi" 
                 }));
 
                 setProducts(mappedProducts);
             }
         } catch (err) {
-            console.error("Beklenmeyen hata:", err);
+            console.error("Sistem hatası:", err);
         } finally {
+            // Arıza olsa bile yükleme ekranını kapatan sigorta
             setLoading(false);
         }
     };
@@ -87,23 +86,19 @@ export default function MagazaPage() {
 
   return (
     <main className="min-h-screen bg-[#020617] text-white pt-24 relative font-sans selection:bg-cyan-500/30">
-      
       <nav className="fixed top-0 left-0 right-0 h-20 bg-[#020617] border-b border-white/10 z-50">
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/')}>
              <div className="w-10 h-10 bg-cyan-600 rounded-xl flex items-center justify-center shadow-lg"><Wrench size={20} className="text-white"/></div>
              <div><h1 className="text-xl font-black tracking-tight leading-none text-white">AURA<span className="text-cyan-500">BİLİŞİM</span></h1><p className="text-[10px] text-slate-400 tracking-widest font-bold uppercase">Teknik Laboratuvar</p></div>
           </div>
-          
           <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-slate-400 h-full">
              <Link href="/" className="hover:text-cyan-400 transition-colors h-full flex items-center">Ana Sayfa</Link>
              <Link href="/sorgula" className="hover:text-cyan-400 transition-colors h-full flex items-center">Cihaz Sorgula</Link>
              <Link href="/magaza" className="text-cyan-400 font-bold h-full flex items-center border-b-2 border-cyan-400">Aura Store</Link>
              <Link href="/iletisim" className="hover:text-cyan-400 transition-colors h-full flex items-center">İletişim</Link>
           </div>
-
           <div className="flex items-center gap-4">
-             <Link href="/magaza" className="hidden sm:flex items-center gap-2 text-white font-bold text-sm transition-all border border-purple-500 bg-purple-500/10 px-5 py-2.5 rounded-xl hover:bg-purple-500"><ShoppingBag size={18}/> Aura Store</Link>
              <Link href="/onarim-talebi" className="hidden sm:flex items-center gap-2 bg-[#1e293b] hover:bg-[#283547] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all border border-slate-700 hover:border-cyan-500/50"><Wrench size={18} className="text-cyan-400"/> Onarım Talebi</Link>
           </div>
         </div>
@@ -118,7 +113,6 @@ export default function MagazaPage() {
               <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">AURA <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">STORE</span></h1>
               <p className="text-slate-400 mt-2 font-light">Revize edilmiş, garantili ve test edilmiş teknolojik ürünler.</p>
            </div>
-           
            <div className="w-full md:w-auto relative group">
                <input 
                   type="text" 
@@ -144,17 +138,14 @@ export default function MagazaPage() {
         </div>
 
         {loading ? (
-             <div className="flex justify-center py-20">
+             <div className="flex flex-col items-center justify-center py-20 gap-4">
                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+                 <p className="text-slate-500 text-sm font-bold animate-pulse tracking-widest uppercase">Ürün bilgileri yükleniyor...</p>
              </div>
         ) : filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-500 border border-dashed border-slate-800 rounded-3xl bg-slate-900/30">
                 <ShoppingBag size={48} className="mb-4 opacity-50"/>
-                <p>
-                    {(!SUPABASE_URL || !SUPABASE_KEY) 
-                        ? "Sistem bağlantısı yapılamadı. (API Anahtarları Eksik)" 
-                        : "Aradığınız kriterlere uygun ürün bulunamadı."}
-                </p>
+                <p>Aradığınız kriterlere uygun ürün bulunamadı veya vitrin şu an boş.</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
@@ -178,10 +169,9 @@ export default function MagazaPage() {
                                     </div>
                                 )}
                                 <div className="absolute top-3 left-3">
-                                    <span className="bg-cyan-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg uppercase tracking-wider">{urun.category || 'Genel'}</span>
+                                    <span className="bg-cyan-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg uppercase tracking-wider">{urun.category}</span>
                                 </div>
                             </div>
-
                             <div className="p-5 flex-1 flex flex-col">
                                 <h3 className="text-white font-bold text-base leading-snug line-clamp-2 mb-4 group-hover:text-cyan-400 transition-colors min-h-[40px]">{urun.name}</h3>
                                 <div className="mt-auto pt-4 border-t border-slate-800 flex justify-between items-center">
