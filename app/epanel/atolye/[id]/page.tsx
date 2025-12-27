@@ -65,7 +65,9 @@ export default function ServisDetaySayfasi() {
         // ID KARŞILAŞTIRMASI (String'e çevirerek yapıyoruz)
         const job = allJobs.find((j: any) => j.id.toString() === params.id!.toString());
         if (job) {
-            setFormData({ ...job, preCheck: job.preCheck || [], finalCheck: job.finalCheck || [], accessories: job.accessories || [] });
+            setFormData({ ...job, preCheck: (job as any).preCheck || [], 
+    finalCheck: (job as any).finalCheck || [], 
+    accessories: (job as any).accessories || [] });
         }
     }
     setLoading(false);
