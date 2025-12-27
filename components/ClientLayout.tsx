@@ -1,27 +1,31 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import Navbar from "./Navbar";
+import Footer from "./Footer";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  
-  // Eğer adres "/epanel" ile başlıyorsa, bu bir yönetim sayfasıdır.
-  const isPanel = pathname.startsWith("/epanel");
 
-  // Paneldeysek SADECE içeriği göster (Navbar ve Footer YOK)
-  if (isPanel) {
+  // 1. Yönetim Paneli ve Login sayfalarında Navbar/Footer GİZLE
+  // (Burası kalmalı yoksa panelin içine müşteri menüsü girer)
+  const isPanelOrLogin = pathname.startsWith("/epanel") || pathname === "/login";
+
+  if (isPanelOrLogin) {
     return <>{children}</>;
   }
 
-  // Panelde değilsek (Normal Müşteri Sitesi), Navbar ve Footer'ı GÖSTER
   return (
-    <div className="flex flex-col min-h-screen relative z-10">
+    <div className="flex flex-col min-h-screen">
+      {/* Üst Bar (Her yerde sabit) */}
       <Navbar />
-      <main className="flex-grow w-full">
+      
+      {/* Sayfa İçeriği */}
+      <main className="flex-1">
         {children}
       </main>
+
+      {/* Alt Bar (Her yerde sabit) */}
       <Footer />
     </div>
   );

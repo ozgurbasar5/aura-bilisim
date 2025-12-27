@@ -2,54 +2,97 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase";
-import { createClient } from "@supabase/supabase-js";
 import { 
   Settings, Plus, Trash2, Building2, 
-  Users, Shield, CheckCircle, XCircle, X, PlusCircle
+  Users, Shield, CheckCircle, XCircle, X, PlusCircle,
+  Save, RefreshCw, Globe, Edit2, Lock, UserX, UserCheck
 } from "lucide-react";
 
-// Yetkiler
-const TUM_YETKILER = ['Atölye', 'Başvurular', 'Hızlı Kayıt', 'Yönetim (Admin)'];
+// Sabitler
+const TUM_YETKILER = ['Atölye', 'Başvurular', 'Hızlı Kayıt', 'Mağaza', 'Raporlar', 'Yönetim (Admin)'];
+const ROLLER = [
+    { id: 'admin', label: 'Yönetici', yetkiler: ['Atölye', 'Başvurular', 'Hızlı Kayıt', 'Mağaza', 'Raporlar', 'Yönetim (Admin)'] },
+    { id: 'teknisyen', label: 'Teknisyen', yetkiler: ['Atölye', 'Hızlı Kayıt'] },
+    { id: 'satis', label: 'Satış Temsilcisi', yetkiler: ['Mağaza', 'Başvurular', 'Hızlı Kayıt'] },
+    { id: 'stajyer', label: 'Stajyer', yetkiler: ['Atölye'] }
+];
+const KATEGORILER = ['Telefon', 'Robot Süpürge', 'Bilgisayar', 'Tablet', 'Akıllı Saat', 'Diğer'];
 
-export default function YonetimPaneli() {
+export default function GelismisYonetimPaneli() {
+  const [aktifSekme, setAktifSekme] = useState<'personel' | 'markalar' | 'sistem'>('personel');
+  const [yukleniyor, setYukleniyor] = useState(false);
+  
+  // Veri State'leri
   const [kaynaklar, setKaynaklar] = useState<any[]>([]);
   const [personelListesi, setPersonelListesi] = useState<any[]>([]);
-  const [yeniKaynak, setYeniKaynak] = useState("");
-  const [eklemeAcikID, setEklemeAcikID] = useState<string | null>(null);
-
+  
+  // Marka Ekleme State
+  const [yeniKaynak, setYeniKaynak] = useState({ isim: "", kategori: "Telefon", web_site: "" });
+  
+  // Personel Ekleme State
   const [yeniPersonel, setYeniPersonel] = useState({
-    email: "",
-    password: "",
-    ad: "",
-    yetkiler: [] as string[]
+    email: "", password: "", ad: "", rol: "teknisyen", yetkiler: [] as string[]
+  });
+  
+  // Personel Düzenleme
+  const [yetkiPopupId, setYetkiPopupId] = useState<string | null>(null);
+
+  // Sistem Ayarları
+  const [sistemAyarlari, setSistemAyarlari] = useState({
+      bakimModu: false,
+      dovizOtomatik: true,
+      dovizSabit: 34.50,
+      smsBildirim: true
   });
 
-  useEffect(() => {
-    veriGetir();
-  }, []);
+  useEffect(() => { veriGetir(); }, []);
 
+  // --- VERİ ÇEKME ---
   const veriGetir = async () => {
+    setYukleniyor(true);
+    // Markaları çek
     const { data: kaynakData } = await supabase.from('ayarlar_kaynaklar').select('*').order('isim');
-    const { data: personelData } = await supabase.from('personel_izinleri').select('*').order('created_at');
-    
     if (kaynakData) setKaynaklar(kaynakData);
+
+    // Personeli çek
+    const { data: personelData } = await supabase.from('personel_izinleri').select('*').order('created_at');
     if (personelData) setPersonelListesi(personelData);
+    
+    setYukleniyor(false);
   };
 
+  // --- MARKA İŞLEMLERİ ---
   const kaynakEkle = async () => {
-    if (!yeniKaynak) return;
-    await supabase.from('ayarlar_kaynaklar').insert([{ isim: yeniKaynak }]);
-    setYeniKaynak("");
-    veriGetir();
+    if (!yeniKaynak.isim) return alert("Marka adı boş olamaz!");
+    
+    const { error } = await supabase.from('ayarlar_kaynaklar').insert([{
+        isim: yeniKaynak.isim,
+        kategori: yeniKaynak.kategori,
+        web_site: yeniKaynak.web_site
+    }]);
+
+    if(error) alert("Hata: " + error.message);
+    else {
+        setYeniKaynak({ isim: "", kategori: "Telefon", web_site: "" });
+        veriGetir();
+    }
   };
 
   const kaynakSil = async (id: string) => {
-    if(!confirm("Silmek istediğine emin misin?")) return;
+    if(!confirm("Bu markayı silmek istediğine emin misin?")) return;
     await supabase.from('ayarlar_kaynaklar').delete().eq('id', id);
     veriGetir();
   };
 
-  const yetkiSec = (yetki: string) => {
+  // --- PERSONEL İŞLEMLERİ ---
+  const rolDegis = (rolId: string) => {
+      const secilenRol = ROLLER.find(r => r.id === rolId);
+      if(secilenRol) {
+          setYeniPersonel({ ...yeniPersonel, rol: rolId, yetkiler: secilenRol.yetkiler });
+      }
+  };
+
+  const yetkiToggle = (yetki: string) => {
     if (yeniPersonel.yetkiler.includes(yetki)) {
       setYeniPersonel({ ...yeniPersonel, yetkiler: yeniPersonel.yetkiler.filter(y => y !== yetki) });
     } else {
@@ -57,168 +100,298 @@ export default function YonetimPaneli() {
     }
   };
 
-  const yetkiKaldir = async (personelId: string, yetkiyiSil: string) => {
-    if (!confirm(`"${yetkiyiSil}" yetkisini silmek istiyor musun?`)) return;
-    const { data: personel } = await supabase.from('personel_izinleri').select('yetkiler').eq('id', personelId).single();
-    if (!personel) return;
-    const yeniYetkiler = personel.yetkiler.filter((y: string) => y !== yetkiyiSil);
-    await supabase.from('personel_izinleri').update({ yetkiler: yeniYetkiler }).eq('id', personelId);
-    veriGetir();
-  };
-
-  const yetkiEkle = async (personelId: string, yeniYetki: string) => {
-    const { data: personel } = await supabase.from('personel_izinleri').select('yetkiler').eq('id', personelId).single();
-    if (!personel) return;
-    if (personel.yetkiler.includes(yeniYetki)) return;
-    const guncelYetkiler = [...personel.yetkiler, yeniYetki];
-    await supabase.from('personel_izinleri').update({ yetkiler: guncelYetkiler }).eq('id', personelId);
-    setEklemeAcikID(null); 
-    veriGetir();
-  };
-
   const personelOlustur = async () => {
-    if (!yeniPersonel.email || !yeniPersonel.password) return alert("Email ve Şifre şart usta!");
+    if (!yeniPersonel.email || !yeniPersonel.password) return alert("Email ve Şifre zorunlu!");
     if (yeniPersonel.password.length < 6) return alert("Şifre en az 6 karakter olmalı!");
 
-    const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co";
-    const SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjM0NDYwMiwiZXhwIjoyMDgxOTIwNjAyfQ.AgQ8Vr4jDZfEjaym76Rkj4H1N2R6fSVMy07zLmw2iyI";
+    setYukleniyor(true);
 
     try {
-      const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
-
-      const { error } = await supabaseAdmin.auth.admin.createUser({
+      // 1. Auth Kullanıcısı Oluştur (SignUp yöntemi ile)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: yeniPersonel.email,
         password: yeniPersonel.password,
-        email_confirm: true
+        options: {
+            data: { full_name: yeniPersonel.ad }
+        }
       });
 
-      if (error) { alert("Hata: " + error.message); return; }
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Kullanıcı oluşturulamadı.");
 
-      await supabase.from('personel_izinleri').insert([{
+      // 2. Personel Tablosuna Ekle (Eğer trigger yoksa manuel ekliyoruz)
+      const { error: dbError } = await supabase.from('personel_izinleri').insert([{
         email: yeniPersonel.email,
         ad_soyad: yeniPersonel.ad,
-        yetkiler: yeniPersonel.yetkiler
+        yetkiler: yeniPersonel.yetkiler,
+        rol: yeniPersonel.rol,
+        durum: 'aktif'
       }]);
+
+      if (dbError) throw dbError;
       
-      alert("✅ Personel Eklendi!");
-      setYeniPersonel({ email: "", password: "", ad: "", yetkiler: [] });
+      alert("✅ Personel Başarıyla Oluşturuldu! (Giriş yapabilir)");
+      setYeniPersonel({ email: "", password: "", ad: "", rol: "teknisyen", yetkiler: [] });
       veriGetir();
 
-    } catch (err: any) { alert("Hata: " + err.message); }
+    } catch (err: any) { 
+        console.error(err);
+        alert("Hata oluştu: " + err.message); 
+    }
+    setYukleniyor(false);
+  };
+
+  // Yetki Güncelleme (Canlı)
+  const yetkiGuncelle = async (personelId: string, yeniYetkiler: string[]) => {
+      await supabase.from('personel_izinleri').update({ yetkiler: yeniYetkiler }).eq('id', personelId);
+      veriGetir();
   };
 
   const personelSil = async (id: string) => {
-    if(!confirm("Personeli silmek istiyor musun?")) return;
+    if(!confirm("Personeli veritabanından silmek istiyor musun?")) return;
     await supabase.from('personel_izinleri').delete().eq('id', id);
     veriGetir();
   };
 
+  const durumDegistir = async (id: string, mevcutDurum: string) => {
+      const yeniDurum = mevcutDurum === 'aktif' ? 'pasif' : 'aktif';
+      await supabase.from('personel_izinleri').update({ durum: yeniDurum }).eq('id', id);
+      veriGetir();
+  }
+
   return (
-    <div className="max-w-[1600px] mx-auto pb-20 px-6 animate-in fade-in duration-500">
-      <h1 className="text-3xl font-black text-white mb-8 flex items-center gap-3">
-        <Settings className="text-cyan-400" size={32} /> Sistem Yönetim Merkezi
-      </h1>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        
-        {/* SOL: FİRMA KAYNAKLARI */}
-        <div className="bg-[#1E293B]/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl h-fit">
-          <h3 className="text-white font-bold mb-6 flex items-center gap-2">
-            <Building2 size={20} className="text-cyan-400" /> Cihaz Kaynakları / Markalar
-          </h3>
-          <div className="flex gap-2 mb-6">
-            <input 
-              type="text" placeholder="Yeni Marka / Firma Ekle" value={yeniKaynak} onChange={(e) => setYeniKaynak(e.target.value)}
-              className="flex-1 bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-cyan-500 transition-all font-bold"
-            />
-            <button onClick={kaynakEkle} className="bg-cyan-600 hover:bg-cyan-500 text-white p-3 rounded-xl transition-all shadow-lg shadow-cyan-900/20"><Plus size={24} /></button>
+    <div className="max-w-[1600px] mx-auto pb-20 px-6 animate-in fade-in duration-500 text-slate-200">
+      
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 pt-6">
+          <h1 className="text-3xl font-black text-white flex items-center gap-3">
+            <Settings className="text-cyan-400 animate-spin-slow" size={32} /> 
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">YÖNETİM MERKEZİ</span>
+          </h1>
+          <div className="flex bg-[#1E293B] p-1 rounded-xl border border-slate-700">
+              <button onClick={() => setAktifSekme('personel')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${aktifSekme === 'personel' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><Users size={16}/> Personel</button>
+              <button onClick={() => setAktifSekme('markalar')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${aktifSekme === 'markalar' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><Building2 size={16}/> Markalar</button>
+              <button onClick={() => setAktifSekme('sistem')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${aktifSekme === 'sistem' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><Settings size={16}/> Sistem</button>
           </div>
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {kaynaklar.map((k) => (
-                <div key={k.id} className="flex items-center justify-between bg-[#0F172A]/50 p-4 rounded-2xl border border-white/5 hover:border-cyan-500/30 transition-all group">
-                  <span className="text-slate-200 font-medium group-hover:text-white transition-colors">{k.isim}</span>
-                  <button onClick={() => kaynakSil(k.id)} className="text-slate-500 hover:text-red-500 transition-colors bg-slate-800 p-2 rounded-lg hover:bg-red-500/10"><Trash2 size={16} /></button>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {/* SAĞ: PERSONEL YÖNETİMİ */}
-        <div className="bg-[#1E293B]/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl">
-          <h3 className="text-white font-bold mb-6 flex items-center gap-2">
-            <Shield size={20} className="text-green-400" /> Personel & Yetki Yönetimi
-          </h3>
-
-          {/* EKLEME FORMU */}
-          <div className="bg-[#0F172A]/50 p-6 rounded-2xl border border-white/5 mb-8">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <input type="text" placeholder="Ad Soyad" value={yeniPersonel.ad} onChange={(e) => setYeniPersonel({...yeniPersonel, ad: e.target.value})} className="bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-green-500 transition-all text-sm"/>
-                <input type="email" placeholder="E-Mail" value={yeniPersonel.email} onChange={(e) => setYeniPersonel({...yeniPersonel, email: e.target.value})} className="bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-green-500 transition-all text-sm"/>
-                <input type="text" placeholder="Şifre (Min 6)" value={yeniPersonel.password} onChange={(e) => setYeniPersonel({...yeniPersonel, password: e.target.value})} className="col-span-2 w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-green-500 transition-all text-sm font-mono"/>
-              </div>
-              <div className="mb-4">
-                <label className="text-[10px] text-slate-500 font-bold uppercase mb-2 block">Başlangıç Yetkileri</label>
-                <div className="flex flex-wrap gap-2">
-                    {TUM_YETKILER.map((y) => (
-                        <button key={y} onClick={() => yetkiSec(y)} className={`text-xs px-3 py-2 rounded-lg border font-bold transition-all flex items-center gap-2 ${yeniPersonel.yetkiler.includes(y) ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-slate-800/50 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
-                            {yeniPersonel.yetkiler.includes(y) ? <CheckCircle size={14}/> : <XCircle size={14}/>} {y}
-                        </button>
-                    ))}
-                </div>
-              </div>
-              <button onClick={personelOlustur} className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white font-black py-3 rounded-xl shadow-lg shadow-green-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"><Users size={18}/> PERSONELİ EKLE</button>
-          </div>
-
-          {/* LİSTE */}
-          <div className="space-y-3">
-              <h4 className="text-[10px] text-slate-500 font-bold uppercase mb-2">Kayıtlı Personeller</h4>
-              {personelListesi.map((p) => (
-                <div key={p.id} className="bg-[#0F172A]/50 p-4 rounded-2xl border border-white/5 flex flex-col gap-3 group hover:border-slate-600 transition-colors">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center text-xs font-bold text-slate-300">{p.ad_soyad?.charAt(0)}</div>
-                            <div>
-                                <div className="text-white font-bold text-sm flex items-center gap-2">{p.ad_soyad}</div>
-                                <div className="text-[10px] text-slate-500 font-mono">{p.email}</div>
-                            </div>
-                        </div>
-                        <button onClick={() => personelSil(p.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"><Trash2 size={16}/></button>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/5">
-                        {p.yetkiler?.map((y:string) => (
-                            <span key={y} className="text-[10px] bg-slate-800 text-slate-300 px-2 py-1 rounded-lg border border-slate-700 flex items-center gap-1.5 hover:border-red-500/50 transition-colors group/yetki">
-                                {y}
-                                <button onClick={() => yetkiKaldir(p.id, y)} className="text-slate-500 hover:text-red-400 transition-colors"><X size={12} /></button>
-                            </span>
-                        ))}
-                        <div className="relative">
-                            <button 
-                                onClick={() => setEklemeAcikID(eklemeAcikID === p.id ? null : p.id)}
-                                className="text-green-500 hover:text-green-400 transition-colors p-1 bg-green-500/10 rounded-lg border border-green-500/20"
-                                title="Yetki Ekle"
-                            >
-                                <PlusCircle size={14} />
-                            </button>
-                            {eklemeAcikID === p.id && (
-                                <div className="absolute top-8 left-0 z-50 bg-[#1E293B] border border-slate-600 rounded-xl p-2 w-48 shadow-2xl flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200">
-                                    <div className="text-[9px] text-slate-500 font-bold uppercase px-2 mb-1">Eklenebilir Yetkiler</div>
-                                    {TUM_YETKILER.filter(y => !p.yetkiler.includes(y)).length > 0 ? (
-                                        TUM_YETKILER.filter(y => !p.yetkiler.includes(y)).map(eksikYetki => (
-                                            <button key={eksikYetki} onClick={() => yetkiEkle(p.id, eksikYetki)} className="text-left text-[10px] text-white hover:bg-green-600 hover:text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-2"><Plus size={10}/> {eksikYetki}</button>
-                                        ))
-                                    ) : (
-                                        <div className="text-[10px] text-slate-500 px-2 py-1">Tüm yetkiler tanımlı.</div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-             ))}
-          </div>
-        </div>
       </div>
+
+      {/* --- SEKME 1: PERSONEL YÖNETİMİ --- */}
+      {aktifSekme === 'personel' && (
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              {/* YENİ PERSONEL FORMU */}
+              <div className="xl:col-span-1">
+                  <div className="bg-[#1E293B]/80 backdrop-blur-xl p-6 rounded-3xl border border-white/5 shadow-2xl sticky top-6">
+                      <h3 className="text-white font-bold mb-4 flex items-center gap-2 border-b border-white/5 pb-3">
+                          <PlusCircle size={20} className="text-green-400" /> Yeni Personel Ekle
+                      </h3>
+                      
+                      <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-3">
+                              <div className="col-span-2">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Ad Soyad</label>
+                                  <input type="text" value={yeniPersonel.ad} onChange={(e) => setYeniPersonel({...yeniPersonel, ad: e.target.value})} className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-green-500 transition-all text-sm"/>
+                              </div>
+                              <div className="col-span-2">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">E-Posta</label>
+                                  <input type="email" value={yeniPersonel.email} onChange={(e) => setYeniPersonel({...yeniPersonel, email: e.target.value})} className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-green-500 transition-all text-sm"/>
+                              </div>
+                              <div className="col-span-2">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Şifre</label>
+                                  <input type="text" value={yeniPersonel.password} onChange={(e) => setYeniPersonel({...yeniPersonel, password: e.target.value})} className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-green-500 transition-all text-sm font-mono"/>
+                              </div>
+                          </div>
+
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-2 block">Rol Seçimi (Otomatik Yetki)</label>
+                              <div className="grid grid-cols-2 gap-2">
+                                  {ROLLER.map((rol) => (
+                                      <button 
+                                          key={rol.id} 
+                                          onClick={() => rolDegis(rol.id)}
+                                          className={`text-xs p-2 rounded-lg border font-bold transition-all text-left ${yeniPersonel.rol === rol.id ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                      >
+                                          {rol.label}
+                                      </button>
+                                  ))}
+                              </div>
+                          </div>
+
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-2 block">Özel Yetkiler</label>
+                              <div className="flex flex-wrap gap-2 bg-[#0F172A] p-3 rounded-xl border border-slate-700">
+                                  {TUM_YETKILER.map((y) => (
+                                      <button key={y} onClick={() => yetkiToggle(y)} className={`text-[10px] px-2 py-1.5 rounded border transition-all flex items-center gap-1.5 ${yeniPersonel.yetkiler.includes(y) ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-slate-800/50 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
+                                          {yeniPersonel.yetkiler.includes(y) ? <CheckCircle size={12}/> : <div className="w-3 h-3 rounded-full border border-slate-500"></div>} {y}
+                                      </button>
+                                  ))}
+                              </div>
+                          </div>
+
+                          <button onClick={personelOlustur} disabled={yukleniyor} className="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl shadow-lg shadow-green-900/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                              {yukleniyor ? <RefreshCw size={18} className="animate-spin"/> : <Users size={18}/>} 
+                              {yukleniyor ? "İşleniyor..." : "PERSONELİ OLUŞTUR"}
+                          </button>
+                      </div>
+                  </div>
+              </div>
+
+              {/* PERSONEL LİSTESİ */}
+              <div className="xl:col-span-2 space-y-4">
+                  {personelListesi.map((p) => (
+                      <div key={p.id} className={`bg-[#1E293B]/60 backdrop-blur-md p-5 rounded-2xl border transition-all group relative overflow-hidden ${p.durum === 'pasif' ? 'border-red-500/30 opacity-70' : 'border-white/5 hover:border-cyan-500/30'}`}>
+                          
+                          <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-start gap-4">
+                                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black text-white shadow-lg ${p.durum === 'pasif' ? 'bg-slate-700' : 'bg-gradient-to-br from-cyan-500 to-blue-600'}`}>
+                                      {p.ad_soyad?.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                      <h4 className="text-white font-bold text-lg flex items-center gap-2">
+                                          {p.ad_soyad}
+                                          {p.durum === 'pasif' && <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full">PASİF</span>}
+                                      </h4>
+                                      <div className="flex items-center gap-3 text-xs text-slate-400 font-mono mt-0.5">
+                                          <span>{p.email}</span>
+                                          <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                                          <span className="text-cyan-400 capitalize">{p.rol || 'Teknisyen'}</span>
+                                      </div>
+                                  </div>
+                              </div>
+                              <div className="flex gap-2">
+                                  <button onClick={() => durumDegistir(p.id, p.durum || 'aktif')} className={`p-2 rounded-lg transition-all ${p.durum === 'pasif' ? 'bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white' : 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-white'}`}>
+                                      {p.durum === 'pasif' ? <UserCheck size={16}/> : <UserX size={16}/>}
+                                  </button>
+                                  <button onClick={() => personelSil(p.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"><Trash2 size={16}/></button>
+                              </div>
+                          </div>
+
+                          <div className="bg-[#0F172A]/50 rounded-xl p-3 border border-white/5">
+                              <div className="flex justify-between items-center mb-2">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase">Aktif Yetkiler</span>
+                                  <button onClick={() => setYetkiPopupId(yetkiPopupId === p.id ? null : p.id)} className="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 bg-cyan-900/20 px-2 py-1 rounded transition-colors"><Edit2 size={10}/> Düzenle</button>
+                              </div>
+                              
+                              <div className="flex flex-wrap gap-2">
+                                  {p.yetkiler?.length > 0 ? p.yetkiler.map((y:string) => (
+                                      <span key={y} className="text-[10px] bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700 flex items-center gap-1.5 shadow-sm">
+                                          <Shield size={10} className="text-green-500"/> {y}
+                                          {yetkiPopupId === p.id && (
+                                              <button onClick={() => yetkiGuncelle(p.id, p.yetkiler.filter((i:string)=>i!==y))} className="hover:text-red-400 ml-1"><X size={10}/></button>
+                                          )}
+                                      </span>
+                                  )) : <span className="text-xs text-red-400 italic">Yetki yok (Giriş yapamaz)</span>}
+                                  
+                                  {/* YETKİ EKLEME POPUP */}
+                                  {yetkiPopupId === p.id && (
+                                      <div className="w-full mt-2 pt-2 border-t border-slate-700 animate-in slide-in-from-top-2">
+                                          <div className="text-[10px] text-slate-500 mb-1">Eklenebilir:</div>
+                                          <div className="flex flex-wrap gap-2">
+                                              {TUM_YETKILER.filter(ty => !p.yetkiler?.includes(ty)).map(ekle => (
+                                                  <button key={ekle} onClick={() => yetkiGuncelle(p.id, [...(p.yetkiler||[]), ekle])} className="text-[10px] bg-slate-700 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors"><Plus size={10}/> {ekle}</button>
+                                              ))}
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          </div>
+      )}
+
+      {/* --- SEKME 2: MARKA YÖNETİMİ --- */}
+      {aktifSekme === 'markalar' && (
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              <div className="xl:col-span-1">
+                  <div className="bg-[#1E293B]/80 backdrop-blur-xl p-6 rounded-3xl border border-white/5 shadow-2xl sticky top-6">
+                      <h3 className="text-white font-bold mb-4 flex items-center gap-2 border-b border-white/5 pb-3">
+                          <Building2 size={20} className="text-purple-400" /> Yeni Marka Tanımla
+                      </h3>
+                      <div className="space-y-3">
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Marka Adı</label>
+                              <input type="text" value={yeniKaynak.isim} onChange={(e) => setYeniKaynak({...yeniKaynak, isim: e.target.value})} className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500 transition-all font-bold"/>
+                          </div>
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Kategori</label>
+                              <div className="grid grid-cols-2 gap-2">
+                                  {KATEGORILER.map(k => (
+                                      <button key={k} onClick={() => setYeniKaynak({...yeniKaynak, kategori: k})} className={`text-xs py-2 rounded-lg border font-bold transition-all ${yeniKaynak.kategori === k ? 'bg-purple-600 border-purple-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}>{k}</button>
+                                  ))}
+                              </div>
+                          </div>
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Web Sitesi (Opsiyonel)</label>
+                              <input type="text" value={yeniKaynak.web_site} onChange={(e) => setYeniKaynak({...yeniKaynak, web_site: e.target.value})} className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500 transition-all text-sm" placeholder="https://..."/>
+                          </div>
+                          <button onClick={kaynakEkle} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-3 rounded-xl shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"><Plus size={18}/> MARKA EKLE</button>
+                      </div>
+                  </div>
+              </div>
+
+              <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {kaynaklar.map((k) => (
+                      <div key={k.id} className="bg-[#1E293B]/60 p-4 rounded-2xl border border-white/5 hover:border-purple-500/30 transition-all group flex flex-col justify-between h-32">
+                          <div className="flex justify-between items-start">
+                              <div>
+                                  <h4 className="text-white font-bold text-lg">{k.isim}</h4>
+                                  <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20">{k.kategori || 'Genel'}</span>
+                              </div>
+                              <button onClick={() => kaynakSil(k.id)} className="text-slate-600 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
+                          </div>
+                          {k.web_site && (
+                              <a href={k.web_site} target="_blank" rel="noreferrer" className="text-xs text-slate-400 hover:text-purple-400 flex items-center gap-1 mt-auto transition-colors"><Globe size={12}/> Web Sitesine Git</a>
+                          )}
+                      </div>
+                  ))}
+              </div>
+          </div>
+      )}
+
+      {/* --- SEKME 3: SİSTEM AYARLARI --- */}
+      {aktifSekme === 'sistem' && (
+          <div className="max-w-3xl mx-auto">
+              <div className="bg-[#1E293B]/80 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl space-y-8">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                      <div>
+                          <h3 className="text-white font-bold text-lg">Sistem Bakım Modu</h3>
+                          <p className="text-slate-400 text-sm">Aktif edildiğinde sadece Adminler giriş yapabilir.</p>
+                      </div>
+                      <button onClick={() => setSistemAyarlari({...sistemAyarlari, bakimModu: !sistemAyarlari.bakimModu})} className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${sistemAyarlari.bakimModu ? 'bg-red-500 text-white border-red-400' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                          {sistemAyarlari.bakimModu ? 'AKTİF (KAPALI)' : 'PASİF (AÇIK)'}
+                      </button>
+                  </div>
+
+                  <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                      <div>
+                          <h3 className="text-white font-bold text-lg">SMS Bildirimleri</h3>
+                          <p className="text-slate-400 text-sm">Müşterilere otomatik bilgilendirme SMS'i gönder.</p>
+                      </div>
+                      <button onClick={() => setSistemAyarlari({...sistemAyarlari, smsBildirim: !sistemAyarlari.smsBildirim})} className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${sistemAyarlari.smsBildirim ? 'bg-green-500 text-white border-green-400' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                          {sistemAyarlari.smsBildirim ? 'AÇIK' : 'KAPALI'}
+                      </button>
+                  </div>
+
+                  <div>
+                      <h3 className="text-white font-bold text-lg mb-3">Döviz Kuru Ayarları (USD)</h3>
+                      <div className="bg-[#0F172A] p-4 rounded-xl border border-slate-700 flex items-center gap-4">
+                          <button onClick={() => setSistemAyarlari({...sistemAyarlari, dovizOtomatik: true})} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${sistemAyarlari.dovizOtomatik ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400'}`}>OTOMATİK (TCMB)</button>
+                          <button onClick={() => setSistemAyarlari({...sistemAyarlari, dovizOtomatik: false})} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${!sistemAyarlari.dovizOtomatik ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400'}`}>MANUEL SABİTLE</button>
+                      </div>
+                      {!sistemAyarlari.dovizOtomatik && (
+                          <div className="mt-3">
+                              <label className="text-xs font-bold text-slate-500 ml-1">Sabit Kur Değeri</label>
+                              <input type="number" value={sistemAyarlari.dovizSabit} onChange={(e) => setSistemAyarlari({...sistemAyarlari, dovizSabit: Number(e.target.value)})} className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-2 text-white font-mono font-bold mt-1"/>
+                          </div>
+                      )}
+                  </div>
+
+                  <button className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"><Save size={18}/> AYARLARI KAYDET</button>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 }

@@ -1,16 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { supabase } from "@/app/lib/supabase"; // Adrese dikkat
+import { useState, useEffect } from "react";
+import { supabase } from "@/app/lib/supabase"; 
 import { useRouter } from "next/navigation";
-import { Lock, Mail, Key, LogIn } from "lucide-react";
+import { Lock, Mail, Key, LogIn, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true); // Sayfa yükleniyor kontrolü
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Zaten giriş yapmış mı kontrol et
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Zaten giriş yapmışsa direkt panele yolla
+        router.replace("/epanel");
+      } else {
+        // Giriş yapmamışsa formu göster
+        setPageLoading(false);
+      }
+    };
+    checkSession();
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +42,7 @@ export default function LoginPage() {
       if (error) throw error;
 
       // Giriş başarılıysa Panele fırlat
-      router.push("/epanel");
+      router.replace("/epanel");
 
     } catch (error: any) {
       setErrorMsg("Giriş başarısız! Bilgileri kontrol et usta.");
@@ -35,9 +51,18 @@ export default function LoginPage() {
     }
   };
 
+  // Eğer kontrol devam ediyorsa boş ekran göster (Panel anlık görünüp kaybolmasın)
+  if (pageLoading) {
+    return (
+        <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
+            <Loader2 className="animate-spin text-cyan-500 w-8 h-8" />
+        </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#0F172A] flex items-center justify-center px-4">
-      <div className="bg-[#1E293B] p-8 rounded-3xl border border-slate-700 shadow-2xl w-full max-w-md relative overflow-hidden">
+      <div className="bg-[#1E293B] p-8 rounded-3xl border border-slate-700 shadow-2xl w-full max-w-md relative overflow-hidden animate-in zoom-in-95 duration-300">
         
         {/* Arka Plan Efekti */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-500 to-purple-500"></div>
