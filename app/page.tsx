@@ -6,7 +6,7 @@ import {
   Search, ArrowRight, Users, Tag, ShieldCheck, 
   Smartphone, Zap, Laptop, ShoppingBag, 
   CheckCircle2, Package, ChevronRight, Activity, Trophy, 
-  HeartPulse, MessageCircle, MonitorPlay, Send, Award, Wrench, MapPin, Phone, Mail, Lock, Instagram, Facebook, Twitter
+  HeartPulse, MessageCircle, MonitorPlay, Send, Award, MapPin, Phone, Mail, Lock, Instagram, Facebook, Twitter, Wrench
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase"; 
@@ -24,7 +24,7 @@ export default function Home() {
   useEffect(() => {
     const fetchShowcase = async () => {
       try {
-        let { data, error } = await supabase
+        let { data } = await supabase
           .from('urunler')
           .select('*')
           .or('stok_durumu.eq.Satışta,stok_durumu.eq.true') 
@@ -52,7 +52,6 @@ export default function Home() {
     fetchShowcase();
   }, []);
 
-  // Cihaz Sorgulama Fonksiyonu
   const sorgula = (e: React.FormEvent) => {
     e.preventDefault();
     if (takipNo.trim().length > 0) {
@@ -285,7 +284,7 @@ export default function Home() {
                     <div className="flex items-center gap-2 mb-2"><ShoppingBag size={20} className="text-pink-400"/> <span className="text-pink-400 font-bold tracking-widest text-xs uppercase drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">Aura Store</span></div>
                     <h2 className="text-4xl font-black text-white drop-shadow-lg">Mağaza Vitrini</h2>
                 </div>
-                <Link href="/epanel/magaza" className="px-6 py-3 bg-[#1e1b4b]/50 text-indigo-300 border border-indigo-500/30 rounded-xl font-bold hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all flex items-center gap-2 backdrop-blur-md hover:shadow-[0_0_20px_rgba(99,102,241,0.4)]">Tüm Ürünleri Gör <ChevronRight size={16}/></Link>
+                <Link href="/magaza" className="px-6 py-3 bg-[#1e1b4b]/50 text-indigo-300 border border-indigo-500/30 rounded-xl font-bold hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all flex items-center gap-2 backdrop-blur-md hover:shadow-[0_0_20px_rgba(99,102,241,0.4)]">Tüm Ürünleri Gör <ChevronRight size={16}/></Link>
             </div>
 
             {/* ÜRÜN LİSTESİ */}
@@ -345,28 +344,8 @@ export default function Home() {
         <span className="absolute right-full mr-3 bg-white text-black px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">Hızlı Destek</span>
       </a>
 
-      {/* Footer */}
-      <footer className="bg-[#050505] border-t border-white/5 pt-20 pb-10 mt-20 relative z-10">
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-                    <div className="col-span-1 md:col-span-1">
-                        <div className="flex items-center gap-2 mb-6"><div className="w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center"><Wrench size={16} className="text-white"/></div><span className="font-black text-xl italic">AURA</span></div>
-                        <p className="text-sm text-slate-500 leading-relaxed mb-6">Teknolojiniz için laboratuvar standartlarında onarım merkezi.</p>
-                        <div className="flex gap-4"><SocialIcon icon={<Instagram size={18}/>}/><SocialIcon icon={<Facebook size={18}/>}/><SocialIcon icon={<Twitter size={18}/>}/></div>
-                    </div>
-                    <div><h4 className="font-bold text-white mb-6">Hızlı Erişim</h4><ul className="space-y-4 text-sm text-slate-500"><li><Link href="/" className="hover:text-cyan-400">Ana Sayfa</Link></li><li><Link href="/cihaz-sorgula" className="hover:text-cyan-400">Cihaz Durumu Sorgula</Link></li><li><Link href="/epanel/magaza" className="hover:text-cyan-400">Aura Store</Link></li></ul></div>
-                    <div><h4 className="font-bold text-white mb-6">İletişim</h4><ul className="space-y-4 text-sm text-slate-500"><li className="flex items-start gap-3"><MapPin size={18} className="text-cyan-600"/> Beylikdüzü / İstanbul</li><li className="flex items-center gap-3"><Phone size={18} className="text-cyan-600"/> 0539 632 1429</li><li className="flex items-center gap-3"><Mail size={18} className="text-cyan-600"/> destek@aurabilisim.com</li></ul></div>
-                </div>
-                <div className="border-t border-white/5 pt-10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-600 font-medium">
-                    <p>&copy; 2024 Aura Bilişim.</p>
-                    <div className="flex gap-6"><Link href="#" className="hover:text-slate-400">KVKK</Link><Link href="#" className="hover:text-slate-400">Çerez Politikası</Link><Link href="/login" className="hover:text-red-500 transition-colors flex items-center gap-1"><Lock size={10}/> Personel Girişi</Link></div>
-                </div>
-            </div>
-      </footer>
+      {/* FOOTER TAMAMEN KALDIRILDI (Çünkü layout.tsx'den geliyor) */}
+      
     </div>
   );
-}
-
-function SocialIcon({ icon }: any) {
-    return <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-600 hover:text-white transition-all">{icon}</a>;
 }
