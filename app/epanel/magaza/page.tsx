@@ -2,19 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ShoppingBag, Plus, Search, Filter,
-  Image as ImageIcon, Trash2, Edit,
+import { 
+  ShoppingBag, Plus, Search, Filter, 
+  Image as ImageIcon, Trash2, Edit, 
   Package, DollarSign, Tag, Archive
 } from "lucide-react";
-import { createClient } from '@supabase/supabase-js';
-
-// !!! BURAYI DOLDUR USTA !!!
-// .env dosyasındaki linkini ve şifreni tırnak içine yapıştır.
-const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; // Kendi URL'ini yapıştır
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";      // Kendi ANON KEY'ini yapıştır
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+import { supabase } from "@/app/lib/supabase"; // Veritabanı bağlantısı
 
 export default function MagazaVitrin() {
   const router = useRouter();
@@ -25,8 +18,8 @@ export default function MagazaVitrin() {
 
   // Kategori Listesi
   const CATEGORIES = [
-      "Tümü", "Cep Telefonu", "Robot Süpürge", "Bilgisayar",
-      "Akıllı Saat", "Tablet", "Ekosistem Ürünleri",
+      "Tümü", "Cep Telefonu", "Robot Süpürge", "Bilgisayar", 
+      "Akıllı Saat", "Tablet", "Ekosistem Ürünleri", 
       "Aksesuar", "Yedek Parça", "Sarf Malzeme"
   ];
 
@@ -34,6 +27,7 @@ export default function MagazaVitrin() {
   const fetchProducts = async () => {
     try {
         setLoading(true);
+        // Supabase'den verileri çek (En yeniden eskiye)
         let { data, error } = await supabase
             .from('urunler')
             .select('*')
@@ -47,12 +41,12 @@ export default function MagazaVitrin() {
                 id: item.id,
                 name: item.ad,
                 price: item.fiyat,
+                cost: item.maliyet || 0, // Maliyet verisini çek
                 category: item.kategori,
                 // UI bir dizi (array) bekliyor, tek resim varsa diziye koyuyoruz
                 images: item.resim_url ? [item.resim_url] : [],
-                // SQL'de true/false var, UI string bekliyor
-                status: item.stok_durumu ? "Satışta" : "Stok Dışı", 
-                cost: 0 // Veritabanında maliyet sütunu yoksa 0 varsayalım
+                // SQL'de true/false veya string olabilir, kontrol edelim
+                status: (item.stok_durumu === "Satışta" || item.stok_durumu === "true") ? "Satışta" : item.stok_durumu || "Stok Dışı"
             }));
             setProducts(mappedData);
         }
@@ -72,14 +66,14 @@ export default function MagazaVitrin() {
   const activeProducts = products.filter(p => p.status === "Satışta");
   const activeValue = activeProducts.reduce((acc, p) => acc + (Number(p.price) || 0), 0);
 
-  // Bu ay satılanların cirosu (SQL'de 'Stok Dışı' olanları satılmış varsayabiliriz veya status mantığını geliştirebiliriz)
-  const soldProducts = products.filter(p => p.status !== "Satışta");
+  // Bu ay satılanların cirosu (Durumu 'Satıldı' içerenler)
+  const soldProducts = products.filter(p => (p.status || "").toLowerCase().includes("satıldı"));
   const soldValue = soldProducts.reduce((acc, p) => acc + (Number(p.price) || 0), 0);
 
   // Filtreleme Mantığı
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name?.toLowerCase().includes(search.toLowerCase()) ||
-                          p.category?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = (p.name || "").toLowerCase().includes(search.toLowerCase()) || 
+                          (p.category || "").toLowerCase().includes(search.toLowerCase());
     const matchesCategory = selectedCategory === "Tümü" || p.category === selectedCategory;
     
     return matchesSearch && matchesCategory;
@@ -99,7 +93,7 @@ export default function MagazaVitrin() {
           const { error } = await supabase.from('urunler').delete().eq('id', id);
           if (error) throw error;
           
-          // Listeyi güncelle (Tekrar çekmeye gerek yok, state'ten silelim daha hızlı olur)
+          // Listeyi güncelle (State'ten silerek hızlandır)
           setProducts(prev => prev.filter(p => p.id !== id));
       } catch (err) {
           alert("Silme işlemi başarısız oldu.");
@@ -159,9 +153,9 @@ export default function MagazaVitrin() {
         {/* Kategori Barı */}
         <div className="bg-[#151921] p-2 rounded-xl border border-slate-800 flex-1 overflow-x-auto scrollbar-hide flex gap-2">
             {CATEGORIES.map(cat => (
-                <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
+                <button 
+                    key={cat} 
+                    onClick={() => setSelectedCategory(cat)} 
                     className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${selectedCategory === cat ? 'bg-slate-800 text-white border-slate-600 shadow-md' : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                 >
                     {cat}
@@ -172,9 +166,9 @@ export default function MagazaVitrin() {
         {/* Arama Kutusu */}
         <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/>
-            <input
-                type="text"
-                placeholder="Model, Marka Ara..."
+            <input 
+                type="text" 
+                placeholder="Model, Marka Ara..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full h-full bg-[#151921] border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-purple-500 transition-all placeholder:text-slate-600"
@@ -184,7 +178,7 @@ export default function MagazaVitrin() {
 
       {/* ÜRÜN GRID LİSTESİ */}
       {loading ? (
-           <div className="text-center py-20 text-slate-500">Veriler yükleniyor...</div>
+           <div className="text-center py-20 text-slate-500 font-bold animate-pulse">Veriler yükleniyor...</div>
       ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-slate-800 rounded-3xl bg-slate-900/20">
               <div className="bg-slate-800 p-4 rounded-full mb-4 opacity-50"><Package size={48} className="text-slate-400"/></div>
@@ -194,16 +188,16 @@ export default function MagazaVitrin() {
       ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
+                  <div 
+                    key={product.id} 
                     onClick={() => router.push(`/epanel/magaza/${product.id}`)}
                     className="group bg-[#151921] border border-slate-800 rounded-2xl overflow-hidden hover:border-slate-600 transition-all hover:shadow-2xl hover:shadow-black/50 relative flex flex-col cursor-pointer"
                   >
                       
                       {/* STATÜ ROZETİ */}
                       <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase z-20 shadow-lg backdrop-blur-md border border-white/10
-                        ${product.status === 'Satıldı' ? 'bg-emerald-600/90 text-white' :
-                          product.status === 'Kargoda' ? 'bg-blue-600/90 text-white' :
+                        ${(product.status || "").includes('Satıldı') ? 'bg-emerald-600/90 text-white' : 
+                          (product.status || "").includes('Kargoda') ? 'bg-blue-600/90 text-white' : 
                           product.status === 'Satışta' ? 'bg-yellow-500/90 text-black' : 
                           'bg-slate-700 text-white'}`}>
                           {product.status === 'Satışta' ? 'VİTRİNDE' : product.status}
@@ -225,7 +219,7 @@ export default function MagazaVitrin() {
                               <button className="bg-white text-black p-2 rounded-lg font-bold flex items-center gap-2 hover:bg-slate-200 text-xs">
                                   <Edit size={14}/> DÜZENLE
                               </button>
-                              <button
+                              <button 
                                 onClick={(e) => deleteProduct(e, product.id)}
                                 className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors"
                               >

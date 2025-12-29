@@ -10,7 +10,7 @@ import {
   CircuitBoard, Activity, Signal, Cpu, 
   Menu, Bell, ChevronRight, Smartphone, ClipboardList, Settings,
   Zap, X, ShoppingBag, Maximize2, Minimize2, User, Home, ChevronDown, Loader2,
-  MessageSquare
+  MessageSquare, Package // Package ikonu eklendi
 } from "lucide-react";
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
@@ -51,8 +51,8 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname();
   
-  const [authorized, setAuthorized] = useState(false); // Başlangıçta yetkisiz
-  const [loadingCheck, setLoadingCheck] = useState(true); // Kontrol ediliyor mu?
+  const [authorized, setAuthorized] = useState(false); 
+  const [loadingCheck, setLoadingCheck] = useState(true); 
   const [userEmail, setUserEmail] = useState("Sistem...");
   const [isAdmin, setIsAdmin] = useState(false); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -72,11 +72,14 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   const [mesajSayisi, setMesajSayisi] = useState(0);
   
   const [ping, setPing] = useState(24);
+  
+  // --- ARAMA KISMI GÜNCELLENDİ ---
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showResultBox, setShowResultBox] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null); // Arama kutusunu sarmalayan ref
 
   // --- GÜVENLİK VE BAŞLANGIÇ KONTROLÜ ---
   useEffect(() => {
@@ -85,20 +88,17 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          // Oturum yoksa Login'e fırlat (replace geçmişi siler, geri dönemez)
           router.replace("/login");
           return;
         }
 
-        // Oturum varsa verileri yükle
         setUserEmail(session.user.email || "");
         
         const ADMIN_EMAILS = ["admin@aurabilisim.com", "ozgurbasar5@gmail.com", "patron@aura.com"]; 
         setIsAdmin(ADMIN_EMAILS.includes(session.user.email || ""));
         
-        setAuthorized(true); // Kapıyı aç
+        setAuthorized(true); 
         
-        // Diğer verileri yükle
         checkCounts();
         fetchDolar();
         const savedNote = localStorage.getItem("teknisyen_notu");
@@ -113,19 +113,31 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
 
     checkAuth();
 
-    // Ping Simülasyonu
     const pingInterval = setInterval(() => setPing(Math.floor(Math.random() * (45 - 15 + 1) + 15)), 2000);
     return () => clearInterval(pingInterval);
   }, [router]);
 
-  // Klavye Kısayolları
+  // Klavye Kısayolları ve Dışarı Tıklama
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); searchInputRef.current?.focus(); }
       if (e.key === 'Escape') { setShowResultBox(false); setShowCalc(false); setShowNotes(false); setShowNotifications(false); setShowUserMenu(false); }
     };
+
+    // Arama kutusu dışına tıklayınca kapatma
+    const handleClickOutside = (event: MouseEvent) => {
+        if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+            setShowResultBox(false);
+        }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const fetchDolar = async () => {
@@ -149,41 +161,59 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
       setMesajSayisi(msgCount || 0);
   };
 
+  // --- GELİŞMİŞ ARAMA (HEM SERVİS HEM ÜRÜN) ---
   const handleGlobalSearch = async (e: any) => {
     const term = e.target.value;
     setSearchTerm(term);
-    if (term.length < 2) { setSearchResults([]); setShowResultBox(false); return; }
-    setIsSearching(true); setShowResultBox(true);
+    
+    if (term.length < 2) { 
+        setSearchResults([]); 
+        setShowResultBox(false); 
+        return; 
+    }
+    
+    setIsSearching(true); 
+    setShowResultBox(true);
 
-    const localJobs = getWorkshopFromStorage();
-    const filteredLocal = localJobs.filter((j: any) => 
-        j.customer.toLowerCase().includes(term.toLowerCase()) || 
-        j.id.toString().includes(term) ||
-        (j.serialNo && j.serialNo.toLowerCase().includes(term.toLowerCase()))
-    ).map((j: any) => ({ ...j, source: 'local' }));
-
+    // 1. SERVİS KAYITLARINI ARA (Atölye)
     const { data: dbJobs } = await supabase.from('aura_jobs')
-        .select('id, customer, device, status, serial_no')
-        .or(`customer.ilike.%${term}%,device.ilike.%${term}%,phone.ilike.%${term}%,serial_no.ilike.%${term}%`)
+        .select('id, customer, device, status, serial_no, tracking_code')
+        .or(`customer.ilike.%${term}%,device.ilike.%${term}%,phone.ilike.%${term}%,serial_no.ilike.%${term}%,tracking_code.ilike.%${term}%`)
         .limit(5);
-    const mappedDb = (dbJobs || []).map((j: any) => ({ ...j, source: 'db' }));
+    
+    const mappedJobs = (dbJobs || []).map((j: any) => ({ ...j, type: 'service' }));
 
-    setSearchResults([...filteredLocal, ...mappedDb].slice(0, 8));
+    // 2. ÜRÜNLERİ ARA (Mağaza)
+    const { data: products } = await supabase.from('urunler')
+        .select('id, ad, fiyat, stok_durumu, kategori')
+        .ilike('ad', `%${term}%`) // Ürün adında ara
+        .limit(5);
+
+    const mappedProducts = (products || []).map((p: any) => ({ ...p, type: 'product' }));
+
+    // Sonuçları Birleştir
+    setSearchResults([...mappedJobs, ...mappedProducts]);
     setIsSearching(false);
   };
 
-  const goToResult = (id: number) => { router.push(`/epanel/atolye/${id}`); setShowResultBox(false); setSearchTerm(""); };
+  const goToResult = (item: any) => { 
+      if (item.type === 'service') {
+          router.push(`/epanel/atolye/${item.id}`);
+      } else {
+          router.push(`/epanel/magaza/${item.id}`);
+      }
+      setShowResultBox(false); 
+      setSearchTerm(""); 
+  };
   
   const cikisYap = async () => { 
     await supabase.auth.signOut(); 
-    router.replace("/login"); // Push yerine Replace
+    router.replace("/login"); 
   };
   
   const saveNote = (val: string) => { setMyNote(val); localStorage.setItem("teknisyen_notu", val); };
   const handleCalc = (val: string) => { if (val === 'C') setCalcDisplay(""); else if (val === '=') { try { setCalcDisplay(eval(calcDisplay).toString()); } catch { setCalcDisplay("ERR"); } } else setCalcDisplay(calcDisplay + val); };
 
-  // --- GÜVENLİK DUVARI ---
-  // Kontrol bitene kadar veya yetkisizse içerik gösterme
   if (loadingCheck || !authorized) {
     return (
       <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-cyan-500 font-mono gap-4">
@@ -260,9 +290,11 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
               <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-slate-400 hover:text-white transition-colors"><Menu size={20} /></button>
               
               {/* GLOBAL ARAMA */}
-              <div className="relative group w-full max-w-2xl">
+              <div className="relative group w-full max-w-2xl" ref={searchContainerRef}>
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-500" size={16} />
-                  <input ref={searchInputRef} type="text" value={searchTerm} onChange={handleGlobalSearch} onKeyDown={(e) => e.key === 'Enter' && searchResults.length > 0 && goToResult(searchResults[0].id)} placeholder="Arama Yap (Takip No, İsim, IMEI)..." className="w-full bg-[#0f172a] border border-slate-800 rounded-xl py-2.5 pl-11 pr-12 text-sm text-white focus:border-cyan-500/50 outline-none shadow-inner" />
+                  <input ref={searchInputRef} type="text" value={searchTerm} onChange={handleGlobalSearch} onKeyDown={(e) => e.key === 'Enter' && searchResults.length > 0 && goToResult(searchResults[0])} placeholder="Arama Yap (Takip No, Ürün Adı, Müşteri)..." className="w-full bg-[#0f172a] border border-slate-800 rounded-xl py-2.5 pl-11 pr-12 text-sm text-white focus:border-cyan-500/50 outline-none shadow-inner" />
+                  
+                  {/* ARAMA SONUÇLARI KUTUSU */}
                   {showResultBox && (
                       <div className="absolute top-12 left-0 w-full bg-[#1e293b] border border-cyan-500/20 rounded-xl shadow-2xl z-[9999] overflow-hidden">
                           <div className="px-4 py-2 bg-slate-900 border-b border-slate-700 text-[10px] font-bold text-slate-400 uppercase flex justify-between"><span>SONUÇLAR</span><span>{searchResults.length} KAYIT</span></div>
@@ -270,10 +302,23 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
                               {isSearching ? <div className="p-8 text-center text-cyan-500 flex justify-center items-center gap-2 text-xs"><Loader2 className="animate-spin" size={16}/> ARANIYOR...</div> : 
                                 searchResults.length === 0 ? <div className="p-8 text-center text-slate-500 text-xs font-bold font-mono">KAYIT BULUNAMADI</div> :
                                 searchResults.map((result) => (
-                                  <div key={`${result.source}-${result.id}`} onClick={() => goToResult(result.id)} className="p-3 hover:bg-slate-800 cursor-pointer border-b border-slate-700/50 flex items-center justify-between transition-colors">
+                                  <div key={`${result.type}-${result.id}`} onClick={() => goToResult(result)} className="p-3 hover:bg-slate-800 cursor-pointer border-b border-slate-700/50 flex items-center justify-between transition-colors">
                                       <div className="flex items-center gap-3">
-                                          <div className={`h-9 w-9 rounded-lg flex items-center justify-center font-bold text-xs border ${result.source === 'local' ? 'text-yellow-500 border-yellow-500/30' : 'text-cyan-500 border-cyan-500/20'}`}>#{result.id}</div>
-                                          <div><p className="text-white font-bold text-sm tracking-tight">{result.customer}</p><p className="text-[10px] text-slate-500 font-mono uppercase italic">{result.device}</p></div>
+                                          {/* İKON (Ürün mü Servis mi?) */}
+                                          <div className={`h-9 w-9 rounded-lg flex items-center justify-center font-bold text-xs border ${result.type === 'service' ? 'bg-purple-900/20 text-purple-400 border-purple-500/20' : 'bg-green-900/20 text-green-400 border-green-500/20'}`}>
+                                              {result.type === 'service' ? <Smartphone size={16}/> : <Package size={16}/>}
+                                          </div>
+                                          
+                                          {/* İÇERİK */}
+                                          <div>
+                                              <p className="text-white font-bold text-sm tracking-tight flex items-center gap-2">
+                                                  {result.type === 'service' ? result.customer : result.ad}
+                                                  <span className={`text-[9px] px-1.5 py-0.5 rounded border ${result.type === 'service' ? 'border-purple-500/30 text-purple-400' : 'border-green-500/30 text-green-400'}`}>{result.type === 'service' ? 'SERVİS' : 'MAĞAZA'}</span>
+                                              </p>
+                                              <p className="text-[10px] text-slate-500 font-mono uppercase italic mt-0.5">
+                                                  {result.type === 'service' ? `${result.device} - ${result.status}` : `${result.fiyat} ₺ - ${result.stok_durumu}`}
+                                              </p>
+                                          </div>
                                       </div>
                                       <ChevronRight size={16} className="text-slate-600"/>
                                   </div>

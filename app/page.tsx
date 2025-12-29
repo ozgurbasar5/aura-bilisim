@@ -6,27 +6,10 @@ import {
   Search, ArrowRight, Users, Tag, ShieldCheck, 
   Smartphone, Zap, Laptop, ShoppingBag, 
   CheckCircle2, Package, ChevronRight, Activity, Trophy, 
-  HeartPulse, MessageCircle, MonitorPlay, Send, Award
+  HeartPulse, MessageCircle, MonitorPlay, Send, Award, Wrench, MapPin, Phone, Mail, Lock, Instagram, Facebook, Twitter
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createClient } from '@supabase/supabase-js';
-
-// !!! BURAYI DOLDUR USTA !!!
-// .env dosyasındaki linkini ve şifreni tırnak içine yapıştır.
-const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; // Kendi URL'ini yapıştır
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";      // Kendi ANON KEY'ini yapıştır
-
-// Client oluştur
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// URL oluşturucu
-const slugify = (text: string) => {
-  if (!text) return ""; 
-  return text.toString().toLowerCase().trim()
-    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-    .replace(/\s+/g, '-').replace(/[^\w\-]+/g, '').replace(/\-\-+/g, '-');
-};
+import { supabase } from "@/app/lib/supabase"; 
 
 export default function Home() {
   const router = useRouter();
@@ -34,7 +17,6 @@ export default function Home() {
   const [vitrinUrunleri, setVitrinUrunleri] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // MARKA LİSTESİ
   const brandsSource = ["APPLE", "SAMSUNG", "XIAOMI", "ROBOROCK", "DYSON", "HUAWEI", "OPPO", "MONSTER", "ASUS", "LENOVO"];
   const brands = [...brandsSource, ...brandsSource, ...brandsSource, ...brandsSource];
 
@@ -45,9 +27,9 @@ export default function Home() {
         let { data, error } = await supabase
           .from('urunler')
           .select('*')
-          .eq('stok_durumu', true) // Sadece stokta olanları göster
+          .or('stok_durumu.eq.Satışta,stok_durumu.eq.true') 
           .order('created_at', { ascending: false })
-          .limit(4); // Ana sayfada sadece 4 veya 8 ürün gösterelim
+          .limit(4);
 
         if (data) {
            const mapped = data.map((item: any) => ({
@@ -56,12 +38,12 @@ export default function Home() {
              price: item.fiyat,
              image: item.resim_url,
              category: item.kategori,
-             tag: "Fırsat" // Vitrin için etiket
+             tag: "Fırsat" 
            }));
            setVitrinUrunleri(mapped);
         }
       } catch (e) {
-        console.error("Vitrin yüklenirken hata:", e);
+        console.error("Vitrin hatası:", e);
       } finally {
         setLoading(false);
       }
@@ -70,9 +52,13 @@ export default function Home() {
     fetchShowcase();
   }, []);
 
+  // Cihaz Sorgulama Fonksiyonu
   const sorgula = (e: React.FormEvent) => {
     e.preventDefault();
-    if (takipNo.trim().length > 0) router.push(`/sorgula?no=${takipNo}`);
+    if (takipNo.trim().length > 0) {
+        const code = takipNo.trim().toUpperCase().replace(/\s/g, '');
+        router.push(`/cihaz-sorgula?takip=${code}`);
+    }
   };
 
   const getRandomGradient = (index: number) => {
@@ -119,7 +105,7 @@ export default function Home() {
              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-2xl blur-md opacity-40 group-hover:opacity-80 transition duration-500 group-hover:duration-200 animate-tilt"></div>
              <form onSubmit={sorgula} className="relative bg-[#0a0e17] p-2 rounded-2xl flex items-center shadow-2xl border border-white/10 backdrop-blur-xl">
                 <div className="pl-4 text-cyan-500"><Search size={22}/></div>
-                <input type="text" placeholder="Cihaz Takip No (Örn: 1453)" className="w-full h-14 bg-transparent px-4 outline-none text-white placeholder:text-slate-500 font-medium text-lg" value={takipNo} onChange={(e) => setTakipNo(e.target.value)} />
+                <input type="text" placeholder="Cihaz Takip No (Örn: 83785)" className="w-full h-14 bg-transparent px-4 outline-none text-white placeholder:text-slate-500 font-medium text-lg" value={takipNo} onChange={(e) => setTakipNo(e.target.value)} />
                 <button type="submit" className="h-14 px-8 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] uppercase tracking-wide">Sorgula</button>
              </form>
           </div>
@@ -235,54 +221,54 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {/* Adım 1 */}
               <div className="relative group">
-                 <div className="absolute -inset-1 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                 <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-cyan-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
+                  <div className="absolute -inset-1 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
+                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-cyan-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
                     <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-cyan-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.15)] group-hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-cyan-900/20 to-transparent">
                        <Activity className="text-cyan-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
                        <div className="absolute -top-3 -right-3 w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">1</div>
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3 group-hover:text-cyan-400 transition-colors">Kayıt Oluştur</h3>
                     <p className="text-slate-400 text-sm leading-relaxed">Web sitemizden veya WhatsApp hattımızdan saniyeler içinde arıza kaydınızı oluşturun.</p>
-                 </div>
+                  </div>
               </div>
 
               {/* Adım 2 */}
               <div className="relative group lg:mt-12">
-                 <div className="absolute -inset-1 bg-gradient-to-b from-purple-500 to-pink-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                 <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-purple-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
+                  <div className="absolute -inset-1 bg-gradient-to-b from-purple-500 to-pink-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
+                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-purple-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
                     <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-purple-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.15)] group-hover:shadow-[0_0_40px_rgba(168,85,247,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-purple-900/20 to-transparent">
                        <Send className="text-purple-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]" />
                        <div className="absolute -top-3 -right-3 w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">2</div>
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3 group-hover:text-purple-400 transition-colors">Ücretsiz Gönder</h3>
                     <p className="text-slate-400 text-sm leading-relaxed">Size verilen kod ile cihazınızı Yurtiçi Kargo üzerinden ücretsiz olarak bize gönderin.</p>
-                 </div>
+                  </div>
               </div>
 
               {/* Adım 3 */}
               <div className="relative group">
-                 <div className="absolute -inset-1 bg-gradient-to-b from-pink-500 to-orange-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                 <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-pink-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
+                  <div className="absolute -inset-1 bg-gradient-to-b from-pink-500 to-orange-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
+                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-pink-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
                     <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-pink-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(236,72,153,0.15)] group-hover:shadow-[0_0_40px_rgba(236,72,153,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-pink-900/20 to-transparent">
                        <MonitorPlay className="text-pink-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(236,72,153,0.8)]" />
                        <div className="absolute -top-3 -right-3 w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">3</div>
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3 group-hover:text-pink-400 transition-colors">Uzman Onarım</h3>
                     <p className="text-slate-400 text-sm leading-relaxed">Cihaz laboratuvar ortamında incelenir, onayınızla garantili parçalarla tamir edilir.</p>
-                 </div>
+                  </div>
               </div>
 
                {/* Adım 4 */}
                <div className="relative group lg:mt-12">
-                 <div className="absolute -inset-1 bg-gradient-to-b from-green-500 to-emerald-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                 <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-green-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
+                  <div className="absolute -inset-1 bg-gradient-to-b from-green-500 to-emerald-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
+                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-green-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
                     <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-green-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.15)] group-hover:shadow-[0_0_40px_rgba(34,197,94,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-green-900/20 to-transparent">
                        <CheckCircle2 className="text-green-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
                        <div className="absolute -top-3 -right-3 w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">4</div>
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3 group-hover:text-green-400 transition-colors">Teslimat</h3>
                     <p className="text-slate-400 text-sm leading-relaxed">Testleri geçen cihazınız sterilize edilir ve kargoya verilir. Size keyfini sürmek kalır.</p>
-                 </div>
+                  </div>
               </div>
 
             </div>
@@ -299,7 +285,7 @@ export default function Home() {
                     <div className="flex items-center gap-2 mb-2"><ShoppingBag size={20} className="text-pink-400"/> <span className="text-pink-400 font-bold tracking-widest text-xs uppercase drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">Aura Store</span></div>
                     <h2 className="text-4xl font-black text-white drop-shadow-lg">Mağaza Vitrini</h2>
                 </div>
-                <Link href="/magaza" className="px-6 py-3 bg-[#1e1b4b]/50 text-indigo-300 border border-indigo-500/30 rounded-xl font-bold hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all flex items-center gap-2 backdrop-blur-md hover:shadow-[0_0_20px_rgba(99,102,241,0.4)]">Tüm Ürünleri Gör <ChevronRight size={16}/></Link>
+                <Link href="/epanel/magaza" className="px-6 py-3 bg-[#1e1b4b]/50 text-indigo-300 border border-indigo-500/30 rounded-xl font-bold hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all flex items-center gap-2 backdrop-blur-md hover:shadow-[0_0_20px_rgba(99,102,241,0.4)]">Tüm Ürünleri Gör <ChevronRight size={16}/></Link>
             </div>
 
             {/* ÜRÜN LİSTESİ */}
@@ -308,15 +294,12 @@ export default function Home() {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {vitrinUrunleri.length > 0 ? vitrinUrunleri.map((product, i) => {
-                        const displayTitle = product.name;
                         const displayPrice = product.price ? Number(product.price).toLocaleString('tr-TR') + ' ₺' : "Fiyat Sorunuz";
-                        let rawImage = product.image || "";
-                        const hasImage = rawImage && rawImage.length > 5;
-                        const productSlug = slugify(displayTitle); 
                         const fallbackGradient = getRandomGradient(i);
 
                         return (
-                          <Link href={`/magaza/${productSlug}`} key={i} className="group relative rounded-2xl block h-full cursor-pointer hover:-translate-y-2 transition-transform duration-500">
+                          // LİNK GÜNCELLENDİ: ARTIK ID KULLANIYOR
+                          <Link href={`/magaza/${product.id}`} key={i} className="group relative rounded-2xl block h-full cursor-pointer hover:-translate-y-2 transition-transform duration-500">
                               <div className={`absolute -inset-[1px] bg-gradient-to-b from-indigo-500 to-purple-600 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-500 group-hover:blur-md`}></div>
                               <div className="relative bg-[#11151d] rounded-2xl overflow-hidden h-full flex flex-col border border-white/5 group-hover:border-white/10 transition-colors">
                                   {/* --- RESİM ALANI --- */}
@@ -328,10 +311,10 @@ export default function Home() {
                                          <Package size={48} className="text-white/40 drop-shadow-md"/>
                                       </div>
 
-                                      {hasImage && (
+                                      {product.image && (
                                         <img 
-                                          src={rawImage} 
-                                          alt={displayTitle} 
+                                          src={product.image} 
+                                          alt={product.name} 
                                           className="absolute inset-0 w-full h-full object-cover z-10 group-hover:scale-110 transition-transform duration-700" 
                                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                         />
@@ -339,7 +322,7 @@ export default function Home() {
                                   </div>
 
                                   <div className="p-6 flex-1 flex flex-col justify-between bg-[#11151d]">
-                                      <h3 className="text-white font-bold mb-2 text-lg truncate" title={displayTitle}>{displayTitle}</h3>
+                                      <h3 className="text-white font-bold mb-2 text-lg truncate" title={product.name}>{product.name}</h3>
                                       <div className="flex items-center justify-between mt-4">
                                           <span className="text-xl font-black text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">{displayPrice}</span>
                                           <button className="w-10 h-10 rounded-xl bg-slate-800/80 text-slate-400 flex items-center justify-center hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-600 hover:text-white transition-all shadow-lg hover:shadow-[0_0_15px_rgba(236,72,153,0.4)]"><ShoppingBag size={16}/></button>
@@ -361,6 +344,29 @@ export default function Home() {
         <MessageCircle size={28} fill="white" className="text-white" />
         <span className="absolute right-full mr-3 bg-white text-black px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">Hızlı Destek</span>
       </a>
+
+      {/* Footer */}
+      <footer className="bg-[#050505] border-t border-white/5 pt-20 pb-10 mt-20 relative z-10">
+            <div className="max-w-7xl mx-auto px-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+                    <div className="col-span-1 md:col-span-1">
+                        <div className="flex items-center gap-2 mb-6"><div className="w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center"><Wrench size={16} className="text-white"/></div><span className="font-black text-xl italic">AURA</span></div>
+                        <p className="text-sm text-slate-500 leading-relaxed mb-6">Teknolojiniz için laboratuvar standartlarında onarım merkezi.</p>
+                        <div className="flex gap-4"><SocialIcon icon={<Instagram size={18}/>}/><SocialIcon icon={<Facebook size={18}/>}/><SocialIcon icon={<Twitter size={18}/>}/></div>
+                    </div>
+                    <div><h4 className="font-bold text-white mb-6">Hızlı Erişim</h4><ul className="space-y-4 text-sm text-slate-500"><li><Link href="/" className="hover:text-cyan-400">Ana Sayfa</Link></li><li><Link href="/cihaz-sorgula" className="hover:text-cyan-400">Cihaz Durumu Sorgula</Link></li><li><Link href="/epanel/magaza" className="hover:text-cyan-400">Aura Store</Link></li></ul></div>
+                    <div><h4 className="font-bold text-white mb-6">İletişim</h4><ul className="space-y-4 text-sm text-slate-500"><li className="flex items-start gap-3"><MapPin size={18} className="text-cyan-600"/> Beylikdüzü / İstanbul</li><li className="flex items-center gap-3"><Phone size={18} className="text-cyan-600"/> 0539 632 1429</li><li className="flex items-center gap-3"><Mail size={18} className="text-cyan-600"/> destek@aurabilisim.com</li></ul></div>
+                </div>
+                <div className="border-t border-white/5 pt-10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-600 font-medium">
+                    <p>&copy; 2024 Aura Bilişim.</p>
+                    <div className="flex gap-6"><Link href="#" className="hover:text-slate-400">KVKK</Link><Link href="#" className="hover:text-slate-400">Çerez Politikası</Link><Link href="/login" className="hover:text-red-500 transition-colors flex items-center gap-1"><Lock size={10}/> Personel Girişi</Link></div>
+                </div>
+            </div>
+      </footer>
     </div>
   );
+}
+
+function SocialIcon({ icon }: any) {
+    return <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-600 hover:text-white transition-all">{icon}</a>;
 }

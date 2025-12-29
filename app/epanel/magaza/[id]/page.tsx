@@ -5,19 +5,20 @@ import { useRouter, useParams } from "next/navigation";
 import { 
   ArrowLeft, Save, Trash2, 
   ShoppingBag, Clock, CheckCircle2, Truck, 
-  DollarSign, User, MapPin, FileText 
+  DollarSign, User, MapPin, FileText, Image as ImageIcon
 } from "lucide-react";
+import { supabase } from "@/app/lib/supabase"; // Veritabanı bağlantısı
 
 export default function UrunDetay() {
   const router = useRouter();
-  const params = useParams(); // URL'den ID'yi al (örn: 176653...)
+  const params = useParams(); // URL'den ID'yi al
   const [loading, setLoading] = useState(true);
 
   // Ürün State'i
   const [product, setProduct] = useState({
     id: 0,
     name: "",
-    brand: "",
+    brand: "", // Marka (Veritabanında yoksa opsiyonel)
     category: "",
     description: "",
     cost: 0,
@@ -31,61 +32,86 @@ export default function UrunDetay() {
     adminNotes: ""
   });
 
-  // 1. Veriyi LocalStorage'dan Çek
+  // 1. Veriyi Supabase'den Çek
   useEffect(() => {
-    if (params.id) {
-      const stored = JSON.parse(localStorage.getItem("aura_store_products") || "[]");
-      const found = stored.find((p: any) => p.id == params.id);
+    async function fetchProduct() {
+      if (!params?.id) return;
       
-      if (found) {
-        setProduct(found);
+      const { data, error } = await supabase
+        .from('urunler')
+        .select('*')
+        .eq('id', params.id)
+        .single();
+
+      if (data) {
+        setProduct({
+            id: data.id,
+            name: data.ad,
+            brand: "", // Veritabanında marka sütunu eklenirse buraya bağlanır
+            category: data.kategori,
+            description: data.aciklama || "",
+            cost: data.maliyet || 0,
+            price: data.fiyat || 0,
+            images: data.resim_url ? [data.resim_url] : [],
+            status: (data.stok_durumu === "Satışta" || data.stok_durumu === "true") ? "Satışta" : data.stok_durumu || "Stok Dışı",
+            customerName: "", 
+            customerLocation: "",
+            adminNotes: "" 
+        });
       } else {
         alert("Ürün bulunamadı!");
         router.push("/epanel/magaza");
       }
       setLoading(false);
     }
-  }, [params.id, router]);
+    fetchProduct();
+  }, [params.id]);
 
-  // 2. Değişiklikleri Kaydet (Dashboard'u Günceller)
-  const handleSave = () => {
-    const stored = JSON.parse(localStorage.getItem("aura_store_products") || "[]");
-    
-    // Mevcut listeyi güncelle
-    const updatedList = stored.map((p: any) => {
-      if (p.id == product.id) {
-        return product; // Güncel haliyle değiştir
-      }
-      return p;
-    });
+  // 2. Değişiklikleri Kaydet (Supabase'e Gönder)
+  const handleSave = async () => {
+    setLoading(true);
 
-    localStorage.setItem("aura_store_products", JSON.stringify(updatedList));
+    const { error } = await supabase
+      .from('urunler')
+      .update({
+        ad: product.name,
+        fiyat: Number(product.price),
+        maliyet: Number(product.cost),
+        kategori: product.category,
+        stok_durumu: product.status,
+        aciklama: product.description,
+        resim_url: product.images[0] || ""
+      })
+      .eq('id', params.id);
     
-    // Dashboard anlık görsün diye event fırlat
-    window.dispatchEvent(new Event("storage"));
-    
-    alert("Değişiklikler başarıyla kaydedildi ve sisteme işlendi.");
-    router.push("/epanel/magaza"); // Listeye dön
+    setLoading(false);
+
+    if (!error) {
+        alert("Değişiklikler başarıyla kaydedildi.");
+        router.push("/epanel/magaza"); 
+    } else {
+        alert("Hata: " + error.message);
+    }
   };
 
-  // 3. Ürünü Sil
-  const handleDelete = () => {
-    if (!confirm("Bu kaydı ve tüm geçmişini silmek istediğine emin misin?")) return;
+  // 3. Ürünü Sil (Supabase'den Sil)
+  const handleDelete = async () => {
+    if (!confirm("Bu kaydı silmek istediğine emin misin?")) return;
 
-    const stored = JSON.parse(localStorage.getItem("aura_store_products") || "[]");
-    const filtered = stored.filter((p: any) => p.id != product.id);
+    const { error } = await supabase.from('urunler').delete().eq('id', params.id);
     
-    localStorage.setItem("aura_store_products", JSON.stringify(filtered));
-    window.dispatchEvent(new Event("storage"));
-    
-    router.push("/epanel/magaza");
+    if (!error) {
+        router.push("/epanel/magaza");
+    } else {
+        alert("Silme hatası: " + error.message);
+    }
   };
 
   // Otomatik Hesaplamalar
   const profit = (Number(product.price) || 0) - (Number(product.cost) || 0);
   const margin = product.price > 0 ? ((profit / product.price) * 100).toFixed(1) : "0";
 
-  if (loading) return <div className="p-10 text-slate-500">Yükleniyor...</div>;
+  if (loading) return <div className="p-20 text-center text-slate-500 font-bold animate-pulse">Yükleniyor...</div>;
 
   return (
     <div className="p-6 text-slate-200 pb-20 max-w-7xl mx-auto animate-in fade-in duration-300">
@@ -125,37 +151,25 @@ export default function UrunDetay() {
                  <ShoppingBag size={14}/> Ürün Durumu
               </div>
               <div className="grid grid-cols-2 gap-2">
-                 <button 
-                    onClick={() => setProduct({...product, status: "Satışta"})}
-                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all
-                    ${product.status === "Satışta" ? "bg-green-500 text-white border-green-400 shadow-lg shadow-green-900/40" : "bg-slate-900 text-slate-500 border-slate-800 hover:bg-slate-800"}`}
-                 >
-                    <ShoppingBag size={18}/> SATIŞTA
-                 </button>
-
-                 <button 
-                    onClick={() => setProduct({...product, status: "Kargoda"})}
-                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all
-                    ${product.status === "Kargoda" ? "bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-900/40" : "bg-slate-900 text-slate-500 border-slate-800 hover:bg-slate-800"}`}
-                 >
-                    <Truck size={18}/> KARGODA
-                 </button>
-
-                 <button 
-                    onClick={() => setProduct({...product, status: "Opsiyonlandı"})}
-                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all
-                    ${product.status === "Opsiyonlandı" ? "bg-orange-500 text-white border-orange-400 shadow-lg shadow-orange-900/40" : "bg-slate-900 text-slate-500 border-slate-800 hover:bg-slate-800"}`}
-                 >
-                    <Clock size={18}/> OPSİYON
-                 </button>
-
-                 <button 
-                    onClick={() => setProduct({...product, status: "Satıldı"})}
-                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all
-                    ${product.status === "Satıldı" ? "bg-slate-200 text-black border-white shadow-lg" : "bg-slate-900 text-slate-500 border-slate-800 hover:bg-slate-800"}`}
-                 >
-                    <CheckCircle2 size={18}/> SATILDI
-                 </button>
+                 {["Satışta", "Kargoda", "Opsiyonlandı", "Satıldı"].map((statusOption) => (
+                     <button 
+                       key={statusOption}
+                       onClick={() => setProduct({...product, status: statusOption})}
+                       className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all
+                       ${product.status === statusOption 
+                           ? (statusOption === "Satışta" ? "bg-green-500 border-green-400 text-white" 
+                           : statusOption === "Kargoda" ? "bg-blue-500 border-blue-400 text-white"
+                           : statusOption === "Opsiyonlandı" ? "bg-orange-500 border-orange-400 text-white"
+                           : "bg-slate-200 border-white text-black")
+                           : "bg-slate-900 text-slate-500 border-slate-800 hover:bg-slate-800"}`}
+                     >
+                        {statusOption === "Satışta" && <ShoppingBag size={18}/>}
+                        {statusOption === "Kargoda" && <Truck size={18}/>}
+                        {statusOption === "Opsiyonlandı" && <Clock size={18}/>}
+                        {statusOption === "Satıldı" && <CheckCircle2 size={18}/>}
+                        {statusOption.toUpperCase()}
+                     </button>
+                 ))}
               </div>
            </div>
 
@@ -199,16 +213,13 @@ export default function UrunDetay() {
            {/* 3. GÖRSEL */}
            <div className="bg-[#151921] border border-slate-800 rounded-2xl overflow-hidden h-64 flex items-center justify-center relative group">
               {product.images && product.images.length > 0 ? (
-                  <img src={product.images[0]} className="w-full h-full object-cover" alt="Product"/>
+                  <img src={product.images[0]} className="w-full h-full object-contain" alt="Product"/>
               ) : (
                   <div className="text-slate-600 flex flex-col items-center">
-                      <ShoppingBag size={48}/>
+                      <ImageIcon size={48}/>
                       <span className="text-xs mt-2">Görsel Yok</span>
                   </div>
               )}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <button className="text-xs bg-white text-black px-4 py-2 rounded-lg font-bold">Görsel Değiştir</button>
-              </div>
            </div>
 
         </div>
@@ -222,7 +233,7 @@ export default function UrunDetay() {
                    <FileText size={14}/> Yönetici Notları & Müşteri Bilgisi
                 </div>
                 <p className="text-[10px] text-slate-500 mb-4">
-                    Bu alan sadece yönetim panelinde görünür. Ürün satıldığında müşteri bilgilerini, adresini veya cihazın özel kusurlarını buraya not alabilirsin.
+                    Bu alan şimdilik sadece tarayıcıda geçici tutulur. Veritabanında özel alan açıldığında kalıcı olur.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

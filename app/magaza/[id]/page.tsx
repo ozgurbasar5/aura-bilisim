@@ -8,34 +8,59 @@ import {
   Phone, MessageCircle, Calendar, Tag, Hash, 
   Cpu, Maximize2, Truck, Wallet, CheckCircle2, Layers, ExternalLink,
   Wrench, ShoppingBag, Search, Instagram, Facebook, Twitter, MapPin, Mail, Lock, 
-  FileCheck, BadgeCheck
+  FileCheck, BadgeCheck, Package
 } from "lucide-react";
+import { supabase } from "@/app/lib/supabase"; // Supabase Bağlantısı
 
 export default function UrunDetaySayfasi() {
-  const params = useParams();
+  const params = useParams(); // URL'den ID'yi al
   const [product, setProduct] = useState<any>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [activeTab, setActiveTab] = useState("aciklama");
-
-  // Slug Oluşturucu
-  const createSlug = (name: string) => {
-      return name.toLowerCase().replace(/ /g, "-").replace(/[ıİ]/g, "i").replace(/[ğĞ]/g, "g").replace(/[üÜ]/g, "u").replace(/[şŞ]/g, "s").replace(/[öÖ]/g, "o").replace(/[çÇ]/g, "c").replace(/[^a-z0-9-]/g, "");
-  };
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem("aura_store_products");
-    if (stored) {
-        const allProducts = JSON.parse(stored);
-        const found = allProducts.find((p: any) => createSlug(p.name) === params.slug);
-        if (found) setProduct(found);
-    }
-  }, [params.slug]);
+    async function fetchProduct() {
+      if (!params?.id) return;
+      
+      const { data } = await supabase
+        .from('urunler')
+        .select('*')
+        .eq('id', params.id)
+        .single();
 
-  if (!product) return (
+      if (data) {
+        // Veritabanı verisini UI formatına dönüştür
+        setProduct({
+            id: data.id,
+            name: data.ad,
+            price: data.fiyat,
+            description: data.aciklama,
+            images: data.resim_url ? [data.resim_url] : [], // Tek resim varsa array yap
+            category: data.kategori,
+            date: new Date(data.created_at).toLocaleDateString('tr-TR'),
+            // Ekstra linkler (varsa DB'ye eklenmeli, şimdilik boş)
+            sahibindenLink: "",
+            dolapLink: ""
+        });
+      }
+      setLoading(false);
+    }
+    fetchProduct();
+  }, [params.id]);
+
+  if (loading) return (
     <div className="min-h-screen bg-[#02040a] flex flex-col items-center justify-center text-white gap-4">
         <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin shadow-[0_0_30px_#06b6d4]"></div>
         <p className="text-slate-500 text-sm">Ürün bilgileri yükleniyor...</p>
-        <Link href="/satis" className="text-cyan-500 hover:underline text-xs">Mağazaya Dön</Link>
+    </div>
+  );
+
+  if (!product) return (
+    <div className="min-h-screen bg-[#02040a] flex flex-col items-center justify-center text-white gap-4">
+        <Package size={48} className="text-slate-600"/>
+        <p className="text-slate-500 text-sm">Ürün bulunamadı.</p>
+        <Link href="/epanel/magaza" className="text-cyan-500 hover:underline text-xs">Mağazaya Dön</Link>
     </div>
   );
 
@@ -51,14 +76,10 @@ export default function UrunDetaySayfasi() {
           </div>
           <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-slate-300">
              <Link href="/" className="hover:text-white transition-colors">Ana Sayfa</Link>
-             <Link href="/destek" className="hover:text-white transition-colors">Destek</Link>
-             <Link href="/hakkimizda" className="hover:text-white transition-colors">Hakkımızda</Link>
-             <Link href="/sss" className="hover:text-white transition-colors">S.S.S</Link>
-             <Link href="/iletisim" className="hover:text-white transition-colors">İletişim</Link>
+             <Link href="/cihaz-sorgula" className="hover:text-white transition-colors">Cihaz Sorgula</Link>
           </div>
           <div className="flex items-center gap-4">
-             <Link href="/satis" className="hidden sm:flex items-center gap-2 text-white font-bold text-sm transition-all border border-purple-500 bg-purple-500/10 px-5 py-2.5 rounded-xl"><ShoppingBag size={18} className="text-purple-400"/> Aura Store</Link>
-             <Link href="/onarim-talebi" className="hidden sm:flex items-center gap-2 bg-[#1e293b] hover:bg-[#283547] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all border border-slate-700 hover:border-cyan-500/50 shadow-lg"><Wrench size={18} className="text-cyan-400"/> Onarım Talebi</Link>
+             <Link href="/epanel/magaza" className="hidden sm:flex items-center gap-2 text-white font-bold text-sm transition-all border border-purple-500 bg-purple-500/10 px-5 py-2.5 rounded-xl"><ShoppingBag size={18} className="text-purple-400"/> Aura Store</Link>
           </div>
         </div>
       </nav>
@@ -73,7 +94,7 @@ export default function UrunDetaySayfasi() {
       <div className="container mx-auto px-4 pt-32 grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10 flex-1">
           
           <div className="lg:col-span-12 mb-[-20px] lg:mb-0">
-             <Link href="/satis" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-bold">
+             <Link href="/epanel/magaza" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-bold">
                 <ArrowLeft size={16}/> Mağazaya Dön
              </Link>
           </div>
@@ -88,9 +109,6 @@ export default function UrunDetaySayfasi() {
                       ) : (
                           <div className="text-slate-700 font-bold flex flex-col items-center gap-2"><ShoppingBag size={48} className="opacity-20"/>Görsel Yok</div>
                       )}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden">
-                          <p className="text-white opacity-[0.03] font-black text-5xl md:text-8xl -rotate-12 tracking-[0.5em] uppercase whitespace-nowrap">AURA BİLİŞİM</p>
-                      </div>
                       <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md p-2.5 rounded-xl text-white/70 hover:text-white transition-colors cursor-pointer border border-white/10"><Maximize2 size={20}/></div>
                   </div>
               </div>
@@ -105,7 +123,7 @@ export default function UrunDetaySayfasi() {
                   </div>
               )}
 
-              {/* BİLGİ SEKMELERİ - GÜNCELLENDİ */}
+              {/* BİLGİ SEKMELERİ */}
               <div className="bg-[#0a0c14]/80 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
                   <div className="flex border-b border-white/10 bg-black/40">
                       <button onClick={() => setActiveTab("aciklama")} className={`flex-1 py-5 text-center text-sm font-bold transition-all relative tracking-wide ${activeTab === "aciklama" ? "text-cyan-400 bg-white/5" : "text-slate-500 hover:text-slate-300"}`}>ÜRÜN AÇIKLAMASI {activeTab === "aciklama" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-cyan-500 shadow-[0_0_15px_#06b6d4]"></div>}</button>
@@ -114,7 +132,7 @@ export default function UrunDetaySayfasi() {
                   <div className="p-8 min-h-[250px]">
                       {activeTab === "aciklama" ? (
                           <div className="prose prose-invert max-w-none text-sm md:text-base leading-relaxed text-slate-300 whitespace-pre-wrap font-medium">
-                              {product.description || product.notes || "Bu ürün için satıcı tarafından detaylı bir açıklama girilmemiştir."}
+                              {product.description || "Bu ürün için satıcı tarafından detaylı bir açıklama girilmemiştir."}
                           </div>
                       ) : (
                           <div className="space-y-6">
@@ -138,13 +156,6 @@ export default function UrunDetaySayfasi() {
                                   <div>
                                       <h4 className="font-bold text-white mb-1.5 text-lg">Güvenli Kargo & Paketleme</h4>
                                       <p className="text-sm text-slate-400 leading-relaxed">Şehir dışı gönderimlerde havalı ambalaj ve darbe emici kutu kullanılır. Kargoya verilmeden önce cihazın çalışır durumdaki videosu tarafınıza iletilir.</p>
-                                  </div>
-                              </div>
-                              <div className="flex gap-5 items-start group">
-                                  <div className="p-3.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors"><BadgeCheck className="text-emerald-400" size={24}/></div>
-                                  <div>
-                                      <h4 className="font-bold text-white mb-1.5 text-lg">Elden Teslim & Test</h4>
-                                      <p className="text-sm text-slate-400 leading-relaxed">Dilerseniz İstanbul/Beylikdüzü şubemize gelerek cihazı yerinde inceleyebilir, test edebilir ve elden teslim alabilirsiniz.</p>
                                   </div>
                               </div>
                           </div>
@@ -174,16 +185,14 @@ export default function UrunDetaySayfasi() {
                   </div>
               </div>
 
-              {/* --- ÜRÜN KÜNYESİ (DETAYLANDIRILDI) --- */}
+              {/* --- ÜRÜN KÜNYESİ --- */}
               <div className="bg-[#0a0c14]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-7">
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-white/5 pb-3"><Tag size={16} className="text-cyan-500"/> Ürün Künyesi</h3>
                   <div className="space-y-4">
-                      {/* Mevcut Veriler */}
                       <DetailRow icon={<Hash/>} label="İLAN NO" value={`#${product.id}`} />
                       <DetailRow icon={<Calendar/>} label="İLAN TARİHİ" value={product.date} />
                       <DetailRow icon={<Layers/>} label="KATEGORİ" value={product.category} valueColor="text-cyan-400" />
                       
-                      {/* Statik / Mantıksal Eklemeler */}
                       <DetailRow icon={<BadgeCheck/>} label="DURUM" value="İkinci El (Kontrol Edilmiş)" />
                       <DetailRow icon={<ShieldCheck/>} label="GARANTİ" value="Var (Mağaza Garantili)" valueColor="text-green-400" />
                       <DetailRow icon={<MapPin/>} label="KONUM" value="İstanbul / Beylikdüzü" />
@@ -198,21 +207,13 @@ export default function UrunDetaySayfasi() {
                   </div>
               </div>
 
-              {/* Platform Linkleri */}
-              {(product.sahibindenLink || product.dolapLink || product.letgoLink || product.instagramLink) && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {product.sahibindenLink && <PlatformBtn name="SAHİBİNDEN" link={product.sahibindenLink} color="from-yellow-600/80 to-yellow-500/80" borderColor="border-yellow-400/30" icon="S" />}
-                      {/* ... Diğerleri ... */}
-                  </div>
-              )}
-
               {/* İletişim */}
               <div className="grid grid-cols-5 gap-4 pt-4">
-                  <a href="tel:+905396321429" className="col-span-2 group bg-[#151515] hover:bg-[#252525] border border-white/10 rounded-2xl flex flex-col items-center justify-center p-4 transition-all active:scale-95">
+                  <a href="tel:+905396321469" className="col-span-2 group bg-[#151515] hover:bg-[#252525] border border-white/10 rounded-2xl flex flex-col items-center justify-center p-4 transition-all active:scale-95">
                       <Phone size={24} className="text-slate-400 group-hover:text-white mb-1 transition-colors"/>
                       <span className="text-[10px] font-bold text-slate-500 group-hover:text-white tracking-wider">ARA</span>
                   </a>
-                  <a href={`https://wa.me/905396321429?text=Merhaba, ${product.name} (ID: ${product.id}) hakkında bilgi almak istiyorum.`} target="_blank" className="col-span-3 bg-green-600 hover:bg-green-500 text-white rounded-2xl flex flex-col items-center justify-center p-4 shadow-lg shadow-green-900/30 transition-all active:scale-95 group border border-white/10">
+                  <a href={`https://wa.me/905396321469?text=Merhaba, ${product.name} (ID: ${product.id}) hakkında bilgi almak istiyorum.`} target="_blank" className="col-span-3 bg-green-600 hover:bg-green-500 text-white rounded-2xl flex flex-col items-center justify-center p-4 shadow-lg shadow-green-900/30 transition-all active:scale-95 group border border-white/10">
                       <MessageCircle size={28} className="mb-1 group-hover:rotate-12 transition-transform"/>
                       <span className="text-xs font-black tracking-widest">WHATSAPP</span>
                   </a>
@@ -229,13 +230,11 @@ export default function UrunDetaySayfasi() {
                         <p className="text-sm text-slate-500 leading-relaxed mb-6">Teknolojiniz için laboratuvar standartlarında onarım merkezi.</p>
                         <div className="flex gap-4"><SocialIcon icon={<Instagram size={18}/>}/><SocialIcon icon={<Facebook size={18}/>}/><SocialIcon icon={<Twitter size={18}/>}/></div>
                     </div>
-                    <div><h4 className="font-bold text-white mb-6">Hızlı Erişim</h4><ul className="space-y-4 text-sm text-slate-500"><li><Link href="/" className="hover:text-cyan-400">Ana Sayfa</Link></li><li><Link href="/sorgula" className="hover:text-cyan-400">Cihaz Durumu Sorgula</Link></li><li><Link href="/satis" className="hover:text-cyan-400">Aura Store</Link></li><li><Link href="/onarim-talebi" className="hover:text-cyan-400">Onarım Başvurusu</Link></li></ul></div>
-                    <div><h4 className="font-bold text-white mb-6">Hizmetlerimiz</h4><ul className="space-y-4 text-sm text-slate-500"><li><Link href="#" className="hover:text-cyan-400">• iPhone Ekran Değişimi</Link></li><li><Link href="#" className="hover:text-cyan-400">• Roborock Batarya Yenileme</Link></li><li><Link href="#" className="hover:text-cyan-400">• Macbook Anakart Onarım</Link></li></ul></div>
-                    <div><h4 className="font-bold text-white mb-6">İletişim</h4><ul className="space-y-4 text-sm text-slate-500"><li className="flex items-start gap-3"><MapPin size={18} className="text-cyan-600"/> Beylikdüzü / İstanbul</li><li className="flex items-center gap-3"><Phone size={18} className="text-cyan-600"/> 0539 632 1429</li><li className="flex items-center gap-3"><Mail size={18} className="text-cyan-600"/> destek@aurabilisim.com</li></ul></div>
+                    <div><h4 className="font-bold text-white mb-6">Hızlı Erişim</h4><ul className="space-y-4 text-sm text-slate-500"><li><Link href="/" className="hover:text-cyan-400">Ana Sayfa</Link></li><li><Link href="/cihaz-sorgula" className="hover:text-cyan-400">Cihaz Durumu Sorgula</Link></li><li><Link href="/epanel/magaza" className="hover:text-cyan-400">Aura Store</Link></li></ul></div>
+                    <div><h4 className="font-bold text-white mb-6">İletişim</h4><ul className="space-y-4 text-sm text-slate-500"><li className="flex items-start gap-3"><MapPin size={18} className="text-cyan-600"/> Beylikdüzü / İstanbul</li><li className="flex items-center gap-3"><Phone size={18} className="text-cyan-600"/> 0539 632 1429</li></ul></div>
                 </div>
                 <div className="border-t border-white/5 pt-10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-600 font-medium">
                     <p>&copy; 2024 Aura Bilişim.</p>
-                    <div className="flex gap-6"><Link href="#" className="hover:text-slate-400">KVKK</Link><Link href="#" className="hover:text-slate-400">Çerez Politikası</Link><Link href="/login" className="hover:text-red-500 transition-colors flex items-center gap-1"><Lock size={10}/> Personel Girişi</Link></div>
                 </div>
             </div>
       </footer>
