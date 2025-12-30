@@ -6,7 +6,8 @@ import {
   Search, ArrowRight, Users, Tag, ShieldCheck, 
   Smartphone, Zap, Laptop, ShoppingBag, 
   CheckCircle2, Package, ChevronRight, Activity, Trophy, 
-  HeartPulse, MessageCircle, MonitorPlay, Send, Award, MapPin, Phone, Mail, Lock, Instagram, Facebook, Twitter, Wrench
+  HeartPulse, MessageCircle, MonitorPlay, Send, Award, 
+  Cpu, Layers, FileSearch, Fingerprint, Microscope, CircuitBoard, Gem
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase"; 
@@ -86,17 +87,19 @@ export default function Home() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
             </span>
-            <span className="font-bold tracking-widest uppercase text-[10px] md:text-xs">Profesyonel Teknik Servis</span>
+            <span className="font-bold tracking-widest uppercase text-[10px] md:text-xs">High-End Teknik Servis</span>
           </div>
+          
           <h1 className="text-5xl md:text-8xl font-black mb-8 leading-tight tracking-tight drop-shadow-2xl">
             Teknolojiniz <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-500 to-purple-500 filter drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-               Emin Ellerde.
+               Sınırların Ötesinde.
             </span>
           </h1>
+          
           <p className="text-slate-300 text-lg md:text-2xl max-w-3xl mx-auto mb-12 leading-relaxed font-light">
-            Sıradan bir tamirci değil, <strong className="text-white">ileri seviye teknoloji üssü.</strong> <br className="hidden md:block"/>
-            Roborock, iPhone ve Gaming PC onarımında <span className="text-cyan-400 font-bold">%99 başarı oranı</span>.
+            Sıradan bir işlem değil, <strong className="text-white">hassas kalibrasyon ve optimizasyon.</strong> <br className="hidden md:block"/>
+            Roborock, iPhone ve Gaming PC donanımlarında <span className="text-cyan-400 font-bold">%99 başarı oranı</span>.
           </p>
           
           {/* SORGULAMA INPUT */}
@@ -111,7 +114,7 @@ export default function Home() {
 
           {/* İSTATİSTİKLER */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
-             {[{ val: "%100", label: "Müşteri Memnuniyeti", icon: Users, color: "text-cyan-400", shadow: "shadow-cyan-500/20", border: "border-cyan-500/30" }, { val: "Onaylı", label: "Orijinal Parça", icon: Tag, color: "text-purple-400", shadow: "shadow-purple-500/20", border: "border-purple-500/30" }, { val: "6 Ay", label: "Garanti Süresi", icon: ShieldCheck, color: "text-green-400", shadow: "shadow-green-500/20", border: "border-green-500/30" }, { val: "15K+", label: "Başarılı Tamir", icon: CheckCircle2, color: "text-yellow-400", shadow: "shadow-yellow-500/20", border: "border-yellow-500/30" }].map((stat, i) => (
+             {[{ val: "%100", label: "Müşteri Memnuniyeti", icon: Users, color: "text-cyan-400", shadow: "shadow-cyan-500/20", border: "border-cyan-500/30" }, { val: "Onaylı", label: "Orijinal Parça", icon: Tag, color: "text-purple-400", shadow: "shadow-purple-500/20", border: "border-purple-500/30" }, { val: "6 Ay", label: "Garanti Süresi", icon: ShieldCheck, color: "text-green-400", shadow: "shadow-green-500/20", border: "border-green-500/30" }, { val: "15K+", label: "Başarılı İşlem", icon: CheckCircle2, color: "text-yellow-400", shadow: "shadow-yellow-500/20", border: "border-yellow-500/30" }].map((stat, i) => (
                <div key={i} className={`bg-[#0a0e17]/60 backdrop-blur-md border ${stat.border} p-8 rounded-3xl hover:bg-[#111620] transition-all group cursor-default hover:shadow-[0_0_30px_rgba(0,0,0,0.3)] hover:scale-105 ${stat.shadow.replace('/20','/40')}`}>
                   <div className={`text-4xl font-black text-white mb-2 group-hover:${stat.color.replace('text-', '')} transition-colors drop-shadow-lg`}>{stat.val}</div>
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-center gap-2"><stat.icon size={16} className={stat.color} /> {stat.label}</div>
@@ -124,35 +127,72 @@ export default function Home() {
       {/* GÜVEN BANDI */}
       <div className="w-full bg-gradient-to-r from-[#020617] via-[#0a0e17] to-[#020617] border-y border-white/5 py-6 relative z-20 overflow-hidden">
         <div className="container mx-auto px-6 flex flex-wrap items-center justify-center md:justify-between gap-6 text-sm font-medium text-slate-300">
-            <div className="flex items-center gap-2"><Award className="w-5 h-5 text-cyan-500" /> <span>İstanbul'un <strong>En Güvenilir</strong> Teknik Servisi</span></div>
-            <div className="flex items-center gap-2"><Trophy size={18} className="text-yellow-500" /> <span>Bölgenin En Donanımlı Laboratuvarı</span></div>
-            <div className="flex items-center gap-2"><HeartPulse size={18} className="text-red-500" /> <span><strong>10.000+</strong> Mutlu Müşteri</span></div>
+            <div className="flex items-center gap-2"><Award className="w-5 h-5 text-cyan-500" /> <span>İstanbul'un <strong>En Prestijli</strong> Teknik Üssü</span></div>
+            <div className="flex items-center gap-2"><Trophy size={18} className="text-yellow-500" /> <span>Global Servis Standartları</span></div>
+            <div className="flex items-center gap-2"><HeartPulse size={18} className="text-red-500" /> <span><strong>10.000+</strong> Kusursuz Teslimat</span></div>
         </div>
       </div>
 
-      {/* MARKA ŞERİDİ */}
-      <div className="w-full bg-[#020610] border-b border-white/5 py-12 overflow-hidden relative z-20 group">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#020610] via-transparent to-[#020610] z-10 pointer-events-none"></div>
-        <div className="flex w-max animate-infinite-scroll hover:[animation-play-state:paused]">
-            {[...brands, ...brands].map((brand, index) => (
-                <div key={index} className="mx-16 text-3xl font-black text-slate-700/50 hover:text-cyan-400 transition-colors duration-300 cursor-default tracking-[0.25em] uppercase select-none drop-shadow-sm whitespace-nowrap">
-                    {brand}
-                </div>
-            ))}
+      {/* --- GÜNCELLENEN MARKA EKOSİSTEMİ BÖLÜMÜ --- */}
+      <section className="relative py-24 bg-[#010205] border-b border-white/5 overflow-hidden">
+        {/* Arka Plan Işığı */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-900/20 blur-[100px] rounded-full pointer-events-none"></div>
+        
+        <div className="container mx-auto px-6 relative z-10 text-center mb-12">
+            <span className="text-cyan-500 font-bold tracking-widest text-xs uppercase mb-2 block">Global Partners</span>
+            <h2 className="text-3xl md:text-5xl font-black text-white mb-6">
+                Hizmet Verilen <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">Teknoloji Devleri</span>
+            </h2>
+            <p className="text-slate-400 max-w-xl mx-auto mb-8">
+                Dünyanın önde gelen teknoloji markalarının tüm modellerine laboratuvar standartlarında müdahale ediyoruz.
+            </p>
+            
+            <Link href="/markalar" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold transition-all hover:scale-105 group">
+                Tüm Marka Listesini İncele <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>
+            </Link>
         </div>
-      </div>
+
+        {/* Kayan Markalar (İki Sıra Halinde) */}
+        <div className="relative w-full overflow-hidden group space-y-8 opacity-60 hover:opacity-100 transition-opacity duration-500">
+            <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#010205] to-transparent z-10"></div>
+            <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#010205] to-transparent z-10"></div>
+            
+            {/* Sıra 1 (Sola Kayan) */}
+            <div className="flex w-max animate-infinite-scroll hover:[animation-play-state:paused]">
+                {brands.map((brand, index) => (
+                    <div key={index} className="mx-8 text-4xl font-black text-slate-800 hover:text-cyan-500 transition-colors duration-300 cursor-default uppercase select-none whitespace-nowrap">
+                        {brand}
+                    </div>
+                ))}
+            </div>
+             {/* Sıra 2 (Sağa Kayan - Farklı Hızda Olabilir) */}
+             <div className="flex w-max animate-infinite-scroll-reverse hover:[animation-play-state:paused]">
+                {brands.reverse().map((brand, index) => (
+                    <div key={index} className="mx-8 text-4xl font-black text-slate-800 hover:text-indigo-500 transition-colors duration-300 cursor-default uppercase select-none whitespace-nowrap">
+                        {brand}
+                    </div>
+                ))}
+            </div>
+        </div>
+      </section>
 
       {/* HİZMETLER */}
       <section className="py-28 relative z-20">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
             <div>
-                <h2 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight drop-shadow-lg">Hizmet Alanlarımız</h2>
-                <p className="text-slate-400 text-lg max-w-2xl font-light">Teknik laboratuvarımızda en sık işlem gören profesyonel hizmetler.</p>
+                <h2 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight drop-shadow-lg">Uzmanlık Alanlarımız</h2>
+                <p className="text-slate-400 text-lg max-w-2xl font-light">Laboratuvarımızda uygulanan profesyonel müdahale süreçleri.</p>
             </div>
-            <Link href="/hizmetler" className="hidden md:flex items-center gap-2 text-cyan-400 font-bold hover:text-cyan-300 transition-colors bg-cyan-500/10 px-4 py-2 rounded-full border border-cyan-500/20">
+            
+            {/* ÇALIŞAN BUTON (Tüm Hizmetleri Gör) */}
+            <Link 
+              href="/hizmetler" 
+              className="hidden md:flex items-center gap-2 text-cyan-400 font-bold hover:text-cyan-300 transition-colors bg-cyan-500/10 px-4 py-2 rounded-full border border-cyan-500/20 relative z-30"
+            >
                 Tüm Hizmetleri Gör <ArrowRight size={18}/>
             </Link>
+          
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Kart 1: Telefon */}
@@ -162,8 +202,8 @@ export default function Home() {
                     <div className="bg-gradient-to-b from-[#0f131a] to-[#0b0e14] rounded-[2rem] p-10 h-full flex flex-col items-start group-hover:bg-[#111620] transition-colors relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-cyan-500/20 transition-all"></div>
                         <div className="w-16 h-16 bg-cyan-950/50 rounded-2xl flex items-center justify-center mb-8 text-cyan-400 group-hover:scale-110 transition-transform duration-300 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)] relative z-10"><Smartphone size={32} /></div>
-                        <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Telefon Onarımı</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed mb-8 relative z-10">iPhone ekran ve FaceID onarımı, Android anakart tamiri, sıvı teması temizliği ve batarya değişimi.</p>
+                        <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Mobil Kalibrasyon</h3>
+                        <p className="text-slate-400 text-sm leading-relaxed mb-8 relative z-10">iPhone FaceID optimizasyonu, anakart mikron seviyesi onarım ve batarya verimlilik artırma işlemleri.</p>
                         <div className="mt-auto w-full py-4 rounded-xl bg-slate-900/50 border border-cyan-900/50 text-center text-sm font-bold text-cyan-400 uppercase tracking-wider group-hover:bg-cyan-600 group-hover:text-white group-hover:border-cyan-500 transition-all group-hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] relative z-10">İNCELE</div>
                     </div>
                 </div>
@@ -175,8 +215,8 @@ export default function Home() {
                       <div className="bg-gradient-to-b from-[#0f131a] to-[#0b0e14] rounded-[2rem] p-10 h-full flex flex-col items-start group-hover:bg-[#111620] transition-colors relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-purple-500/20 transition-all"></div>
                         <div className="w-16 h-16 bg-purple-950/50 rounded-2xl flex items-center justify-center mb-8 text-purple-400 group-hover:scale-110 transition-transform duration-300 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.15)] relative z-10"><Zap size={32} /></div>
-                        <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Robot Süpürge</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed mb-8 relative z-10">Roborock, Xiaomi ve Dyson için Lidar hatası, anakart onarımı, tekerlek değişimi ve genel bakım.</p>
+                        <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Otonom Sistemler</h3>
+                        <p className="text-slate-400 text-sm leading-relaxed mb-8 relative z-10">Roborock ve Dyson üniteleri için Lidar sensör kalibrasyonu, motor tork analizi ve anakart revizyonu.</p>
                         <div className="mt-auto w-full py-4 rounded-xl bg-slate-900/50 border border-purple-900/50 text-center text-sm font-bold text-purple-400 uppercase tracking-wider group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-500 transition-all group-hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] relative z-10">İNCELE</div>
                     </div>
                 </div>
@@ -188,8 +228,8 @@ export default function Home() {
                       <div className="bg-gradient-to-b from-[#0f131a] to-[#0b0e14] rounded-[2rem] p-10 h-full flex flex-col items-start group-hover:bg-[#111620] transition-colors relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-green-500/20 transition-all"></div>
                         <div className="w-16 h-16 bg-green-950/50 rounded-2xl flex items-center justify-center mb-8 text-green-400 group-hover:scale-110 transition-transform duration-300 border border-green-500/30 shadow-[0_0_20px_rgba(34,197,94,0.15)] relative z-10"><Laptop size={32} /></div>
-                        <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Bilgisayar & Laptop</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed mb-8 relative z-10">Gaming laptop ısınma sorunu, chipset (BGA) tamiri, termal macun bakımı ve SSD yükseltme işlemleri.</p>
+                        <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Performans Bilgisayarları</h3>
+                        <p className="text-slate-400 text-sm leading-relaxed mb-8 relative z-10">Gaming laptop termal optimizasyon, BGA chipset onarımı ve veri yolu (Bus) analizi ile performans artışı.</p>
                         <div className="mt-auto w-full py-4 rounded-xl bg-slate-900/50 border border-green-900/50 text-center text-sm font-bold text-green-400 uppercase tracking-wider group-hover:bg-green-600 group-hover:text-white group-hover:border-green-500 transition-all group-hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] relative z-10">İNCELE</div>
                     </div>
                 </div>
@@ -209,7 +249,7 @@ export default function Home() {
               <h2 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
                Nasıl <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Çalışır?</span>
               </h2>
-              <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">Arızalı cihazınızın servisimize girişinden teslimatına kadar geçen şeffaf süreç.</p>
+              <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">Şeffaf, izlenebilir ve profesyonel işlem adımları.</p>
           </div>
 
           <div className="relative">
@@ -226,8 +266,8 @@ export default function Home() {
                        <Activity className="text-cyan-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
                        <div className="absolute -top-3 -right-3 w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">1</div>
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-cyan-400 transition-colors">Kayıt Oluştur</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Web sitemizden veya WhatsApp hattımızdan saniyeler içinde arıza kaydınızı oluşturun.</p>
+                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-cyan-400 transition-colors">Kayıt & Analiz</h3>
+                    <p className="text-slate-400 text-sm leading-relaxed">Sistemimiz üzerinden arıza kaydı oluşturun, ön teknik analiz başlasın.</p>
                   </div>
               </div>
 
@@ -239,8 +279,8 @@ export default function Home() {
                        <Send className="text-purple-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]" />
                        <div className="absolute -top-3 -right-3 w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">2</div>
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-purple-400 transition-colors">Ücretsiz Gönder</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Size verilen kod ile cihazınızı Yurtiçi Kargo üzerinden ücretsiz olarak bize gönderin.</p>
+                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-purple-400 transition-colors">Güvenli Transfer</h3>
+                    <p className="text-slate-400 text-sm leading-relaxed">Yurtiçi Kargo iş ortaklığımızla cihazınız sigortalı ve ücretsiz olarak laboratuvarımıza ulaşır.</p>
                   </div>
               </div>
 
@@ -249,11 +289,11 @@ export default function Home() {
                   <div className="absolute -inset-1 bg-gradient-to-b from-pink-500 to-orange-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
                   <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-pink-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
                     <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-pink-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(236,72,153,0.15)] group-hover:shadow-[0_0_40px_rgba(236,72,153,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-pink-900/20 to-transparent">
-                       <MonitorPlay className="text-pink-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(236,72,153,0.8)]" />
+                       <CircuitBoard className="text-pink-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(236,72,153,0.8)]" />
                        <div className="absolute -top-3 -right-3 w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">3</div>
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-pink-400 transition-colors">Uzman Onarım</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Cihaz laboratuvar ortamında incelenir, onayınızla garantili parçalarla tamir edilir.</p>
+                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-pink-400 transition-colors">Teknik Müdahale</h3>
+                    <p className="text-slate-400 text-sm leading-relaxed">Uzmanlarımız tarafından anakart seviyesinde müdahale ve orijinal parça değişimi yapılır.</p>
                   </div>
               </div>
 
@@ -265,8 +305,8 @@ export default function Home() {
                        <CheckCircle2 className="text-green-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
                        <div className="absolute -top-3 -right-3 w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">4</div>
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-green-400 transition-colors">Teslimat</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Testleri geçen cihazınız sterilize edilir ve kargoya verilir. Size keyfini sürmek kalır.</p>
+                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-green-400 transition-colors">Son Kontrol & Teslim</h3>
+                    <p className="text-slate-400 text-sm leading-relaxed">Stres testlerinden geçen cihazınız sterilize edilir ve size geri gönderilir.</p>
                   </div>
               </div>
 
@@ -297,7 +337,6 @@ export default function Home() {
                         const fallbackGradient = getRandomGradient(i);
 
                         return (
-                          // LİNK GÜNCELLENDİ: ARTIK ID KULLANIYOR
                           <Link href={`/magaza/${product.id}`} key={i} className="group relative rounded-2xl block h-full cursor-pointer hover:-translate-y-2 transition-transform duration-500">
                               <div className={`absolute -inset-[1px] bg-gradient-to-b from-indigo-500 to-purple-600 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-500 group-hover:blur-md`}></div>
                               <div className="relative bg-[#11151d] rounded-2xl overflow-hidden h-full flex flex-col border border-white/5 group-hover:border-white/10 transition-colors">
@@ -338,13 +377,89 @@ export default function Home() {
         </div>
       </section>
 
+      {/* --- PREMIUM HAKKIMIZDA & DNA (GÜNCELLENEN KISIM) --- */}
+      <section className="relative py-32 bg-[#020611] border-t border-white/5 overflow-hidden">
+        {/* Arka Plan Efektleri */}
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-cyan-900/10 to-transparent pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-900/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+        <div className="container mx-auto px-6 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                
+                {/* SOL: METİN VE BUTONLAR */}
+                <div className="space-y-8">
+                    <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/30 border border-cyan-800/50 text-cyan-400 text-xs font-bold tracking-widest uppercase mb-6 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                            <Gem size={14} />
+                            Premium Teknoloji Üssü
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-black text-white leading-tight mb-6">
+                            MÜKEMMELLİK BİR <br/>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">TERCİHTİR.</span>
+                        </h2>
+                        <p className="text-slate-400 text-lg leading-relaxed mb-4">
+                            Sıradanlığı reddediyoruz. Aura Bilişim, sadece arızalı parçayı değiştiren bir dükkan değil; cihazınızın performansını fabrika standartlarının ötesine taşıyan bir <strong>mühendislik laboratuvarıdır.</strong>
+                        </p>
+                        <p className="text-slate-400 text-lg leading-relaxed">
+                            Her vida sıkımında tork ayarı, her lehimde mikron hassasiyeti. Bu bizim imzamız.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                        {/* Buton 1: Hakkımızda */}
+                        <Link href="/kurumsal" className="group relative px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all overflow-hidden flex items-center justify-center gap-3 border border-white/10 hover:border-white/20">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                            <FileSearch size={20} className="text-slate-400 group-hover:text-white transition-colors"/>
+                            Hikayemiz & Vizyon
+                        </Link>
+
+                        {/* Buton 2: DNA (Logo Analizi) */}
+                        <Link href="/dna" className="group relative px-8 py-4 bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-600 hover:to-blue-600 text-white rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] flex items-center justify-center gap-3">
+                            <Cpu size={20} className="animate-pulse"/>
+                            Teknik DNA & Mühendislik
+                            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+                        </Link>
+                    </div>
+                </div>
+
+                {/* SAĞ: GÖRSEL KARTLAR */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-4 mt-8">
+                        <div className="bg-[#0f1420] p-6 rounded-2xl border border-white/5 hover:border-cyan-500/30 transition-colors group">
+                            <Microscope size={32} className="text-cyan-500 mb-4 group-hover:scale-110 transition-transform"/>
+                            <h4 className="text-white font-bold mb-2">Mikro Analiz</h4>
+                            <p className="text-xs text-slate-400">Gözle görülmeyen hasar tespiti.</p>
+                        </div>
+                        <div className="bg-[#0f1420] p-6 rounded-2xl border border-white/5 hover:border-purple-500/30 transition-colors group">
+                            <Layers size={32} className="text-purple-500 mb-4 group-hover:scale-110 transition-transform"/>
+                            <h4 className="text-white font-bold mb-2">Donanım & Yazılım</h4>
+                            <p className="text-xs text-slate-400">Tam entegrasyonlu çözüm.</p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="bg-[#0f1420] p-6 rounded-2xl border border-white/5 hover:border-green-500/30 transition-colors group">
+                            <ShieldCheck size={32} className="text-green-500 mb-4 group-hover:scale-110 transition-transform"/>
+                            <h4 className="text-white font-bold mb-2">Aura Güvencesi</h4>
+                            <p className="text-xs text-slate-400">Yapılan her işleme %100 garanti.</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 p-6 rounded-2xl border border-cyan-500/20 flex flex-col justify-center items-center text-center group hover:border-cyan-500/50 transition-colors">
+                            <div className="mb-2 p-3 bg-cyan-500/10 rounded-full group-hover:bg-cyan-500/20 transition-colors">
+                                <Award size={28} className="text-cyan-400"/>
+                            </div>
+                            <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Yüksek Performans Merkezi</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+      </section>
+
       {/* WHATSAPP BUTONU */}
       <a href="https://wa.me/905396321469" target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-4 rounded-full shadow-[0_0_20px_rgba(37,211,102,0.4)] hover:shadow-[0_0_30px_rgba(37,211,102,0.6)] hover:scale-110 transition-all duration-300 flex items-center justify-center" aria-label="WhatsApp Destek">
         <MessageCircle size={28} fill="white" className="text-white" />
         <span className="absolute right-full mr-3 bg-white text-black px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">Hızlı Destek</span>
       </a>
-
-      {/* FOOTER TAMAMEN KALDIRILDI (Çünkü layout.tsx'den geliyor) */}
       
     </div>
   );

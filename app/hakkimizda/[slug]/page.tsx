@@ -1,18 +1,16 @@
 "use client";
 
-import React from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { 
   Smartphone, Bot, Laptop, Cpu, Wrench, 
   ShieldCheck, ArrowLeft, Zap, Layers, Microscope, 
-  Activity, CheckCircle, Component, Search, Binary, BrainCircuit, Scan, HardDrive
+  Activity, CheckCircle, Component, Search, Binary, BrainCircuit, Scan
 } from "lucide-react";
 
-// --- HİZMET VERİLERİ (Genişletilmiş) ---
+// --- GÜNCELLENMİŞ VE GENİŞLETİLMİŞ HİZMET VERİLERİ ---
 const hizmetDetaylari: any = {
   "telefon": {
-    id: "telefon",
     baslik: "Cep Telefonu Laboratuvarı",
     aciklama: "Standart parça değişiminin ötesinde; şematik analiz ve tersine mühendislik yöntemleriyle, 'tamir edilemez' denilen arızalara Ar-Ge odaklı çözümler üretiyoruz.",
     renk: "text-cyan-400",
@@ -31,7 +29,6 @@ const hizmetDetaylari: any = {
     surec: "Telefonunuz ESD korumalı laboratuvara alınır. Önce endüstriyel cihazlarla 'Arıza Haritası' çıkarılır, ardından sadece gerekli müdahale yapılır."
   },
   "robot": {
-    id: "robot",
     baslik: "Robot Süpürge Ar-Ge Merkezi",
     aciklama: "Roborock, Xiaomi ve Dreame gibi otonom sistemlerin sadece mekanik değil, sensör ve yazılım tabanlı tüm 'davranışsal' arızalarını çözümlüyoruz.",
     renk: "text-purple-400",
@@ -50,7 +47,6 @@ const hizmetDetaylari: any = {
     surec: "Robotunuz bir teste tabi tutulmaz, simüle edilmiş ev ortamında 'davranış testine' sokulur. Yazılımsal ve donanımsal tüm hatalar raporlanır."
   },
   "bilgisayar": {
-    id: "bilgisayar",
     baslik: "Bilgisayar & İleri Elektronik",
     aciklama: "Sadece format atıp geçenlerden değiliz. Gaming laptop, MacBook ve Endüstriyel PC'lerin elektronik kart seviyesindeki en karmaşık sorunlarını çözüyoruz.",
     renk: "text-green-400",
@@ -60,54 +56,30 @@ const hizmetDetaylari: any = {
     ikon: Laptop,
     ozellikler: [
       { baslik: "BGA & Chipset Rework", detay: "Görüntü vermeyen cihazlarda ekran kartı (GPU) ve kuzey köprüsü çip değişimi.", ikon: Component },
-      { baslik: "Endüstriyel Kart Onarımı", detay: "Standart dışı, özel üretim anakartların devre takibi ve komponent değişimi.", ikon: Activity },
+      { baslik: "Endüstriyel Kart Onarımı", detay: "Standart dışı, özel üretim anakartların devre takibi ve komponent değişimi.", ikon: activityMonitorIcon },
       { baslik: "Termal Mühendislik", detay: "Fabrikasyon termal macun yerine, sıvı metal veya endüstriyel pedlerle soğutma modifikasyonu.", ikon: Zap },
       { baslik: "BIOS & IO Programlama", detay: "Çökmüş BIOS, ME Region temizliği ve Super I/O yazılım sorunlarının giderilmesi.", ikon: Binary },
       { baslik: "Kasa & Menteşe Restorasyonu", detay: "Kırık laptop kasaları için plastik kaynak ve güçlendirilmiş menteşe onarımı.", ikon: ShieldCheck },
       { baslik: "Güç Devresi Analizi", detay: "Hiç elektrik almayan cihazlarda Mosfet, kapasitör ve PWM entegre taraması.", ikon: Search },
     ],
     surec: "Cihazınız önce stres testlerine sokulur, termal kameralarla ısınma haritası çıkarılır ve darboğaz yaratan donanım tespit edilip iyileştirilir."
-  },
-  "veri-kurtarma": {
-    id: "veri-kurtarma",
-    baslik: "Profesyonel Veri Kurtarma",
-    aciklama: "Silinen, bozulan veya erişilemeyen verilerinizi en son teknoloji donanım ve yazılımlarla geri getiriyoruz.",
-    renk: "text-orange-400",
-    borderRenk: "border-orange-500/20",
-    bgGradient: "from-orange-500/20 to-red-600/10",
-    glow: "shadow-orange-500/20",
-    ikon: HardDrive,
-    ozellikler: [
-      { baslik: "Mekanik Disk Onarımı", detay: "Kafa vuran veya motoru sıkışan disklerin temiz oda ortamında açılıp onarılması.", ikon: Wrench },
-      { baslik: "SSD & Flash Bellek", detay: "Kontrolcü arızası olan çip tabanlı depolama birimlerinden ham veri okuma.", ikon: Cpu },
-      { baslik: "Fidye Yazılımı Çözümü", detay: "Cryptolocker gibi virüslerle şifrelenmiş dosyaların analiz ve kurtarma süreci.", ikon: ShieldCheck },
-      { baslik: "RAID & Sunucu", detay: "Çökmüş RAID yapılarının ve sunucu disklerinin yeniden yapılandırılması.", ikon: Layers },
-      { baslik: "Mobil Veri Kurtarma", detay: "Açılmayan telefonlardan rehber, fotoğraf ve WhatsApp verilerinin kurtarılması.", ikon: Smartphone },
-      { baslik: "Dosya Sistemi Onarımı", detay: "RAW formatına dönüşmüş veya biçimlendirilmiş disklerden dosya ayıklama.", ikon: Binary },
-    ],
-    surec: "Medyanız önce analiz edilir, kurtarılabilir veri listesi çıkarılır. Onayınızla veriler güvenli bir diske aktarılıp teslim edilir."
   }
 };
 
+// İkon hatalarını önlemek için yardımcı fonksiyonlar
+function ScanFace(props:any) { return <Activity {...props} /> } 
+function activityMonitorIcon(props:any) { return <Activity {...props} /> }
+
 export default function HizmetDetay() {
-  // useParams yerine usePathname kullanarak slug'ı manuel alıyoruz (Daha güvenli)
-  const pathname = usePathname();
-  // pathname örneği: "/hizmetler/telefon" -> son kısmı alıyoruz
-  const slug = pathname?.split("/").pop(); 
-  
-  const veri = slug ? hizmetDetaylari[slug] : null;
+  const params = useParams();
+  const slug = params?.slug as string; 
+  const veri = hizmetDetaylari[slug];
 
   if (!veri) {
     return (
       <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white">
-        <div className="text-center space-y-4">
-            <h1 className="text-6xl font-black text-slate-800">404</h1>
-            <h2 className="text-2xl font-bold text-white">Hizmet Bulunamadı</h2>
-            <p className="text-slate-400">Aradığınız hizmet sayfası mevcut değil veya taşınmış olabilir.</p>
-            <Link href="/hizmetler" className="inline-block px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold transition-colors">
-                Tüm Hizmetlere Dön
-            </Link>
-        </div>
+        <h1 className="text-4xl font-bold mb-4">Hizmet Bulunamadı</h1>
+        <Link href="/" className="text-cyan-500 underline">Ana Sayfaya Dön</Link>
       </div>
     );
   }
@@ -122,8 +94,8 @@ export default function HizmetDetay() {
 
       {/* HEADER / HERO */}
       <div className="container mx-auto px-6 mb-20 relative z-10">
-        <Link href="/hizmetler" className="inline-flex items-center gap-2 text-slate-500 hover:text-white mb-8 transition-colors text-sm font-bold">
-            <ArrowLeft size={16}/> Tüm Hizmetler
+        <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-white mb-8 transition-colors text-sm font-bold">
+            <ArrowLeft size={16}/> Ana Sayfaya Dön
         </Link>
         
         <div className={`relative bg-gradient-to-r from-[#0f172a] to-[#020617] border border-white/10 rounded-3xl p-8 md:p-16 overflow-hidden group shadow-2xl`}>
@@ -142,7 +114,7 @@ export default function HizmetDetay() {
         </div>
       </div>
 
-      {/* DETAY KARTLARI (GRID) */}
+      {/* DETAY KARTLARI (GRID - GENİŞLETİLMİŞ) */}
       <div className="container mx-auto px-6 mb-24 relative z-10">
         <div className="flex items-center gap-3 mb-8">
             <div className={`p-2 rounded-lg bg-white/5 ${veri.renk}`}><Wrench size={20} /></div>
