@@ -6,8 +6,8 @@ import {
   Search, ArrowRight, Users, Tag, ShieldCheck, 
   Smartphone, Zap, Laptop, ShoppingBag, 
   CheckCircle2, Package, ChevronRight, Activity, Trophy, 
-  HeartPulse, MessageCircle, MonitorPlay, Send, Award, 
-  Cpu, Layers, FileSearch, Fingerprint, Microscope, CircuitBoard, Gem
+  HeartPulse, MessageCircle, Send, Award, 
+  Cpu, Layers, FileSearch, Microscope, CircuitBoard, Gem
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase"; 
@@ -37,7 +37,8 @@ export default function Home() {
              id: item.id,
              name: item.ad,
              price: item.fiyat,
-             image: item.resim_url,
+             // GÜNCELLEME: Yeni 'images' dizisi varsa ilkini al, yoksa eski 'resim_url'i kullan
+             image: (item.images && item.images.length > 0) ? item.images[0] : item.resim_url,
              category: item.kategori,
              tag: "Fırsat" 
            }));
@@ -238,83 +239,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* NASIL ÇALIŞIR */}
-      <section className="py-24 relative overflow-hidden bg-[#0a0f18] border-y border-white/5">
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-600/10 rounded-full blur-[150px] pointer-events-none"></div>
-        <div className="absolute right-0 bottom-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none"></div>
-
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center mb-24">
-              <div className="inline-block mb-4 px-4 py-1.5 bg-cyan-950/30 rounded-full border border-cyan-500/20 text-xs font-bold text-cyan-400 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(6,182,212,0.2)]">Süreç Yönetimi</div>
-              <h2 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
-               Nasıl <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Çalışır?</span>
-              </h2>
-              <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">Şeffaf, izlenebilir ve profesyonel işlem adımları.</p>
-          </div>
-
-          <div className="relative">
-            <div className="hidden lg:block absolute top-[85px] left-0 w-full h-[3px] bg-slate-800/50 overflow-hidden rounded-full">
-               <div className="absolute top-0 left-0 h-full w-1/2 bg-gradient-to-r from-transparent via-cyan-500 to-transparent animate-shimmer-fast opacity-50"></div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {/* Adım 1 */}
-              <div className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-cyan-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
-                    <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-cyan-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.15)] group-hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-cyan-900/20 to-transparent">
-                       <Activity className="text-cyan-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
-                       <div className="absolute -top-3 -right-3 w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">1</div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-cyan-400 transition-colors">Kayıt & Analiz</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Sistemimiz üzerinden arıza kaydı oluşturun, ön teknik analiz başlasın.</p>
-                  </div>
-              </div>
-
-              {/* Adım 2 */}
-              <div className="relative group lg:mt-12">
-                  <div className="absolute -inset-1 bg-gradient-to-b from-purple-500 to-pink-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-purple-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
-                    <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-purple-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.15)] group-hover:shadow-[0_0_40px_rgba(168,85,247,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-purple-900/20 to-transparent">
-                       <Send className="text-purple-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]" />
-                       <div className="absolute -top-3 -right-3 w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">2</div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-purple-400 transition-colors">Güvenli Transfer</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Yurtiçi Kargo iş ortaklığımızla cihazınız sigortalı ve ücretsiz olarak laboratuvarımıza ulaşır.</p>
-                  </div>
-              </div>
-
-              {/* Adım 3 */}
-              <div className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-b from-pink-500 to-orange-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-pink-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
-                    <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-pink-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(236,72,153,0.15)] group-hover:shadow-[0_0_40px_rgba(236,72,153,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-pink-900/20 to-transparent">
-                       <CircuitBoard className="text-pink-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(236,72,153,0.8)]" />
-                       <div className="absolute -top-3 -right-3 w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">3</div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-pink-400 transition-colors">Teknik Müdahale</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Uzmanlarımız tarafından anakart seviyesinde müdahale ve orijinal parça değişimi yapılır.</p>
-                  </div>
-              </div>
-
-               {/* Adım 4 */}
-               <div className="relative group lg:mt-12">
-                  <div className="absolute -inset-1 bg-gradient-to-b from-green-500 to-emerald-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-green-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
-                    <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-green-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.15)] group-hover:shadow-[0_0_40px_rgba(34,197,94,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-green-900/20 to-transparent">
-                       <CheckCircle2 className="text-green-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
-                       <div className="absolute -top-3 -right-3 w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">4</div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-green-400 transition-colors">Son Kontrol & Teslim</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Stres testlerinden geçen cihazınız sterilize edilir ve size geri gönderilir.</p>
-                  </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* --- AURA STORE VİTRİNİ --- */}
       <section className="py-28 relative overflow-hidden bg-[#050810]">
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-pink-600/10 rounded-full blur-[150px] pointer-events-none"></div>
@@ -337,6 +261,7 @@ export default function Home() {
                         const fallbackGradient = getRandomGradient(i);
 
                         return (
+                          // KRİTİK DÜZELTME: Link'i ürün ID'sine yönlendiriyoruz (product.id)
                           <Link href={`/magaza/${product.id}`} key={i} className="group relative rounded-2xl block h-full cursor-pointer hover:-translate-y-2 transition-transform duration-500">
                               <div className={`absolute -inset-[1px] bg-gradient-to-b from-indigo-500 to-purple-600 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-500 group-hover:blur-md`}></div>
                               <div className="relative bg-[#11151d] rounded-2xl overflow-hidden h-full flex flex-col border border-white/5 group-hover:border-white/10 transition-colors">
@@ -349,6 +274,7 @@ export default function Home() {
                                          <Package size={48} className="text-white/40 drop-shadow-md"/>
                                       </div>
 
+                                      {/* GÜNCELLEME: Yeni resim mantığı (varsa yeniyi, yoksa eskiyi göster) */}
                                       {product.image && (
                                         <img 
                                           src={product.image} 

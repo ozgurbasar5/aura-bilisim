@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+// DÜZELTME 1: 'Star' import listesine eklendi.
 import { 
   ShoppingBag, Star, Smartphone, Laptop, Zap, Filter, ArrowRight, 
   Watch, Box, Image as ImageIcon, Wrench,
@@ -18,13 +19,11 @@ export default function MagazaPage() {
   const router = useRouter();
   const pathname = usePathname();
   
-  // --- Ürün State'leri ---
   const [products, setProducts] = useState<any[]>([]);
   const [category, setCategory] = useState("Tümü");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // --- Navbar State'leri ---
   const [menuAcik, setMenuAcik] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -37,7 +36,6 @@ export default function MagazaPage() {
       { id: "Yedek Parça", label: "Yedek Parça", icon: Box },
   ];
 
-  // Navbar Scroll Efekti
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -48,7 +46,6 @@ export default function MagazaPage() {
 
   const isActive = (path: string) => pathname === path;
 
-  // Veri Çekme
   useEffect(() => {
     const fetchProductsFromSQL = async () => {
         try {
@@ -58,8 +55,6 @@ export default function MagazaPage() {
             let { data, error } = await supabase
                 .from('urunler')
                 .select('*')
-                // DÜZELTME: Hem boolean 'true' hem string 'Satışta' olanları kabul et.
-                // Satıldı, Kargolandı vb. olanlar bu filtreye takılmayıp gizlenecek.
                 .or('stok_durumu.eq.Satışta,stok_durumu.eq.true') 
                 .order('created_at', { ascending: false });
 
@@ -74,9 +69,10 @@ export default function MagazaPage() {
                     name: item.ad || "İsimsiz Ürün",
                     price: item.fiyat || 0,
                     category: item.kategori || "Genel",
-                    image: item.resim_url || "",
+                    // Çoklu resim desteği: Varsa ilkini al, yoksa eskisine bak
+                    image: (item.images && item.images.length > 0) ? item.images[0] : (item.resim_url || ""),
                     description: item.aciklama || "",
-                    status: "Stokta" // Filtreden geçtiyse stoktadır
+                    status: "Stokta" 
                 }));
 
                 setProducts(mappedProducts);
@@ -91,14 +87,6 @@ export default function MagazaPage() {
     fetchProductsFromSQL();
   }, []);
 
-  const createSlug = (name: string) => {
-      if (!name) return "";
-      return name.toString().toLowerCase()
-        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-        .replace(/\s+/g, '-').replace(/[^\w\-]+/g, '').replace(/\-\-+/g, '-');
-  };
-
   const filteredProducts = products.filter(p => {
       const matchesCategory = category === "Tümü" || p.category === category;
       const matchesSearch = (p.name || "").toLowerCase().includes(search.toLowerCase());
@@ -108,7 +96,7 @@ export default function MagazaPage() {
   return (
     <main className="min-h-screen bg-[#020617] text-white pt-28 relative font-sans selection:bg-cyan-500/30">
       
-      {/* --- YENİ NAVBAR BAŞLANGIÇ --- */}
+      {/* --- NAVBAR --- */}
       <nav 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
           scrolled 
@@ -117,11 +105,7 @@ export default function MagazaPage() {
         } print:hidden`}
       >
         <div className="container mx-auto px-6 h-full flex items-center justify-between">
-          
-          {/* 1. SOL: "THE INTEGRATED CIRCUIT" LOGO */}
           <Link href="/" className="flex items-center gap-3.5 group select-none shrink-0" onClick={() => setMenuAcik(false)}>
-            
-            {/* LOGO SEMBOLÜ (SVG) */}
             <div className="relative w-11 h-11 flex items-center justify-center">
                 <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-60 group-hover:opacity-100 group-hover:bg-cyan-400/30 transition-all duration-500"></div>
                 <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -145,8 +129,6 @@ export default function MagazaPage() {
                   <rect x="71" y="52.5" width="5" height="1.5" fill="url(#coreGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
                 </svg>
             </div>
-            
-            {/* LOGO YAZISI */}
             <div className="flex flex-col justify-center">
                 <div className="font-extrabold text-[22px] tracking-tight leading-none text-white flex items-center gap-1 group-hover:text-cyan-50 transition-colors">
                    AURA<span className="text-cyan-400">BİLİŞİM</span>
@@ -157,7 +139,6 @@ export default function MagazaPage() {
             </div>
           </Link>
 
-          {/* 2. ORTA: MENÜ LİNKLERİ */}
           <div className="hidden xl:flex items-center gap-8">
               {[
                 { href: "/", label: "Ana Sayfa" },
@@ -179,42 +160,24 @@ export default function MagazaPage() {
               ))}
           </div>
 
-          {/* 3. SAĞ: BUTONLAR */}
           <div className="flex items-center gap-3 shrink-0">
-              {/* Arama */}
               <button className="hidden md:flex text-slate-400 hover:text-white transition-colors p-2.5 hover:bg-white/5 rounded-full">
                   <Search size={20} />
               </button>
-
-              {/* Aura Store */}
-              <Link 
-                href="/magaza" 
-                className="hidden lg:flex items-center gap-2 border border-slate-700/50 bg-[#0f172a] hover:bg-slate-800 text-slate-200 px-5 py-2.5 rounded-xl font-bold text-xs transition-all group"
-              >
+              <Link href="/magaza" className="hidden lg:flex items-center gap-2 border border-slate-700/50 bg-[#0f172a] hover:bg-slate-800 text-slate-200 px-5 py-2.5 rounded-xl font-bold text-xs transition-all group">
                   <ShoppingBag size={16} className="text-purple-400 group-hover:text-purple-300 transition-colors"/> 
                   <span>MAĞAZA</span>
               </Link>
-
-              {/* Onarım Talebi */}
-              <Link 
-                href="/onarim-talebi" 
-                className="hidden md:flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg shadow-cyan-900/20 hover:-translate-y-0.5 active:scale-95 border border-white/10"
-              >
+              <Link href="/onarim-talebi" className="hidden md:flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg shadow-cyan-900/20 hover:-translate-y-0.5 active:scale-95 border border-white/10">
                   <Wrench size={16} className="text-white fill-white/20"/> 
                   <span>ONARIM BAŞLAT</span>
               </Link>
-
-              {/* Mobil Menü Butonu */}
-              <button 
-                onClick={() => setMenuAcik(!menuAcik)} 
-                className="xl:hidden p-2 text-slate-300 hover:text-white transition-colors"
-              >
+              <button onClick={() => setMenuAcik(!menuAcik)} className="xl:hidden p-2 text-slate-300 hover:text-white transition-colors">
                     {menuAcik ? <X size={28}/> : <Menu size={28}/>}
               </button>
           </div>
         </div>
 
-        {/* 4. MOBİL MENÜ */}
         {menuAcik && (
           <>
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 xl:hidden" onClick={() => setMenuAcik(false)}></div>
@@ -226,14 +189,7 @@ export default function MagazaPage() {
                 { href: "/sss", label: "S.S.S", icon: HelpCircle },
                 { href: "/iletisim", label: "İletişim", icon: Phone },
               ].map((item) => (
-                <Link 
-                  key={item.href}
-                  href={item.href} 
-                  onClick={() => setMenuAcik(false)} 
-                  className={`py-4 px-4 rounded-lg font-bold flex items-center gap-4 transition-all ${
-                    isActive(item.href) ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400 hover:bg-white/5 hover:text-white"
-                  }`}
-                >
+                <Link key={item.href} href={item.href} onClick={() => setMenuAcik(false)} className={`py-4 px-4 rounded-lg font-bold flex items-center gap-4 transition-all ${isActive(item.href) ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}>
                   <item.icon size={20}/> {item.label}
                 </Link>
               ))}
@@ -249,7 +205,6 @@ export default function MagazaPage() {
           </>
         )}
       </nav>
-      {/* --- YENİ NAVBAR BİTİŞ --- */}
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 relative z-10">
         
@@ -305,9 +260,10 @@ export default function MagazaPage() {
                     const hasImage = rawImage && rawImage.length > 5;
 
                     return (
+                        // DÜZELTME 2: Link adresi createSlug() yerine urun.id yapıldı.
                         <div 
                             key={urun.id} 
-                            onClick={() => router.push(`/magaza/${createSlug(urun.name)}`)} 
+                            onClick={() => router.push(`/magaza/${urun.id}`)} 
                             className="bg-[#0f172a] border border-slate-800 rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-all group hover:-translate-y-2 cursor-pointer flex flex-col"
                         >
                             <div className="h-60 bg-[#1e293b] relative flex items-center justify-center overflow-hidden border-b border-slate-800">

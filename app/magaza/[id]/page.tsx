@@ -1,19 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { 
-  ArrowLeft, Share2, ShieldCheck, Box, RefreshCw, 
-  Phone, MessageCircle, Calendar, Tag, Hash, 
-  Cpu, Maximize2, Truck, Wallet, CheckCircle2, Layers, ExternalLink,
-  Wrench, ShoppingBag, Search, Instagram, Facebook, Twitter, MapPin, Mail, Lock, 
-  FileCheck, BadgeCheck, Package
+  ArrowLeft, ShoppingBag, ShieldCheck, MapPin, Truck, 
+  MessageCircle, Calendar, Tag, Hash, 
+  Maximize2, FileCheck, BadgeCheck, Package,
+  Phone, Layers, Box, RefreshCw, Wrench, Instagram, Facebook, Twitter
 } from "lucide-react";
-import { supabase } from "@/app/lib/supabase"; // Supabase Bağlantısı
+import { supabase } from "@/app/lib/supabase"; 
 
 export default function UrunDetaySayfasi() {
-  const params = useParams(); // URL'den ID'yi al
+  const params = useParams(); 
   const [product, setProduct] = useState<any>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [activeTab, setActiveTab] = useState("aciklama");
@@ -23,25 +22,40 @@ export default function UrunDetaySayfasi() {
     async function fetchProduct() {
       if (!params?.id) return;
       
-      const { data } = await supabase
-        .from('urunler')
-        .select('*')
-        .eq('id', params.id)
-        .single();
+      const term = params.id as string;
+      let query = supabase.from('urunler').select('*');
+
+      // --- KRİTİK DÜZELTME BURADA ---
+      // Eğer gelen parametre bir SAYI ise (örn: 17), ID araması yap
+      if (!isNaN(Number(term))) {
+          query = query.eq('id', term);
+      } else {
+          // Eğer gelen parametre YAZI ise (örn: 70mai-a500s), İSİM araması yap
+          // URL'deki %20 gibi boşluk karakterlerini düzeltiyoruz
+          const decodedName = decodeURIComponent(term);
+          
+          // 'ilike' kullanarak büyük/küçük harf duyarlılığını kaldırıyoruz (daha garanti bulur)
+          // Not: Eğer ürün adında tire (-) yoksa ama URL'de varsa, bu yine bulamayabilir.
+          // En garantisi ID kullanmaktır ama bu yöntem isimle de çalışmasını sağlar.
+          query = query.ilike('ad', decodedName); 
+      }
+
+      const { data } = await query.single();
 
       if (data) {
-        // Veritabanı verisini UI formatına dönüştür
+        // Eski 'resim_url' sütununu da destekle (yeni resim yoksa eskisine bak)
+        const imageList = data.images && data.images.length > 0 
+            ? data.images 
+            : (data.resim_url ? [data.resim_url] : []);
+
         setProduct({
             id: data.id,
             name: data.ad,
             price: data.fiyat,
             description: data.aciklama,
-            images: data.resim_url ? [data.resim_url] : [], // Tek resim varsa array yap
+            images: imageList, 
             category: data.kategori,
             date: new Date(data.created_at).toLocaleDateString('tr-TR'),
-            // Ekstra linkler (varsa DB'ye eklenmeli, şimdilik boş)
-            sahibindenLink: "",
-            dolapLink: ""
         });
       }
       setLoading(false);
@@ -60,7 +74,10 @@ export default function UrunDetaySayfasi() {
     <div className="min-h-screen bg-[#02040a] flex flex-col items-center justify-center text-white gap-4">
         <Package size={48} className="text-slate-600"/>
         <p className="text-slate-500 text-sm">Ürün bulunamadı.</p>
-        <Link href="/epanel/magaza" className="text-cyan-500 hover:underline text-xs">Mağazaya Dön</Link>
+        <div className="flex flex-col gap-2 items-center">
+            <span className="text-xs text-slate-600">Aranan: {decodeURIComponent(params.id as string)}</span>
+            <Link href="/magaza" className="text-cyan-500 hover:underline text-xs mt-2">Mağazaya Dön</Link>
+        </div>
     </div>
   );
 
@@ -88,10 +105,10 @@ export default function UrunDetaySayfasi() {
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <div className="absolute top-[-10%] left-[-10%] w-[700px] h-[700px] bg-purple-600/20 blur-[150px] rounded-full mix-blend-screen animate-pulse"></div>
           <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-cyan-500/15 blur-[130px] rounded-full mix-blend-screen"></div>
-          <div className="absolute bottom-[-10%] left-[20%] w-[800px] h-[600px] bg-blue-700/15 blur-[160px] rounded-full mix-blend-screen"></div>
       </div>
 
-      <div className="container mx-auto px-4 pt-32 grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10 flex-1">
+      {/* Padding düzeltildi: pt-40 */}
+      <div className="container mx-auto px-4 pt-40 grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10 flex-1">
           
           <div className="lg:col-span-12 mb-[-20px] lg:mb-0">
              <Link href="/epanel/magaza" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-bold">
@@ -105,7 +122,7 @@ export default function UrunDetaySayfasi() {
                   <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/40 via-blue-500/40 to-purple-600/40 rounded-[2rem] blur-lg opacity-60 group-hover:opacity-100 transition duration-1000"></div>
                   <div className="relative bg-[#050505] rounded-[1.8rem] overflow-hidden border border-white/10 shadow-2xl aspect-[4/3] flex items-center justify-center">
                       {product.images && product.images.length > 0 ? (
-                          <img src={product.images[activeImage]} className="max-w-full max-h-full object-contain z-10 relative transition-transform duration-700 hover:scale-105" />
+                          <img src={product.images[activeImage]} className="w-full h-full object-contain z-10 relative transition-transform duration-700 hover:scale-105" />
                       ) : (
                           <div className="text-slate-700 font-bold flex flex-col items-center gap-2"><ShoppingBag size={48} className="opacity-20"/>Görsel Yok</div>
                       )}
@@ -113,6 +130,7 @@ export default function UrunDetaySayfasi() {
                   </div>
               </div>
               
+              {/* KÜÇÜK RESİMLER (THUMBNAILS) */}
               {product.images && product.images.length > 1 && (
                   <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
                       {product.images.map((img: string, i: number) => (
@@ -136,26 +154,25 @@ export default function UrunDetaySayfasi() {
                           </div>
                       ) : (
                           <div className="space-y-6">
-                              {/* Güvenlik & Teslimat Detayları */}
                               <div className="flex gap-5 items-start group">
                                   <div className="p-3.5 bg-cyan-500/10 rounded-2xl border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors"><FileCheck className="text-cyan-400" size={24}/></div>
                                   <div>
                                       <h4 className="font-bold text-white mb-1.5 text-lg">Teknik Servis Onaylı</h4>
-                                      <p className="text-sm text-slate-400 leading-relaxed">Bu cihaz, Aura Bilişim laboratuvarlarında <strong>24 noktalı teknik kontrolden</strong> geçmiştir. Tüm fonksiyonları test edilmiş ve onaylanmıştır.</p>
+                                      <p className="text-sm text-slate-400 leading-relaxed">Bu cihaz, Aura Bilişim laboratuvarlarında <strong>24 noktalı teknik kontrolden</strong> geçmiştir.</p>
                                   </div>
                               </div>
                               <div className="flex gap-5 items-start group">
                                   <div className="p-3.5 bg-blue-500/10 rounded-2xl border border-blue-500/20 group-hover:bg-blue-500/20 transition-colors"><ShieldCheck className="text-blue-400" size={24}/></div>
                                   <div>
                                       <h4 className="font-bold text-white mb-1.5 text-lg">Mağaza Garantisi</h4>
-                                      <p className="text-sm text-slate-400 leading-relaxed">Satın aldığınız ürün, aksi belirtilmedikçe <strong>3 Ay Aura Bilişim Mağaza Garantisi</strong> altındadır. Sorun durumunda birebir destek sağlanır.</p>
+                                      <p className="text-sm text-slate-400 leading-relaxed">Satın aldığınız ürün, aksi belirtilmedikçe <strong>3 Ay Aura Bilişim Mağaza Garantisi</strong> altındadır.</p>
                                   </div>
                               </div>
                               <div className="flex gap-5 items-start group">
                                   <div className="p-3.5 bg-purple-500/10 rounded-2xl border border-purple-500/20 group-hover:bg-purple-500/20 transition-colors"><Truck className="text-purple-400" size={24}/></div>
                                   <div>
                                       <h4 className="font-bold text-white mb-1.5 text-lg">Güvenli Kargo & Paketleme</h4>
-                                      <p className="text-sm text-slate-400 leading-relaxed">Şehir dışı gönderimlerde havalı ambalaj ve darbe emici kutu kullanılır. Kargoya verilmeden önce cihazın çalışır durumdaki videosu tarafınıza iletilir.</p>
+                                      <p className="text-sm text-slate-400 leading-relaxed">Kargoya verilmeden önce cihazın çalışır durumdaki videosu tarafınıza iletilir.</p>
                                   </div>
                               </div>
                           </div>
@@ -185,14 +202,13 @@ export default function UrunDetaySayfasi() {
                   </div>
               </div>
 
-              {/* --- ÜRÜN KÜNYESİ --- */}
+              {/* ÜRÜN KÜNYESİ */}
               <div className="bg-[#0a0c14]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-7">
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-white/5 pb-3"><Tag size={16} className="text-cyan-500"/> Ürün Künyesi</h3>
                   <div className="space-y-4">
                       <DetailRow icon={<Hash/>} label="İLAN NO" value={`#${product.id}`} />
                       <DetailRow icon={<Calendar/>} label="İLAN TARİHİ" value={product.date} />
                       <DetailRow icon={<Layers/>} label="KATEGORİ" value={product.category} valueColor="text-cyan-400" />
-                      
                       <DetailRow icon={<BadgeCheck/>} label="DURUM" value="İkinci El (Kontrol Edilmiş)" />
                       <DetailRow icon={<ShieldCheck/>} label="GARANTİ" value="Var (Mağaza Garantili)" valueColor="text-green-400" />
                       <DetailRow icon={<MapPin/>} label="KONUM" value="İstanbul / Beylikdüzü" />
@@ -242,7 +258,7 @@ export default function UrunDetaySayfasi() {
   );
 }
 
-// Yardımcılar
+// Yardımcı Bileşenler
 function DetailRow({ icon, label, value, valueColor = "text-slate-200", bg }: any) {
     return (
         <div className={`flex justify-between items-center p-3.5 rounded-xl ${bg || 'hover:bg-white/5'} transition-colors group border border-transparent hover:border-white/5`}>
@@ -259,17 +275,6 @@ function FeatureBadge({ icon, label, color, border, bg }: any) {
         <div className={`flex items-center justify-center gap-2 p-3 rounded-xl border ${border} ${bg} ${color} transition-all hover:bg-opacity-20`}>
             {icon}<span className="text-[10px] font-black tracking-wider uppercase">{label}</span>
         </div>
-    )
-}
-
-function PlatformBtn({ name, link, color, borderColor, icon }: any) {
-    return (
-        <a href={link} target="_blank" className={`relative group overflow-hidden rounded-2xl border ${borderColor} bg-gradient-to-br ${color} backdrop-blur-md p-3 flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 hover:shadow-xl active:scale-95`}>
-            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <span className="text-lg font-black text-white">{icon}</span>
-            <span className="text-[8px] font-bold text-white tracking-widest">{name}</span>
-            <ExternalLink size={10} className="absolute top-2 right-2 text-white/50 group-hover:text-white"/>
-        </a>
     )
 }
 
