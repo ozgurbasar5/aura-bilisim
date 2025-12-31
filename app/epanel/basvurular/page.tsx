@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase";
-import { Users, ArrowRight, CheckCircle, Clock } from "lucide-react";
+import { Users, ArrowRight, CheckCircle, Clock, Trash2 } from "lucide-react"; // Trash2 eklendi
 
 export default function OnlineBasvurular() {
   const [liste, setListe] = useState<any[]>([]);
@@ -25,11 +25,31 @@ export default function OnlineBasvurular() {
     getir();
   }, []);
 
+  // --- SİLME FONKSİYONU ---
+  const handleSil = async (id: number) => {
+    if (!confirm("Bu başvuruyu kalıcı olarak silmek istediğinize emin misiniz?")) return;
+
+    const { error } = await supabase
+        .from('onarim_talepleri')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        alert("Silme işlemi başarısız: " + error.message);
+    } else {
+        // Listeyi güncelle (silineni çıkar)
+        setListe(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
   // --- KRİTİK FONKSİYON: Atölyeye Aktar ---
   const handleAtolyeyeAktar = async (basvuru: any) => {
     if(!confirm("Bu kaydı atölyeye aktarmak istiyor musunuz?")) return;
 
-    // 1. Atölye Tablosuna (aura_jobs) Ekle
+    // 1. Rastgele Servis Takip Kodu Oluştur (SRV-XXXXX)
+    const yeniTakipKodu = `SRV-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    // 2. Atölye Tablosuna (aura_jobs) Ekle
     const { error: insertError } = await supabase
       .from('aura_jobs')
       .insert([
@@ -40,7 +60,8 @@ export default function OnlineBasvurular() {
           problem: basvuru.sorun_aciklamasi, // Sorun açıklaması
           status: 'Bekliyor', // Başlangıç durumu
           price: 0,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          tracking_code: yeniTakipKodu 
         }
       ]);
 
@@ -49,15 +70,15 @@ export default function OnlineBasvurular() {
       return;
     }
 
-    // 2. Başvuru Durumunu Güncelle (Listeden düşmesi için)
+    // 3. Başvuru Durumunu Güncelle (Listeden düşmesi için)
     await supabase
       .from('onarim_talepleri')
       .update({ durum: 'islemde' })
       .eq('id', basvuru.id);
 
-    // 3. Listeyi Yenile
+    // 4. Listeyi Yenile
     getir();
-    alert("Kayıt başarıyla atölyeye aktarıldı!");
+    alert(`Kayıt başarıyla atölyeye aktarıldı!\nOluşturulan Servis No: ${yeniTakipKodu}`);
   };
 
   return (
@@ -73,8 +94,8 @@ export default function OnlineBasvurular() {
           {liste.length === 0 && <div className="text-slate-500">Yeni başvuru yok.</div>}
           
           {liste.map((item) => (
-            <div key={item.id} className="bg-[#1E293B] p-5 rounded-2xl border border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
+            <div key={item.id} className="bg-[#1E293B] p-5 rounded-2xl border border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group hover:border-slate-500 transition-colors">
+              <div className="flex-1">
                 <div className="font-bold text-lg text-white">{item.ad_soyad}</div>
                 <div className="text-slate-400 text-sm flex gap-2 items-center">
                    <Clock size={14} /> {new Date(item.created_at).toLocaleDateString('tr-TR')}
@@ -85,14 +106,30 @@ export default function OnlineBasvurular() {
                 <div className="mt-2 text-sm text-slate-300 bg-slate-800 p-2 rounded-lg border border-slate-700 max-w-xl">
                     <span className="text-orange-400 font-bold text-xs">SORUN:</span> {item.sorun_aciklamasi}
                 </div>
+                {/* Teslimat Yöntemi Göstergesi */}
+                <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-white/5 text-slate-400">
+                    {item.teslimat_yontemi === 'kurye' ? '🚛 Kurye / Kargo Talebi' : '📍 Şubeye Gelecek'}
+                </div>
               </div>
               
-              <button 
-                onClick={() => handleAtolyeyeAktar(item)}
-                className="bg-orange-600 hover:bg-orange-500 px-5 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all text-white shadow-lg shadow-orange-900/20"
-              >
-                Kabul Et & Atölye'ye Aktar <ArrowRight size={16}/>
-              </button>
+              <div className="flex items-center gap-3">
+                  {/* SİLME BUTONU */}
+                  <button 
+                    onClick={() => handleSil(item.id)}
+                    className="p-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                    title="Başvuruyu Sil"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+
+                  {/* KABUL ET BUTONU */}
+                  <button 
+                    onClick={() => handleAtolyeyeAktar(item)}
+                    className="bg-orange-600 hover:bg-orange-500 px-5 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all text-white shadow-lg shadow-orange-900/20"
+                  >
+                    Kabul Et & Aktar <ArrowRight size={16}/>
+                  </button>
+              </div>
             </div>
           ))}
         </div>
