@@ -82,7 +82,7 @@ export default function DestekSayfasi() {
                 <div>
                   <h3 className="font-bold text-white group-hover:text-blue-200 transition-colors">Çağrı Merkezi</h3>
                   <p className="text-xs text-slate-500 mb-1">Hafta içi 09:00 - 18:00</p>
-                  <a href="tel:05396321469" className="text-lg font-black text-blue-400 block hover:underline tracking-wide">0539 632 14 69</a>
+                  <a href="tel:05396321429" className="text-lg font-black text-blue-400 block hover:underline tracking-wide">0539 632 14 29</a>
                 </div>
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function DestekSayfasi() {
                 <div>
                   <h3 className="font-bold text-white group-hover:text-green-200 transition-colors">WhatsApp Destek</h3>
                   <p className="text-xs text-slate-500 mb-1">7/24 Mesaj Bırakın</p>
-                  <a href="https://wa.me/905396321469" target="_blank" className="text-lg font-black text-green-400 block hover:underline tracking-wide">0539 632 14 69</a>
+                  <a href="https://wa.me/905396321429" target="_blank" className="text-lg font-black text-green-400 block hover:underline tracking-wide">0539 632 14 29</a>
                 </div>
               </div>
             </div>

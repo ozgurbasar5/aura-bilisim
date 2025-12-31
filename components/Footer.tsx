@@ -94,7 +94,7 @@ export default function Footer() {
                 <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 group-hover:bg-green-500/20 group-hover:text-green-400 transition-colors">
                   <Phone size={18} />
                 </div>
-                <span>0539 632 14 69</span>
+                <span>0539 632 14 29</span>
               </li>
               <li className="flex items-center gap-4 group">
                 <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 group-hover:bg-purple-500/20 group-hover:text-purple-400 transition-colors">
