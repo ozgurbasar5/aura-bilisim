@@ -24,8 +24,8 @@ export default function Iletisim() {
             <div className="bg-[#151921] p-6 rounded-2xl border border-slate-800 flex flex-col items-center text-center hover:border-cyan-500/30 transition-all">
                 <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center text-green-500 mb-4"><Phone/></div>
                 <h3 className="font-bold text-white mb-2">Telefon & WP</h3>
-                <p className="text-sm text-slate-400">0539 632 14 69</p>
-                <p className="text-xs text-slate-500 mt-1">0850 123 45 67 (Çağrı)</p>
+                <p className="text-sm text-slate-400">0539 632 14 29</p>
+                <p className="text-xs text-slate-500 mt-1">0539 632 14 29 (Çağrı)</p>
             </div>
 
             {/* E-POSTA KARTI */}
@@ -33,7 +33,7 @@ export default function Iletisim() {
                 <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center text-purple-500 mb-4"><Mail/></div>
                 <h3 className="font-bold text-white mb-2">E-Posta</h3>
                 <p className="text-sm text-slate-400">destek@aurabilisim.com</p>
-                <p className="text-xs text-slate-500 mt-1">info@aurabilisim.com</p>
+                <p className="text-xs text-slate-500 mt-1"></p>
             </div>
 
             {/* SAATLER KARTI */}

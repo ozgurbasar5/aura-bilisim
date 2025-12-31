@@ -1,28 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Phone, Mail, Lock, Facebook, Instagram, Twitter, ChevronRight } from "lucide-react";
-import BrandLogo from "@/components/BrandLogo"; // Marka logosunu dahil ettik
+import { MapPin, Phone, Mail, Lock, Facebook, Instagram, Twitter, ChevronRight, ShieldCheck } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo"; 
 
 export default function Footer() {
   return (
-    <footer className="relative bg-[#0B0E14] text-slate-400 pt-20 pb-10 border-t border-white/5 overflow-hidden">
+    <footer className="relative bg-[#0B0E14] text-slate-400 pt-20 pb-10 border-t border-white/5 overflow-hidden font-sans">
       
-      {/* --- NEON EFEKTLERİ (Korundu) --- */}
-      {/* Üst Çizgi Glow */}
+      {/* --- NEON EFEKTLERİ --- */}
       <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent shadow-[0_0_20px_rgba(6,182,212,0.8)]"></div>
-      
-      {/* Arka Plan Işık Huzmeleri */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           
-          {/* 1. SÜTUN: LOGO & HAKKINDA (Güncellendi) */}
+          {/* 1. SÜTUN: LOGO & HAKKINDA */}
           <div className="col-span-1">
             <Link href="/" className="inline-block mb-6 group">
-              {/* Eski Wrench ikonu yerine senin yeni BrandLogo bileşenin */}
               <BrandLogo variant="full" className="scale-90 origin-left" />
             </Link>
             
@@ -31,7 +27,6 @@ export default function Footer() {
               <span className="text-white font-medium"> Güvenilir, hızlı ve garantili</span> çözümler üretiyoruz. Donanım ve yazılımın senfonisi.
             </p>
             
-            {/* Sosyal Medya */}
             <div className="flex gap-4">
               {[Instagram, Twitter, Facebook].map((Icon, i) => (
                 <a key={i} href="#" className="w-10 h-10 rounded-lg bg-slate-800/50 flex items-center justify-center hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)]">
@@ -41,15 +36,15 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* 2. SÜTUN: KURUMSAL (Yenilendi & DNA Linki Güncellendi) */}
+          {/* 2. SÜTUN: KURUMSAL */}
           <div>
             <h4 className="font-bold text-white mb-6 text-lg flex items-center gap-2">
               <span className="w-1 h-6 bg-cyan-500 rounded-full"></span> KURUMSAL
             </h4>
             <ul className="space-y-3 text-sm font-medium">
               {[
-                { label: "Hikayemiz & Biyografi", href: "/kurumsal" }, // Kurumsal Sayfa
-                { label: "Logo Anlamı (DNA)", href: "/dna" },         // YENİ: Epik DNA Sayfası
+                { label: "Hikayemiz & Biyografi", href: "/kurumsal" },
+                { label: "Logo Anlamı (DNA)", href: "/dna" },
                 { label: "Cihaz Sorgula", href: "/sorgula" },
                 { label: "İletişim & Ulaşım", href: "/iletisim" }
               ].map((link) => (
@@ -62,7 +57,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* 3. SÜTUN: HİZMETLER (Korundu) */}
+          {/* 3. SÜTUN: HİZMETLER */}
           <div>
             <h4 className="font-bold text-white mb-6 text-lg flex items-center gap-2">
               <span className="w-1 h-6 bg-purple-500 rounded-full"></span> Hizmetlerimiz
@@ -83,7 +78,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* 4. SÜTUN: İLETİŞİM (Korundu) */}
+          {/* 4. SÜTUN: İLETİŞİM */}
           <div>
             <h4 className="font-bold text-white mb-6 text-lg flex items-center gap-2">
               <span className="w-1 h-6 bg-green-500 rounded-full"></span> İletişim
@@ -109,17 +104,19 @@ export default function Footer() {
               </li>
             </ul>
           </div>
-
         </div>
 
-        {/* ALT BAR (COPYRIGHT) */}
-        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
+        {/* ALT BAR (YASAL LİNKLER EKLENDİ) */}
+        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-6 text-xs font-medium text-slate-500">
           <p>&copy; {new Date().getFullYear()} Aura Bilişim Teknolojileri. Tüm hakları saklıdır.</p>
           
-          <div className="flex gap-6 items-center">
-            <Link href="/gizlilik" className="hover:text-white transition-colors">Gizlilik Politikası</Link>
-            <Link href="/kullanim" className="hover:text-white transition-colors">Kullanım Şartları</Link>
-            <Link href="/login" className="flex items-center gap-2 text-cyan-500 hover:text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-full transition-all hover:bg-cyan-500/20">
+          <div className="flex flex-wrap justify-center gap-6 items-center">
+            <Link href="/gizlilik-politikasi" className="hover:text-white transition-colors">Gizlilik Politikası</Link>
+            <Link href="/kullanim-sartlari" className="hover:text-white transition-colors">Kullanım Şartları</Link>
+            <Link href="/kvkk" className="flex items-center gap-1 hover:text-white transition-colors">
+               <ShieldCheck size={12}/> KVKK Aydınlatma Metni
+            </Link>
+            <Link href="/login" className="flex items-center gap-2 text-cyan-500 hover:text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-full transition-all hover:bg-cyan-500/20 ml-2">
               <Lock size={12}/> Personel Girişi
             </Link>
           </div>
