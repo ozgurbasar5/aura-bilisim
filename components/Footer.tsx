@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Phone, Mail, Lock, Facebook, Instagram, Twitter, ChevronRight, ShieldCheck } from "lucide-react";
-import BrandLogo from "@/components/BrandLogo"; 
+import { 
+  MapPin, Phone, Mail, Lock, Facebook, Instagram, Twitter, 
+  ChevronRight, ShieldCheck, Wrench 
+} from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="relative bg-[#0B0E14] text-slate-400 pt-20 pb-10 border-t border-white/5 overflow-hidden font-sans">
+    <footer className="relative bg-[#020617] text-slate-400 pt-20 pb-10 border-t border-white/5 overflow-hidden font-sans">
       
       {/* --- NEON EFEKTLERİ --- */}
       <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent shadow-[0_0_20px_rgba(6,182,212,0.8)]"></div>
@@ -18,8 +20,27 @@ export default function Footer() {
           
           {/* 1. SÜTUN: LOGO & HAKKINDA */}
           <div className="col-span-1">
-            <Link href="/" className="inline-block mb-6 group">
-              <BrandLogo variant="full" className="scale-90 origin-left" />
+            <Link href="/" className="inline-flex items-center gap-2 mb-6 group">
+                {/* SVG LOGO BURAYA EKLENDİ */}
+                <div className="relative w-8 h-8 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-cyan-500/20 blur-lg rounded-full opacity-60 group-hover:opacity-100 transition-all duration-500"></div>
+                    <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <linearGradient id="footerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#22d3ee" />
+                          <stop offset="100%" stopColor="#3b82f6" />
+                        </linearGradient>
+                      </defs>
+                      <path d="M 50 12 L 22 40 L 22 52 L 12 52 L 12 35 L 45 2 Z" fill="#fff" className="opacity-95"/>
+                      <path d="M 50 88 L 78 60 L 78 48 L 88 48 L 88 65 L 55 98 Z" fill="#fff" className="opacity-95"/>
+                      <rect x="36" y="36" width="28" height="28" rx="3" transform="rotate(45 50 50)" fill="url(#footerGradient)"/>
+                      <rect x="24" y="42" width="8" height="1.5" fill="url(#footerGradient)"/>
+                      <rect x="24" y="46" width="5" height="1.5" fill="url(#footerGradient)"/>
+                      <rect x="68" y="56.5" width="8" height="1.5" fill="url(#footerGradient)"/>
+                      <rect x="71" y="52.5" width="5" height="1.5" fill="url(#footerGradient)"/>
+                    </svg>
+                </div>
+                <div className="font-extrabold text-xl tracking-tight leading-none text-white">AURA<span className="text-cyan-400">BİLİŞİM</span></div>
             </Link>
             
             <p className="text-sm leading-relaxed mb-6 text-slate-400">
@@ -45,7 +66,7 @@ export default function Footer() {
               {[
                 { label: "Hikayemiz & Biyografi", href: "/kurumsal" },
                 { label: "Logo Anlamı (DNA)", href: "/dna" },
-                { label: "Cihaz Sorgula", href: "/sorgula" },
+                { label: "Cihaz Sorgula", href: "/cihaz-sorgula" }, // Düzeltildi
                 { label: "İletişim & Ulaşım", href: "/iletisim" }
               ].map((link) => (
                 <li key={link.label}>
@@ -67,7 +88,7 @@ export default function Footer() {
                 { label: "iPhone Onarım", href: "/hizmetler/telefon" },
                 { label: "Robot Süpürge Bakım", href: "/hizmetler/robot" },
                 { label: "Gaming Laptop Servis", href: "/hizmetler/bilgisayar" },
-                { label: "Veri Kurtarma", href: "/destek" }
+                { label: "Veri Kurtarma", href: "/hizmetler/veri-kurtarma" }
               ].map((link) => (
                 <li key={link.label}>
                   <Link href={link.href} className="flex items-center gap-2 hover:text-purple-400 transition-colors hover:translate-x-1 duration-300">

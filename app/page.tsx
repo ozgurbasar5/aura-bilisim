@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-// GEREKLİ TÜM İKONLAR EKLENDİ (Home çakışmasını önlemek için HomeIcon yapıldı)
 import { 
   Search, ArrowRight, Users, Tag, ShieldCheck, 
   Smartphone, Zap, Laptop, ShoppingBag, 
@@ -21,23 +20,21 @@ export default function Home() {
   const [vitrinUrunleri, setVitrinUrunleri] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // NAVBAR STATE
+  // Navbar state
   const [menuAcik, setMenuAcik] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const isActive = (path: string) => pathname === path;
 
-  // Scroll Efekti
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  
+
   const brandsSource = ["APPLE", "SAMSUNG", "XIAOMI", "ROBOROCK", "DYSON", "HUAWEI", "OPPO", "MONSTER", "ASUS", "LENOVO"];
   const brands = [...brandsSource, ...brandsSource, ...brandsSource, ...brandsSource];
 
-  // Veritabanından vitrin ürünlerini çek
   useEffect(() => {
     const fetchShowcase = async () => {
       try {
@@ -60,12 +57,11 @@ export default function Home() {
            setVitrinUrunleri(mapped);
         }
       } catch (e) {
-        console.error("Vitrin hatası:", e);
+        console.error(e);
       } finally {
         setLoading(false);
       }
     };
-    
     fetchShowcase();
   }, []);
 
@@ -91,11 +87,10 @@ export default function Home() {
   return (
     <div className="relative bg-[#020617] text-white font-sans selection:bg-cyan-500/30 min-h-screen overflow-x-hidden">
       
-      {/* --- YENİ NAVBAR BAŞLANGIÇ --- */}
+      {/* --- NAVBAR --- */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${scrolled ? "bg-[#020617]/95 backdrop-blur-xl border-white/5 h-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" : "bg-[#020617] border-transparent h-24"} print:hidden`}>
         <div className="container mx-auto px-6 h-full flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3.5 group select-none shrink-0" onClick={() => setMenuAcik(false)}>
-            {/* ORİJİNAL SVG LOGO */}
             <div className="relative w-11 h-11 flex items-center justify-center">
                 <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-60 group-hover:opacity-100 group-hover:bg-cyan-400/30 transition-all duration-500"></div>
                 <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -135,7 +130,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-              {/* CİHAZ SORGULA BUTONU */}
+              {/* CİHAZ SORGULA BUTONU EKLENDİ */}
               <Link href="/cihaz-sorgula" className="hidden lg:flex items-center gap-2 border border-slate-700/50 bg-[#0f172a] hover:bg-slate-800 text-slate-200 px-4 py-2.5 rounded-xl font-bold text-xs transition-all group">
                   <Search size={16} className="text-cyan-400 group-hover:text-cyan-300 transition-colors"/> <span>CİHAZ SORGULA</span>
               </Link>
@@ -163,9 +158,7 @@ export default function Home() {
           </div>
         )}
       </nav>
-      {/* --- NAVBAR BİTİŞ --- */}
 
-      {/* ARKA PLAN */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0"></div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-cyan-600/15 rounded-full blur-[150px] pointer-events-none z-0 animate-pulse-slow"></div>
 
@@ -173,18 +166,13 @@ export default function Home() {
       <section className="relative pt-44 pb-20 z-10 overflow-hidden">
         <div className="container mx-auto px-6 text-center relative">
           <div className="inline-flex items-center gap-2 bg-[#0f172a]/80 border border-cyan-500/50 px-4 py-2 rounded-full text-cyan-300 mb-8 backdrop-blur-md shadow-[0_0_25px_rgba(6,182,212,0.3)] animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
-            </span>
+            <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span></span>
             <span className="font-bold tracking-widest uppercase text-[10px] md:text-xs">High-End Teknik Servis</span>
           </div>
           
           <h1 className="text-5xl md:text-8xl font-black mb-8 leading-tight tracking-tight drop-shadow-2xl">
             Teknolojiniz <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-500 to-purple-500 filter drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-               Sınırların Ötesinde.
-            </span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-500 to-purple-500 filter drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">Sınırların Ötesinde.</span>
           </h1>
           
           <p className="text-slate-300 text-lg md:text-2xl max-w-3xl mx-auto mb-12 leading-relaxed font-light">
@@ -202,7 +190,6 @@ export default function Home() {
              </form>
           </div>
 
-          {/* İSTATİSTİKLER */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
              {[{ val: "%100", label: "Müşteri Memnuniyeti", icon: Users, color: "text-cyan-400", shadow: "shadow-cyan-500/20", border: "border-cyan-500/30" }, { val: "Onaylı", label: "Orijinal Parça", icon: Tag, color: "text-purple-400", shadow: "shadow-purple-500/20", border: "border-purple-500/30" }, { val: "6 Ay", label: "Garanti Süresi", icon: ShieldCheck, color: "text-green-400", shadow: "shadow-green-500/20", border: "border-green-500/30" }, { val: "15K+", label: "Başarılı İşlem", icon: CheckCircle2, color: "text-yellow-400", shadow: "shadow-yellow-500/20", border: "border-yellow-500/30" }].map((stat, i) => (
                <div key={i} className={`bg-[#0a0e17]/60 backdrop-blur-md border ${stat.border} p-8 rounded-3xl hover:bg-[#111620] transition-all group cursor-default hover:shadow-[0_0_30px_rgba(0,0,0,0.3)] hover:scale-105 ${stat.shadow.replace('/20','/40')}`}>
@@ -223,45 +210,22 @@ export default function Home() {
         </div>
       </div>
 
-      {/* --- GÜNCELLENEN MARKA EKOSİSTEMİ BÖLÜMÜ --- */}
       <section className="relative py-24 bg-[#010205] border-b border-white/5 overflow-hidden">
-        {/* Arka Plan Işığı */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-900/20 blur-[100px] rounded-full pointer-events-none"></div>
-        
         <div className="container mx-auto px-6 relative z-10 text-center mb-12">
             <span className="text-cyan-500 font-bold tracking-widest text-xs uppercase mb-2 block">Global Partners</span>
-            <h2 className="text-3xl md:text-5xl font-black text-white mb-6">
-                Hizmet Verilen <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">Teknoloji Devleri</span>
-            </h2>
-            <p className="text-slate-400 max-w-xl mx-auto mb-8">
-                Dünyanın önde gelen teknoloji markalarının tüm modellerine laboratuvar standartlarında müdahale ediyoruz.
-            </p>
-            
-            <Link href="/markalar" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold transition-all hover:scale-105 group">
-                Tüm Marka Listesini İncele <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>
-            </Link>
+            <h2 className="text-3xl md:text-5xl font-black text-white mb-6">Hizmet Verilen <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">Teknoloji Devleri</span></h2>
+            <p className="text-slate-400 max-w-xl mx-auto mb-8">Dünyanın önde gelen teknoloji markalarının tüm modellerine laboratuvar standartlarında müdahale ediyoruz.</p>
+            <Link href="/markalar" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold transition-all hover:scale-105 group">Tüm Marka Listesini İncele <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/></Link>
         </div>
-
-        {/* Kayan Markalar (İki Sıra Halinde) */}
         <div className="relative w-full overflow-hidden group space-y-8 opacity-60 hover:opacity-100 transition-opacity duration-500">
             <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#010205] to-transparent z-10"></div>
             <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#010205] to-transparent z-10"></div>
-            
-            {/* Sıra 1 (Sola Kayan) */}
             <div className="flex w-max animate-infinite-scroll hover:[animation-play-state:paused]">
-                {brands.map((brand, index) => (
-                    <div key={index} className="mx-8 text-4xl font-black text-slate-800 hover:text-cyan-500 transition-colors duration-300 cursor-default uppercase select-none whitespace-nowrap">
-                        {brand}
-                    </div>
-                ))}
+                {brands.map((brand, index) => (<div key={index} className="mx-8 text-4xl font-black text-slate-800 hover:text-cyan-500 transition-colors duration-300 cursor-default uppercase select-none whitespace-nowrap">{brand}</div>))}
             </div>
-             {/* Sıra 2 (Sağa Kayan - Farklı Hızda Olabilir) */}
              <div className="flex w-max animate-infinite-scroll-reverse hover:[animation-play-state:paused]">
-                {brands.reverse().map((brand, index) => (
-                    <div key={index} className="mx-8 text-4xl font-black text-slate-800 hover:text-indigo-500 transition-colors duration-300 cursor-default uppercase select-none whitespace-nowrap">
-                        {brand}
-                    </div>
-                ))}
+                {brands.reverse().map((brand, index) => (<div key={index} className="mx-8 text-4xl font-black text-slate-800 hover:text-indigo-500 transition-colors duration-300 cursor-default uppercase select-none whitespace-nowrap">{brand}</div>))}
             </div>
         </div>
       </section>
@@ -328,83 +292,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* NASIL ÇALIŞIR */}
-      <section className="py-24 relative overflow-hidden bg-[#0a0f18] border-y border-white/5">
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-600/10 rounded-full blur-[150px] pointer-events-none"></div>
-        <div className="absolute right-0 bottom-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none"></div>
-
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center mb-24">
-              <div className="inline-block mb-4 px-4 py-1.5 bg-cyan-950/30 rounded-full border border-cyan-500/20 text-xs font-bold text-cyan-400 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(6,182,212,0.2)]">Süreç Yönetimi</div>
-              <h2 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
-               Nasıl <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Çalışır?</span>
-              </h2>
-              <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">Şeffaf, izlenebilir ve profesyonel işlem adımları.</p>
-          </div>
-
-          <div className="relative">
-            <div className="hidden lg:block absolute top-[85px] left-0 w-full h-[3px] bg-slate-800/50 overflow-hidden rounded-full">
-               <div className="absolute top-0 left-0 h-full w-1/2 bg-gradient-to-r from-transparent via-cyan-500 to-transparent animate-shimmer-fast opacity-50"></div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {/* Adım 1 */}
-              <div className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-cyan-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
-                    <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-cyan-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.15)] group-hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-cyan-900/20 to-transparent">
-                       <Activity className="text-cyan-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
-                       <div className="absolute -top-3 -right-3 w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">1</div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-cyan-400 transition-colors">Kayıt & Analiz</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Sistemimiz üzerinden arıza kaydı oluşturun, ön teknik analiz başlasın.</p>
-                  </div>
-              </div>
-
-              {/* Adım 2 */}
-              <div className="relative group lg:mt-12">
-                  <div className="absolute -inset-1 bg-gradient-to-b from-purple-500 to-pink-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-purple-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
-                    <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-purple-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.15)] group-hover:shadow-[0_0_40px_rgba(168,85,247,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-purple-900/20 to-transparent">
-                       <Send className="text-purple-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]" />
-                       <div className="absolute -top-3 -right-3 w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">2</div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-purple-400 transition-colors">Güvenli Transfer</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Yurtiçi Kargo iş ortaklığımızla cihazınız sigortalı ve ücretsiz olarak laboratuvarımıza ulaşır.</p>
-                  </div>
-              </div>
-
-              {/* Adım 3 */}
-              <div className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-b from-pink-500 to-orange-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-pink-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
-                    <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-pink-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(236,72,153,0.15)] group-hover:shadow-[0_0_40px_rgba(236,72,153,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-pink-900/20 to-transparent">
-                       <CircuitBoard className="text-pink-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(236,72,153,0.8)]" />
-                       <div className="absolute -top-3 -right-3 w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">3</div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-pink-400 transition-colors">Teknik Müdahale</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Uzmanlarımız tarafından anakart seviyesinde müdahale ve orijinal parça değişimi yapılır.</p>
-                  </div>
-              </div>
-
-               {/* Adım 4 */}
-               <div className="relative group lg:mt-12">
-                  <div className="absolute -inset-1 bg-gradient-to-b from-green-500 to-emerald-600 rounded-3xl opacity-0 group-hover:opacity-40 blur-xl transition duration-500"></div>
-                  <div className="relative h-full bg-[#111620] border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center group-hover:border-green-500/50 transition-all duration-300 group-hover:-translate-y-2 z-10 shadow-xl">
-                    <div className="w-20 h-20 mb-8 rounded-2xl bg-[#1a202c] border border-green-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.15)] group-hover:shadow-[0_0_40px_rgba(34,197,94,0.4)] group-hover:scale-110 transition-all duration-500 relative bg-gradient-to-br from-green-900/20 to-transparent">
-                       <CheckCircle2 className="text-green-400 w-10 h-10 drop-shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
-                       <div className="absolute -top-3 -right-3 w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-black text-sm border-2 border-[#0a0f18]">4</div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-green-400 transition-colors">Son Kontrol & Teslim</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">Stres testlerinden geçen cihazınız sterilize edilir ve size geri gönderilir.</p>
-                  </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* --- AURA STORE VİTRİNİ --- */}
       <section className="py-28 relative overflow-hidden bg-[#050810]">
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-pink-600/10 rounded-full blur-[150px] pointer-events-none"></div>
@@ -427,7 +314,6 @@ export default function Home() {
                         const fallbackGradient = getRandomGradient(i);
 
                         return (
-                          // LİNK DÜZELTİLDİ: Ürün ID'si ile yönlendirme
                           <Link href={`/magaza/${product.id}`} key={i} className="group relative rounded-2xl block h-full cursor-pointer hover:-translate-y-2 transition-transform duration-500">
                               <div className={`absolute -inset-[1px] bg-gradient-to-b from-indigo-500 to-purple-600 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-500 group-hover:blur-md`}></div>
                               <div className="relative bg-[#11151d] rounded-2xl overflow-hidden h-full flex flex-col border border-white/5 group-hover:border-white/10 transition-colors">
@@ -440,7 +326,6 @@ export default function Home() {
                                          <Package size={48} className="text-white/40 drop-shadow-md"/>
                                       </div>
 
-                                      {/* GÜNCELLEME: Yeni resim mantığı (varsa yeniyi, yoksa eskiyi göster) */}
                                       {product.image && (
                                         <img 
                                           src={product.image} 
@@ -553,7 +438,7 @@ export default function Home() {
         <span className="absolute right-full mr-3 bg-white text-black px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">Hızlı Destek</span>
       </a>
       
-      {/* MODERN FOOTER */}
+      {/* --- FOOTER: YENİ, MODERN OLAN --- */}
       <footer className="bg-[#020617] border-t border-white/5 pt-20 pb-10 mt-20 relative z-10">
             <div className="max-w-7xl mx-auto px-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
@@ -569,6 +454,7 @@ export default function Home() {
                             <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-600 hover:text-white transition-all"><Facebook size={18}/></a>
                         </div>
                     </div>
+                    
                     <div>
                         <div className="flex items-center gap-2 mb-6 border-l-2 border-cyan-500 pl-3"><h4 className="font-bold text-white uppercase tracking-wider text-sm">KURUMSAL</h4></div>
                         <ul className="space-y-4 text-sm text-slate-500">
@@ -578,6 +464,7 @@ export default function Home() {
                             <li><Link href="/iletisim" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> İletişim & Ulaşım</Link></li>
                         </ul>
                     </div>
+
                     <div>
                         <div className="flex items-center gap-2 mb-6 border-l-2 border-purple-500 pl-3"><h4 className="font-bold text-white uppercase tracking-wider text-sm">Hizmetlerimiz</h4></div>
                         <ul className="space-y-4 text-sm text-slate-500">
@@ -587,6 +474,7 @@ export default function Home() {
                             <li><Link href="/hizmetler/veri-kurtarma" className="hover:text-purple-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Veri Kurtarma</Link></li>
                         </ul>
                     </div>
+
                     <div>
                         <div className="flex items-center gap-2 mb-6 border-l-2 border-green-500 pl-3"><h4 className="font-bold text-white uppercase tracking-wider text-sm">İletişim</h4></div>
                         <ul className="space-y-5 text-sm text-slate-500">
