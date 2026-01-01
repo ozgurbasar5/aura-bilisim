@@ -10,7 +10,7 @@ import {
   CircuitBoard, Activity, Signal, Cpu, 
   Menu, Bell, ChevronRight, Smartphone, ClipboardList, Settings,
   Zap, X, ShoppingBag, Maximize2, Minimize2, User, Home, ChevronDown, Loader2,
-  MessageSquare, Package // Package ikonu eklendi
+  MessageSquare, Package, ShieldCheck // Ekspertiz ikonu eklendi
 } from "lucide-react";
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
@@ -73,13 +73,13 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   
   const [ping, setPing] = useState(24);
   
-  // --- ARAMA KISMI GÜNCELLENDİ ---
+  // --- ARAMA KISMI ---
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showResultBox, setShowResultBox] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const searchContainerRef = useRef<HTMLDivElement>(null); // Arama kutusunu sarmalayan ref
+  const searchContainerRef = useRef<HTMLDivElement>(null); 
 
   // --- GÜVENLİK VE BAŞLANGIÇ KONTROLÜ ---
   useEffect(() => {
@@ -124,7 +124,6 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
       if (e.key === 'Escape') { setShowResultBox(false); setShowCalc(false); setShowNotes(false); setShowNotifications(false); setShowUserMenu(false); }
     };
 
-    // Arama kutusu dışına tıklayınca kapatma
     const handleClickOutside = (event: MouseEvent) => {
         if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
             setShowResultBox(false);
@@ -161,7 +160,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
       setMesajSayisi(msgCount || 0);
   };
 
-  // --- GELİŞMİŞ ARAMA (HEM SERVİS HEM ÜRÜN) ---
+  // --- GELİŞMİŞ ARAMA ---
   const handleGlobalSearch = async (e: any) => {
     const term = e.target.value;
     setSearchTerm(term);
@@ -175,7 +174,6 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
     setIsSearching(true); 
     setShowResultBox(true);
 
-    // 1. SERVİS KAYITLARINI ARA (Atölye)
     const { data: dbJobs } = await supabase.from('aura_jobs')
         .select('id, customer, device, status, serial_no, tracking_code')
         .or(`customer.ilike.%${term}%,device.ilike.%${term}%,phone.ilike.%${term}%,serial_no.ilike.%${term}%,tracking_code.ilike.%${term}%`)
@@ -183,15 +181,13 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
     
     const mappedJobs = (dbJobs || []).map((j: any) => ({ ...j, type: 'service' }));
 
-    // 2. ÜRÜNLERİ ARA (Mağaza)
     const { data: products } = await supabase.from('urunler')
         .select('id, ad, fiyat, stok_durumu, kategori')
-        .ilike('ad', `%${term}%`) // Ürün adında ara
+        .ilike('ad', `%${term}%`)
         .limit(5);
 
     const mappedProducts = (products || []).map((p: any) => ({ ...p, type: 'product' }));
 
-    // Sonuçları Birleştir
     setSearchResults([...mappedJobs, ...mappedProducts]);
     setIsSearching(false);
   };
@@ -248,6 +244,9 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <NavItem icon={<LayoutDashboard size={20}/>} label="Genel Bakış" href="/epanel" isOpen={isSidebarOpen} active={pathname === '/epanel'} />
             
             <NavItem icon={<ClipboardList size={20}/>} label="Atölye Listesi" href="/epanel/atolye" isOpen={isSidebarOpen} active={pathname.includes('/atolye')} badge={bekleyenSayisi} badgeColor="bg-orange-500"/>
+            
+            {/* YENİ EKLENEN EKSPERTİZ BUTONU */}
+            <NavItem icon={<ShieldCheck size={20}/>} label="Ekspertiz İstasyonu" href="/epanel/ekspertiz" isOpen={isSidebarOpen} active={pathname.includes('/ekspertiz')} />
             
             <NavItem icon={<MessageSquare size={20}/>} label="Gelen Mesajlar" href="/epanel/destek" isOpen={isSidebarOpen} active={pathname.includes('/destek')} badge={mesajSayisi} badgeColor="bg-pink-500 animate-pulse"/>
 

@@ -437,58 +437,7 @@ export default function Home() {
         <MessageCircle size={28} fill="white" className="text-white" />
         <span className="absolute right-full mr-3 bg-white text-black px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">Hızlı Destek</span>
       </a>
-      
-      {/* --- FOOTER: YENİ, MODERN OLAN --- */}
-      <footer className="bg-[#020617] border-t border-white/5 pt-20 pb-10 mt-20 relative z-10">
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-                    <div className="col-span-1 md:col-span-1">
-                        <div className="flex items-center gap-2 mb-6">
-                            <div className="w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-900/20"><Wrench size={16} className="text-white"/></div>
-                            <div className="font-extrabold text-xl tracking-tight leading-none text-white flex items-center gap-1">AURA<span className="text-cyan-400">BİLİŞİM</span></div>
-                        </div>
-                        <p className="text-sm text-slate-500 leading-relaxed mb-6">Teknolojiniz için laboratuvar standartlarında onarım merkezi. <strong className="text-slate-300">Güvenilir, hızlı ve garantili</strong> çözümler üretiyoruz.</p>
-                        <div className="flex gap-4">
-                            <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-600 hover:text-white transition-all"><Instagram size={18}/></a>
-                            <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-600 hover:text-white transition-all"><Twitter size={18}/></a>
-                            <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-600 hover:text-white transition-all"><Facebook size={18}/></a>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <div className="flex items-center gap-2 mb-6 border-l-2 border-cyan-500 pl-3"><h4 className="font-bold text-white uppercase tracking-wider text-sm">KURUMSAL</h4></div>
-                        <ul className="space-y-4 text-sm text-slate-500">
-                            <li><Link href="/hakkimizda" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Hikayemiz & Biyografi</Link></li>
-                            <li><Link href="/dna" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Logo Anlamı (DNA)</Link></li>
-                            <li><Link href="/cihaz-sorgula" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Cihaz Sorgula</Link></li>
-                            <li><Link href="/iletisim" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> İletişim & Ulaşım</Link></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <div className="flex items-center gap-2 mb-6 border-l-2 border-purple-500 pl-3"><h4 className="font-bold text-white uppercase tracking-wider text-sm">Hizmetlerimiz</h4></div>
-                        <ul className="space-y-4 text-sm text-slate-500">
-                            <li><Link href="/hizmetler/telefon" className="hover:text-purple-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> iPhone Onarım</Link></li>
-                            <li><Link href="/hizmetler/robot" className="hover:text-purple-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Robot Süpürge Bakım</Link></li>
-                            <li><Link href="/hizmetler/bilgisayar" className="hover:text-purple-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Gaming Laptop Servis</Link></li>
-                            <li><Link href="/hizmetler/veri-kurtarma" className="hover:text-purple-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Veri Kurtarma</Link></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <div className="flex items-center gap-2 mb-6 border-l-2 border-green-500 pl-3"><h4 className="font-bold text-white uppercase tracking-wider text-sm">İletişim</h4></div>
-                        <ul className="space-y-5 text-sm text-slate-500">
-                            <li className="flex items-start gap-3"><div className="p-2 bg-slate-800 rounded-lg text-slate-300 shrink-0"><MapPin size={16}/></div><span>Beylikdüzü / İstanbul <br/> (Teknoloji Laboratuvarı)</span></li>
-                            <li className="flex items-center gap-3"><div className="p-2 bg-slate-800 rounded-lg text-slate-300 shrink-0"><Phone size={16}/></div><span>0539 632 14 29</span></li>
-                            <li className="flex items-center gap-3"><div className="p-2 bg-slate-800 rounded-lg text-slate-300 shrink-0"><Info size={16}/></div><span>destek@aurabilisim.com</span></li>
-                        </ul>
-                    </div>
-                </div>
-                <div className="border-t border-white/5 pt-10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-600 font-medium">
-                    <p>&copy; 2024 Aura Bilişim. Tüm hakları saklıdır.</p>
-                </div>
-            </div>
-      </footer>
+    
     </div>
   );
 }

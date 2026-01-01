@@ -5,104 +5,147 @@ import { useRouter, useParams } from "next/navigation";
 import { 
   ArrowLeft, Save, Trash2, 
   ShoppingBag, Clock, CheckCircle2, Truck, 
-  DollarSign, User, MapPin, FileText, Image as ImageIcon, Upload, X, Loader2
+  DollarSign, FileText, Image as ImageIcon, Upload, X, Loader2,
+  Globe, Instagram, ExternalLink, Wand2 // Sihirbaz ikonu eklendi
 } from "lucide-react";
-import { supabase } from "@/app/lib/supabase"; 
+import { createClient } from '@supabase/supabase-js';
 
-export default function UrunDetay() {
+// --- SUPABASE BAĞLANTISI ---
+const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; 
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";       
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// --- HAZIR TEKNİSYEN ŞABLONLARI ---
+const TEMPLATES: any = {
+    "Cep Telefonu": [
+        "FaceID, TrueTone aktif. Kasa 10/9 temizlikte. Pil sağlığı iyi durumda. Tüm fonksiyonlar test edildi.",
+        "Cihazın kasasında kılcal çizikler mevcut ancak kullanıma engel değil. Ekran orijinal. Parmak izi okuyucu çalışıyor.",
+        "Sıfır ayarında, nokta hatasız. Pil döngüsü çok düşük. Kutu ve fatura mevcut.",
+        "Ekran değişimi yapıldı (A kalite). Diğer tüm aksamlar orijinal ve sorunsuz çalışıyor."
+    ],
+    "Robot Süpürge": [
+        "Tüm sensör bakımları yapıldı. Haritalama ve mop özelliği sorunsuz. Batarya performansı %90 üzeri.",
+        "Fırça ve filtreleri yenilendi. Lidar sensör hatasız. İstasyon şarj sorunu yok.",
+        "Az kullanılmış, fan motoru ve tekerlekler ilk günkü performansında."
+    ],
+    "Bilgisayar": [
+        "Termal macun bakımları yeni yapıldı (MX-4). Fan temizliği tamam. Stres testlerinden başarıyla geçti.",
+        "SSD sağlığı %100. Ekran menteşeleri sağlam. Klavye ve touchpad sorunsuz.",
+        "Oyun ve render testleri yapıldı, ısınma sorunu yok. Kozmetik olarak temiz."
+    ],
+    "Genel": [
+        "Ürün tüm testlerden geçti, sorunsuz çalışıyor.",
+        "Kutu içeriği tam, garantisi devam ediyor.",
+        "Fiyat/Performans ürünü, kaçırılmayacak fırsat."
+    ]
+};
+
+export default function UrunDetayPage() {
   const router = useRouter();
   const params = useParams();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false); // Şablon menüsü kontrolü
 
-  // Ürün State'i
+  // --- ANA STATE ---
   const [product, setProduct] = useState({
     id: 0,
     name: "",
-    brand: "",
     category: "",
-    description: "",
+    description: "", // Görünen temiz açıklama
     cost: 0,
     price: 0,
-    images: [] as string[], // String dizisi (Çoklu Resim)
+    images: [] as string[],
     status: "Satışta",
     customerName: "",
     customerLocation: "",
-    adminNotes: ""
+    adminNotes: "",
+    // Linkler (Ayrıştırılmış)
+    sahibindenLink: "",
+    dolapLink: "",
+    letgoLink: "",
+    instagramLink: ""
   });
 
-  // 1. Veriyi Çek
+  // --- 1. VERİYİ ÇEK VE AYRIŞTIR (DECODER) ---
   useEffect(() => {
     async function fetchProduct() {
-      if (!params?.id) return;
+      const productId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+      if (!productId) return;
       
       const { data, error } = await supabase
         .from('urunler')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', productId)
         .single();
 
       if (data) {
-        // images sütunu yoksa veya boşsa, eski resim_url'i kullan
-        const imageList = data.images && data.images.length > 0 
-            ? data.images 
-            : (data.resim_url ? [data.resim_url] : []);
+        let imageList: string[] = [];
+        if (data.images && Array.isArray(data.images)) {
+            imageList = data.images;
+        } else if (data.resim_url) {
+            imageList = [data.resim_url];
+        }
+
+        // --- REGEX İLE LİNKLERİ AYIKLA ---
+        const fullDesc = data.aciklama || "";
+        const sLink = fullDesc.match(/Sahibinden:\s*(https?:\/\/[^\s]+)/)?.[1] || "";
+        const dLink = fullDesc.match(/Dolap:\s*(https?:\/\/[^\s]+)/)?.[1] || "";
+        const lLink = fullDesc.match(/Letgo:\s*(https?:\/\/[^\s]+)/)?.[1] || "";
+        const iLink = fullDesc.match(/Instagram:\s*(https?:\/\/[^\s]+)/)?.[1] || "";
+        const cleanDesc = fullDesc.split("Platform Linkleri:")[0].trim();
 
         setProduct({
             id: data.id,
             name: data.ad,
-            brand: "", 
             category: data.kategori,
-            description: data.aciklama || "",
+            description: cleanDesc,
             cost: data.maliyet || 0,
             price: data.fiyat || 0,
             images: imageList,
             status: (data.stok_durumu === "Satışta" || data.stok_durumu === "true") ? "Satışta" : data.stok_durumu || "Stok Dışı",
             customerName: "", 
             customerLocation: "",
-            adminNotes: "" 
+            adminNotes: "",
+            sahibindenLink: sLink,
+            dolapLink: dLink,
+            letgoLink: lLink,
+            instagramLink: iLink
         });
       } else {
         alert("Ürün bulunamadı!");
-        router.push("/epanel/magaza");
       }
       setLoading(false);
     }
     fetchProduct();
-  }, [params.id]);
+  }, [params]);
 
-  // YENİ RESİM YÜKLEME FONKSİYONU
+  // --- ŞABLON EKLEME FONKSİYONU ---
+  const insertTemplate = (text: string) => {
+      setProduct(prev => ({
+          ...prev,
+          description: text + "\n\n" + prev.description
+      }));
+      setShowTemplates(false);
+  };
+
+  // --- RESİM YÜKLEME ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     setUploading(true);
-
     try {
         const files = Array.from(e.target.files);
         const newImageUrls: string[] = [];
-
         for (const file of files) {
             const fileExt = file.name.split('.').pop();
             const fileName = `products/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('images') // Bucket adına dikkat et
-                .upload(fileName, file);
-
+            const { error: uploadError } = await supabase.storage.from('images').upload(fileName, file);
             if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('images')
-                .getPublicUrl(fileName);
-            
+            const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fileName);
             newImageUrls.push(publicUrl);
         }
-
-        // Yeni resimleri mevcutların üzerine ekle
-        setProduct(prev => ({
-            ...prev,
-            images: [...prev.images, ...newImageUrls]
-        }));
-
+        setProduct(prev => ({ ...prev, images: [...prev.images, ...newImageUrls] }));
     } catch (error: any) {
         alert("Resim yükleme hatası: " + error.message);
     } finally {
@@ -110,17 +153,25 @@ export default function UrunDetay() {
     }
   };
 
-  // RESİM SİLME
   const removeImage = (index: number) => {
-      setProduct(prev => ({
-          ...prev,
-          images: prev.images.filter((_, i) => i !== index)
-      }));
+      setProduct(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   };
 
-  // 2. KAYDET
+  // --- 2. KAYDETME (ENCODER) ---
   const handleSave = async () => {
     setLoading(true);
+
+    const combinedDescription = `
+${product.description}
+
+Platform Linkleri:
+${product.sahibindenLink ? 'Sahibinden: ' + product.sahibindenLink : ''}
+${product.dolapLink ? 'Dolap: ' + product.dolapLink : ''}
+${product.letgoLink ? 'Letgo: ' + product.letgoLink : ''}
+${product.instagramLink ? 'Instagram: ' + product.instagramLink : ''}
+    `.trim();
+
+    const productId = Array.isArray(params?.id) ? params.id[0] : params?.id;
 
     const { error } = await supabase
       .from('urunler')
@@ -130,88 +181,94 @@ export default function UrunDetay() {
         maliyet: Number(product.cost),
         kategori: product.category,
         stok_durumu: product.status,
-        aciklama: product.description,
-        // DİKKAT: Artık hem 'images' sütununa diziyi, hem de 'resim_url'e (eski sistem bozulmasın diye) ilk resmi atıyoruz.
+        aciklama: combinedDescription,
         images: product.images,
         resim_url: product.images.length > 0 ? product.images[0] : ""
       })
-      .eq('id', params.id);
+      .eq('id', productId);
     
     setLoading(false);
 
     if (!error) {
-        alert("Değişiklikler başarıyla kaydedildi.");
-        router.push("/epanel/magaza"); 
+        alert("Ürün Bilgileri ve Şablonlar Başarıyla Güncellendi!");
     } else {
         alert("Hata: " + error.message);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("Bu kaydı silmek istediğine emin misin?")) return;
-    const { error } = await supabase.from('urunler').delete().eq('id', params.id);
-    if (!error) {
-        router.push("/epanel/magaza");
-    } else {
-        alert("Silme hatası: " + error.message);
-    }
+    if (!confirm("Bu ürünü silmek istediğine emin misin?")) return;
+    const productId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+    const { error } = await supabase.from('urunler').delete().eq('id', productId);
+    if (!error) router.push("/epanel/magaza");
+    else alert("Silme hatası: " + error.message);
   };
 
   const profit = (Number(product.price) || 0) - (Number(product.cost) || 0);
-  const margin = product.price > 0 ? ((profit / product.price) * 100).toFixed(1) : "0";
 
-  if (loading && !product.name) return <div className="p-20 text-center text-slate-500 font-bold animate-pulse">Yükleniyor...</div>;
+  if (loading) return <div className="min-h-screen bg-[#0b0e14] flex items-center justify-center text-slate-500 font-bold animate-pulse">Yükleniyor...</div>;
 
   return (
-    <div className="p-6 text-slate-200 pb-20 max-w-7xl mx-auto animate-in fade-in duration-300">
+    <div className="min-h-screen bg-[#0b0e14] text-slate-200 p-4 md:p-8 pb-32 animate-in fade-in duration-300">
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+      {/* ÜST BAR */}
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-slate-800 pb-6">
         <div className="flex items-center gap-4 w-full md:w-auto">
-          <button onClick={() => router.back()} className="p-3 bg-[#151921] border border-slate-800 rounded-xl hover:bg-slate-800 transition-colors">
-             <ArrowLeft size={20} className="text-slate-400"/>
+          <button onClick={() => router.back()} className="p-3 bg-[#151921] border border-slate-800 rounded-xl hover:bg-slate-800 transition-colors group">
+             <ArrowLeft size={20} className="text-slate-400 group-hover:-translate-x-1 transition-transform"/>
           </button>
           <div>
              <h1 className="text-2xl font-black text-white uppercase tracking-wide flex items-center gap-2">
-               {product.name} <span className="text-xs bg-slate-800 text-slate-500 px-2 py-1 rounded font-mono">#{product.id}</span>
+               {product.name}
              </h1>
-             <p className="text-xs text-slate-500 font-bold mt-1">ÜRÜN YÖNETİM & SATIŞ EKRANI</p>
+             <p className="text-xs text-slate-500 font-bold mt-1">STOK KARTI DÜZENLEME: #{product.id}</p>
           </div>
         </div>
 
         <div className="flex gap-3 w-full md:w-auto">
-           <button onClick={handleDelete} className="flex-1 md:flex-none px-6 py-3 rounded-xl bg-red-900/20 text-red-500 font-bold border border-red-900/30 hover:bg-red-900/40 flex items-center justify-center gap-2 transition-colors">
+           <button onClick={handleDelete} className="flex-1 md:flex-none px-6 py-3 rounded-xl bg-red-900/10 text-red-500 font-bold border border-red-900/20 hover:bg-red-900/30 flex items-center justify-center gap-2 transition-colors">
               <Trash2 size={18}/> SİL
            </button>
-           <button onClick={handleSave} disabled={loading || uploading} className="flex-1 md:flex-none px-8 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-500 flex items-center justify-center gap-2 shadow-lg shadow-green-900/20 transition-colors disabled:opacity-50">
-              {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> DEĞİŞİKLİKLERİ KAYDET</>}
+           <button onClick={handleSave} disabled={loading || uploading} className="flex-1 md:flex-none px-8 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-500 flex items-center justify-center gap-2 shadow-lg shadow-green-900/20 transition-all hover:scale-105 disabled:opacity-50 disabled:scale-100">
+              {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> GÜNCELLE</>}
            </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* SOL KOLON */}
+        {/* --- SOL KOLON (Görsel & Durum & Canlı Linkler) --- */}
         <div className="space-y-6">
+
+           {/* 1. CANLI LİNK BUTONLARI (VİTRİN) */}
+           <div className="bg-[#151921] border border-slate-800 p-4 rounded-2xl shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+              <h3 className="text-[10px] font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><ExternalLink size={12}/> AKTİF İLAN LİNKLERİ</h3>
+              
+              <div className="grid grid-cols-4 gap-2">
+                  <a href={product.sahibindenLink || "#"} target={product.sahibindenLink ? "_blank" : "_self"} className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.sahibindenLink ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black hover:scale-105 shadow-lg shadow-yellow-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
+                      <span className="text-2xl font-black">S</span><span className="text-[8px] font-bold uppercase mt-1">Sahibinden</span>
+                  </a>
+                  <a href={product.dolapLink || "#"} target={product.dolapLink ? "_blank" : "_self"} className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.dolapLink ? 'bg-gradient-to-br from-green-400 to-green-600 text-white hover:scale-105 shadow-lg shadow-green-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
+                      <span className="text-2xl font-black">D</span><span className="text-[8px] font-bold uppercase mt-1">Dolap</span>
+                  </a>
+                  <a href={product.letgoLink || "#"} target={product.letgoLink ? "_blank" : "_self"} className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.letgoLink ? 'bg-gradient-to-br from-red-400 to-red-600 text-white hover:scale-105 shadow-lg shadow-red-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
+                      <span className="text-2xl font-black">L</span><span className="text-[8px] font-bold uppercase mt-1">Letgo</span>
+                  </a>
+                  <a href={product.instagramLink || "#"} target={product.instagramLink ? "_blank" : "_self"} className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.instagramLink ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 text-white hover:scale-105 shadow-lg shadow-purple-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
+                      <Instagram size={24}/><span className="text-[8px] font-bold uppercase mt-1">Instagram</span>
+                  </a>
+              </div>
+           </div>
            
-           {/* DURUM */}
+           {/* 2. DURUM SEÇİCİ */}
            <div className="bg-[#151921] border border-slate-800 p-5 rounded-2xl">
-              <div className="flex items-center gap-2 mb-4 text-xs font-bold text-purple-400 uppercase tracking-wider">
-                 <ShoppingBag size={14}/> Ürün Durumu
+              <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                 <ShoppingBag size={14}/> Stok Durumu
               </div>
               <div className="grid grid-cols-2 gap-2">
                  {["Satışta", "Kargoda", "Opsiyonlandı", "Satıldı"].map((statusOption) => (
-                     <button 
-                       key={statusOption}
-                       onClick={() => setProduct({...product, status: statusOption})}
-                       className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all
-                       ${product.status === statusOption 
-                           ? (statusOption === "Satışta" ? "bg-green-500 border-green-400 text-white" 
-                           : statusOption === "Kargoda" ? "bg-blue-500 border-blue-400 text-white"
-                           : statusOption === "Opsiyonlandı" ? "bg-orange-500 border-orange-400 text-white"
-                           : "bg-slate-200 border-white text-black")
-                           : "bg-slate-900 text-slate-500 border-slate-800 hover:bg-slate-800"}`}
-                     >
+                     <button key={statusOption} onClick={() => setProduct({...product, status: statusOption})} className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all ${product.status === statusOption ? (statusOption === "Satışta" ? "bg-green-500 border-green-400 text-white shadow-lg shadow-green-900/20" : statusOption === "Kargoda" ? "bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-900/20" : statusOption === "Opsiyonlandı" ? "bg-orange-500 border-orange-400 text-white shadow-lg shadow-orange-900/20" : "bg-slate-200 border-white text-black shadow-lg") : "bg-slate-900/50 text-slate-500 border-slate-800 hover:bg-slate-800 hover:border-slate-600"}`}>
                         {statusOption === "Satışta" && <ShoppingBag size={18}/>}
                         {statusOption === "Kargoda" && <Truck size={18}/>}
                         {statusOption === "Opsiyonlandı" && <Clock size={18}/>}
@@ -222,19 +279,19 @@ export default function UrunDetay() {
               </div>
            </div>
 
-           {/* FİYAT */}
-           <div className="bg-[#151921] border border-slate-800 p-5 rounded-2xl">
+           {/* 3. FİYAT & KÂR */}
+           <div className="bg-[#151921] border border-slate-800 p-5 rounded-2xl relative overflow-hidden">
               <div className="flex items-center gap-2 mb-4 text-xs font-bold text-green-400 uppercase tracking-wider">
-                 <DollarSign size={14}/> Fiyatlandırma
+                 <DollarSign size={14}/> Değerleme
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 relative z-10">
                   <div>
                       <label className="text-[10px] text-slate-500 font-bold block mb-1">SATIŞ FİYATI (TL)</label>
-                      <input type="number" value={product.price} onChange={(e) => setProduct({...product, price: Number(e.target.value)})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-white text-lg font-bold outline-none focus:border-green-500 transition-colors" />
+                      <input type="number" value={product.price} onChange={(e) => setProduct({...product, price: Number(e.target.value)})} className="w-full bg-[#0b0e14] border border-green-900/30 rounded-xl p-3 text-green-400 text-xl font-black outline-none focus:border-green-500 transition-colors placeholder:text-slate-800" />
                   </div>
                   <div>
                       <label className="text-[10px] text-slate-500 font-bold block mb-1">MALİYET (TL)</label>
-                      <input type="number" value={product.cost} onChange={(e) => setProduct({...product, cost: Number(e.target.value)})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-slate-400 outline-none focus:border-purple-500 transition-colors" />
+                      <input type="number" value={product.cost} onChange={(e) => setProduct({...product, cost: Number(e.target.value)})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-slate-400 font-bold outline-none focus:border-slate-500 transition-colors" />
                   </div>
                   <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
                       <span className="text-xs text-slate-400 font-bold">NET KÂR</span>
@@ -243,84 +300,134 @@ export default function UrunDetay() {
               </div>
            </div>
 
-           {/* --- YENİ ÇOKLU GÖRSEL YÜKLEME ALANI --- */}
+           {/* 4. GÖRSELLER */}
            <div className="bg-[#151921] border border-slate-800 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2 text-xs font-bold text-cyan-400 uppercase tracking-wider">
-                     <ImageIcon size={14}/> Ürün Görselleri
+                     <ImageIcon size={14}/> Görseller
                   </div>
-                  <span className="text-[10px] text-slate-500">{product.images.length} Görsel</span>
+                  <span className="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded">{product.images.length} Adet</span>
               </div>
-              
-              {/* Resim Listesi */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="grid grid-cols-3 gap-2 mb-4 max-h-[400px] overflow-y-auto custom-scrollbar">
                   {product.images.map((img, i) => (
-                      <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 group">
-                          <img src={img} className="w-full h-full object-cover"/>
-                          <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 group bg-black">
+                          <img src={img} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"/>
+                          <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-all hover:scale-110">
                               <X size={12}/>
                           </button>
+                          {i === 0 && <span className="absolute bottom-0 w-full bg-cyan-600/80 text-white text-[8px] font-bold text-center py-0.5">KAPAK</span>}
                       </div>
                   ))}
-                  
-                  {/* Yükleme Butonu */}
-                  <div className="relative aspect-square bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center text-slate-500 hover:text-cyan-400 hover:border-cyan-500/50 transition-colors cursor-pointer">
+                  <div className="relative aspect-square bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center text-slate-500 hover:text-cyan-400 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all cursor-pointer">
                       {uploading ? <Loader2 className="animate-spin"/> : <Upload size={24}/>}
                       <span className="text-[9px] font-bold mt-1 uppercase">EKLE</span>
                       <input type="file" multiple accept="image/*" onChange={handleImageUpload} disabled={uploading} className="absolute inset-0 opacity-0 cursor-pointer"/>
                   </div>
               </div>
            </div>
-
         </div>
 
-        {/* SAĞ KOLON */}
+        {/* --- SAĞ KOLON (Detaylar & Link Girişi) --- */}
         <div className="lg:col-span-2 space-y-6">
             
-            <div className="bg-[#151921] border border-slate-800 p-6 rounded-2xl h-fit">
-                <div className="flex items-center gap-2 mb-6 text-xs font-bold text-yellow-500 uppercase tracking-wider">
-                   <FileText size={14}/> Yönetici Notları & Müşteri Bilgisi
+            {/* LİNK DÜZENLEME */}
+            <div className="bg-[#151921] border border-slate-800 p-6 rounded-2xl">
+                 <h3 className="text-xs font-bold text-white uppercase flex items-center gap-2 mb-5 border-b border-slate-800 pb-3"><Globe size={14} className="text-blue-500"/> Platform Link Entegrasyonu</h3>
+                 <div className="grid gap-4">
+                    <div className="flex gap-3 items-center group">
+                        <div className="w-10 h-10 bg-[#F9C305] text-black flex items-center justify-center rounded-xl font-black text-sm shrink-0 shadow-lg shadow-yellow-900/20 group-hover:scale-110 transition-transform">S</div>
+                        <div className="flex-1"><label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">SAHİBİNDEN LİNKİ</label><input type="text" value={product.sahibindenLink} onChange={e => setProduct({...product, sahibindenLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-[#F9C305] outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://sahibinden.com/ilan..."/></div>
+                    </div>
+                    <div className="flex gap-3 items-center group">
+                        <div className="w-10 h-10 bg-[#00D678] text-white flex items-center justify-center rounded-xl font-black text-sm shrink-0 shadow-lg shadow-green-900/20 group-hover:scale-110 transition-transform">D</div>
+                        <div className="flex-1"><label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">DOLAP LİNKİ</label><input type="text" value={product.dolapLink} onChange={e => setProduct({...product, dolapLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-[#00D678] outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://dolap.com/urun..."/></div>
+                    </div>
+                    <div className="flex gap-3 items-center group">
+                        <div className="w-10 h-10 bg-[#FF3C4C] text-white flex items-center justify-center rounded-xl font-black text-sm shrink-0 shadow-lg shadow-red-900/20 group-hover:scale-110 transition-transform">L</div>
+                        <div className="flex-1"><label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">LETGO LİNKİ</label><input type="text" value={product.letgoLink} onChange={e => setProduct({...product, letgoLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-[#FF3C4C] outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://letgo.com/item..."/></div>
+                    </div>
+                    <div className="flex gap-3 items-center group">
+                        <div className="w-10 h-10 bg-gradient-to-tr from-yellow-500 via-red-500 to-purple-500 text-white flex items-center justify-center rounded-xl font-black text-sm shrink-0 shadow-lg shadow-purple-900/20 group-hover:scale-110 transition-transform"><Instagram size={20}/></div>
+                        <div className="flex-1"><label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">INSTAGRAM LİNKİ</label><input type="text" value={product.instagramLink} onChange={e => setProduct({...product, instagramLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://instagram.com/p/..."/></div>
+                    </div>
+                 </div>
+            </div>
+
+            {/* GENEL BİLGİLER & ŞABLON BUTONU */}
+            <div className="bg-[#151921] border border-slate-800 p-6 rounded-2xl relative">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                   <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                     <FileText size={14}/> Ürün Bilgileri
+                   </div>
+                   {/* ŞABLON SEÇİCİ */}
+                   <div className="relative">
+                        <button 
+                            onClick={() => setShowTemplates(!showTemplates)}
+                            className="text-[10px] bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600 hover:text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-colors border border-cyan-600/30"
+                        >
+                            <Wand2 size={12}/> HAZIR ŞABLON
+                        </button>
+                        {showTemplates && (
+                            <div className="absolute right-0 top-8 w-72 bg-[#1e293b] border border-slate-700 rounded-xl shadow-2xl z-50 p-2 animate-in zoom-in-95">
+                                <h4 className="text-[10px] font-bold text-slate-400 p-2 uppercase border-b border-slate-700 mb-1">
+                                    {product.category || "Genel"} İçin Kalıplar
+                                </h4>
+                                <div className="max-h-56 overflow-y-auto custom-scrollbar space-y-1">
+                                    {(TEMPLATES[product.category] || TEMPLATES["Genel"]).map((temp: string, i: number) => (
+                                        <button 
+                                            key={i}
+                                            onClick={() => insertTemplate(temp)}
+                                            className="w-full text-left text-[10px] text-slate-300 p-2 rounded-lg hover:bg-cyan-500/20 hover:text-cyan-300 transition-colors border border-transparent hover:border-cyan-500/30"
+                                        >
+                                            {temp}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label className="text-[10px] text-slate-400 font-bold block mb-1">MÜŞTERİ AD SOYAD</label>
-                        <input type="text" value={product.customerName || ""} onChange={(e) => setProduct({...product, customerName: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-white text-sm outline-none focus:border-yellow-500" />
+                        <label className="text-[10px] text-slate-500 font-bold block mb-1">ÜRÜN BAŞLIĞI</label>
+                        <input type="text" value={product.name} onChange={(e) => setProduct({...product, name: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3.5 text-white font-bold text-sm outline-none focus:border-cyan-500 transition-colors" />
                     </div>
                     <div>
-                        <label className="text-[10px] text-slate-400 font-bold block mb-1">KONUM</label>
-                        <input type="text" value={product.customerLocation || ""} onChange={(e) => setProduct({...product, customerLocation: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-white text-sm outline-none focus:border-yellow-500" />
+                        <label className="text-[10px] text-slate-500 font-bold block mb-1">KATEGORİ</label>
+                        <input type="text" value={product.category || ""} onChange={(e) => setProduct({...product, category: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3.5 text-white font-bold text-sm outline-none focus:border-cyan-500 transition-colors" />
                     </div>
                 </div>
                 <div>
-                    <label className="text-[10px] text-slate-400 font-bold block mb-1">ÖZEL NOTLAR</label>
-                    <textarea rows={4} value={product.adminNotes || ""} onChange={(e) => setProduct({...product, adminNotes: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-slate-300 text-sm outline-none focus:border-yellow-500 resize-none"></textarea>
+                    <label className="text-[10px] text-slate-500 font-bold block mb-1">ÜRÜN AÇIKLAMASI & TEKNİSYEN NOTU</label>
+                    <textarea rows={8} value={product.description || ""} onChange={(e) => setProduct({...product, description: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-4 text-slate-300 text-sm outline-none focus:border-cyan-500 transition-colors resize-none leading-relaxed" placeholder="Ürün detaylarını buraya giriniz..."></textarea>
+                    <p className="text-[10px] text-slate-600 mt-2 italic flex items-center gap-1"><Globe size={10}/> Not: Linkler otomatik olarak bu açıklamanın altına eklenir.</p>
                 </div>
             </div>
 
-            <div className="bg-[#151921] border border-slate-800 p-6 rounded-2xl">
-                <div className="flex items-center gap-2 mb-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                   Genel İlan Bilgileri
+            {/* YÖNETİCİ NOTLARI */}
+            <div className="bg-[#151921] border border-slate-800 p-6 rounded-2xl h-fit opacity-70 hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2 mb-4 text-xs font-bold text-yellow-600 uppercase tracking-wider">
+                   Müşteri & Servis Notları (Gizli)
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label className="text-[10px] text-slate-500 font-bold block mb-1">ÜRÜN ADI</label>
-                        <input type="text" value={product.name} onChange={(e) => setProduct({...product, name: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-purple-500" />
+                        <label className="text-[10px] text-slate-500 font-bold block mb-1">MÜŞTERİ AD SOYAD</label>
+                        <input type="text" value={product.customerName || ""} onChange={(e) => setProduct({...product, customerName: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-white text-sm outline-none focus:border-yellow-600" />
                     </div>
                     <div>
-                        <label className="text-[10px] text-slate-500 font-bold block mb-1">MARKA</label>
-                        <input type="text" value={product.brand || ""} onChange={(e) => setProduct({...product, brand: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-purple-500" />
+                        <label className="text-[10px] text-slate-500 font-bold block mb-1">KONUM / ADRES</label>
+                        <input type="text" value={product.customerLocation || ""} onChange={(e) => setProduct({...product, customerLocation: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-white text-sm outline-none focus:border-yellow-600" />
                     </div>
                 </div>
                 <div>
-                    <label className="text-[10px] text-slate-500 font-bold block mb-1">AÇIKLAMA</label>
-                    <textarea rows={5} value={product.description || ""} onChange={(e) => setProduct({...product, description: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-slate-300 text-sm outline-none focus:border-purple-500"></textarea>
+                    <label className="text-[10px] text-slate-500 font-bold block mb-1">ÖZEL NOTLAR</label>
+                    <textarea rows={3} value={product.adminNotes || ""} onChange={(e) => setProduct({...product, adminNotes: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-slate-300 text-sm outline-none focus:border-yellow-600 resize-none"></textarea>
                 </div>
             </div>
 
         </div>
-
       </div>
-
     </div>
   );
 }

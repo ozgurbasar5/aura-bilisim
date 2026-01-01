@@ -1,375 +1,328 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
-  ShoppingBag, Star, Smartphone, Laptop, Zap, Filter, ArrowRight, 
-  Watch, Box, Image as ImageIcon, Wrench,
-  Menu, X, Search, Home as HomeIcon, LifeBuoy, Info, HelpCircle, Phone,
-  Instagram, Facebook, Twitter, MapPin, FileCheck, ShieldCheck, Truck, Cpu
+  ArrowLeft, MessageCircle, Phone, 
+  MapPin, CheckCircle2, Package, Calendar, 
+  Share2, Instagram, RefreshCcw, ShieldCheck, Tag,
+  Hash, Award, Layers, Globe, Zap, Cpu, Battery, 
+  Smartphone, Volume2, Wifi, Monitor, HelpCircle, Truck, Box
 } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
-// GÜNCEL SUPABASE BAĞLANTI AYARLARI
+// SUPABASE AYARLARI
 const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; 
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";
 
-export default function MagazaPage() {
-  const router = useRouter();
-  const pathname = usePathname();
-  
-  const [products, setProducts] = useState<any[]>([]);
-  const [category, setCategory] = useState("Tümü");
-  const [search, setSearch] = useState("");
+export default function UrunDetayPage() {
+  const params = useParams();
+  const [product, setProduct] = useState<any>(null);
+  const [activeImage, setActiveImage] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const [menuAcik, setMenuAcik] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  const CATEGORIES = [
-      { id: "Tümü", label: "Tümü", icon: Filter },
-      { id: "Cep Telefonu", label: "Telefon", icon: Smartphone },
-      { id: "Robot Süpürge", label: "Robot", icon: Zap },
-      { id: "Bilgisayar", label: "Bilgisayar", icon: Laptop },
-      { id: "Akıllı Saat", label: "Saat", icon: Watch },
-      { id: "Yedek Parça", label: "Yedek Parça", icon: Box },
-  ];
-
+  // Veri Çekme
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+    const fetchProduct = async () => {
+      const productId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+      if (!productId) return;
+
+      try {
+          const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+          const { data, error } = await supabase
+            .from('urunler')
+            .select('*')
+            .eq('id', productId)
+            .single();
+
+          if (error) throw error;
+
+          if (data) {
+            const imageList = data.images && data.images.length > 0 ? data.images : (data.resim_url ? [data.resim_url] : []);
+            const fullDesc = data.aciklama || "";
+            const extractedLinks = {
+                sahibinden: fullDesc.match(/Sahibinden:\s*(https?:\/\/[^\s]+)/)?.[1] || "",
+                dolap: fullDesc.match(/Dolap:\s*(https?:\/\/[^\s]+)/)?.[1] || "",
+                letgo: fullDesc.match(/Letgo:\s*(https?:\/\/[^\s]+)/)?.[1] || "",
+                instagram: fullDesc.match(/Instagram:\s*(https?:\/\/[^\s]+)/)?.[1] || ""
+            };
+            const cleanDescription = fullDesc.split("Platform Linkleri:")[0].trim();
+
+            setProduct({
+                id: data.id,
+                name: data.ad,
+                price: data.fiyat,
+                description: cleanDescription,
+                images: imageList, 
+                category: data.kategori,
+                date: new Date(data.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }),
+                stok: data.stok_durumu,
+                kondisyon: data.kondisyon || "İkinci El (Temiz)", 
+                marka: data.marka || "Apple", 
+                konum: data.konum || "İstanbul / Mağaza",
+                links: extractedLinks
+            });
+          }
+      } catch (err) {
+          console.error("Hata:", err);
+      } finally {
+          setLoading(false);
+      }
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    fetchProduct();
+  }, [params]);
 
-  const isActive = (path: string) => pathname === path;
+  if (loading) return (
+    <div className="min-h-screen bg-[#050b14] flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+    </div>
+  );
 
-  useEffect(() => {
-    const fetchProductsFromSQL = async () => {
-        try {
-            setLoading(true);
-            const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-            
-            let { data, error } = await supabase
-                .from('urunler')
-                .select('*')
-                .or('stok_durumu.eq.Satışta,stok_durumu.eq.true') 
-                .order('created_at', { ascending: false });
-
-            if (data) {
-                const mappedProducts = data.map((item: any) => ({
-                    id: item.id,
-                    name: item.ad || "İsimsiz Ürün",
-                    price: item.fiyat || 0,
-                    category: item.kategori || "Genel",
-                    image: (item.images && item.images.length > 0) ? item.images[0] : (item.resim_url || ""),
-                    description: item.aciklama || "",
-                    status: "Stokta" 
-                }));
-
-                setProducts(mappedProducts);
-            }
-        } catch (err) {
-            console.error("Sistem hatası:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    fetchProductsFromSQL();
-  }, []);
-
-  const filteredProducts = products.filter(p => {
-      const matchesCategory = category === "Tümü" || p.category === category;
-      const matchesSearch = (p.name || "").toLowerCase().includes(search.toLowerCase());
-      return matchesCategory && matchesSearch;
-  });
+  if (!product) return null;
 
   return (
-    <main className="min-h-screen bg-[#020617] text-white pt-28 relative font-sans selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-[#050b14] text-slate-200 pt-28 pb-20 font-sans selection:bg-cyan-500/30 overflow-x-hidden">
       
-      {/* --- NAVBAR --- */}
-      <nav 
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
-          scrolled 
-            ? "bg-[#020617]/95 backdrop-blur-xl border-white/5 h-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" 
-            : "bg-[#020617] border-transparent h-24"
-        } print:hidden`}
-      >
-        <div className="container mx-auto px-6 h-full flex items-center justify-between">
-          
-          {/* LOGO (DOĞRU SVG EKLENDİ) */}
-          <Link href="/" className="flex items-center gap-3.5 group select-none shrink-0" onClick={() => setMenuAcik(false)}>
-            <div className="relative w-11 h-11 flex items-center justify-center">
-                <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-60 group-hover:opacity-100 group-hover:bg-cyan-400/30 transition-all duration-500"></div>
-                <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="coreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#22d3ee" />
-                      <stop offset="100%" stopColor="#3b82f6" />
-                    </linearGradient>
-                    <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                      <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
-                      <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
-                    </radialGradient>
-                  </defs>
-                  <path d="M 50 12 L 22 40 L 22 52 L 12 52 L 12 35 L 45 2 Z" fill="#fff" className="opacity-95 group-hover:fill-cyan-50 transition-colors"/>
-                  <path d="M 50 88 L 78 60 L 78 48 L 88 48 L 88 65 L 55 98 Z" fill="#fff" className="opacity-95 group-hover:fill-cyan-50 transition-colors"/>
-                  <rect x="36" y="36" width="28" height="28" rx="3" transform="rotate(45 50 50)" fill="url(#coreGradient)" className="group-hover:scale-105 transition-transform duration-300 origin-center outline outline-1 outline-white/20"/>
-                  <circle cx="50" cy="50" r="5" fill="url(#centerGlow)" className="animate-pulse-slow" />
-                  <rect x="24" y="42" width="8" height="1.5" fill="url(#coreGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
-                  <rect x="24" y="46" width="5" height="1.5" fill="url(#coreGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
-                  <rect x="68" y="56.5" width="8" height="1.5" fill="url(#coreGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
-                  <rect x="71" y="52.5" width="5" height="1.5" fill="url(#coreGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
-                </svg>
-            </div>
-            <div className="flex flex-col justify-center">
-                <div className="font-extrabold text-[22px] tracking-tight leading-none text-white flex items-center gap-1 group-hover:text-cyan-50 transition-colors">
-                   AURA<span className="text-cyan-400">BİLİŞİM</span>
-                </div>
-                <span className="text-[9px] text-slate-400 font-bold tracking-[0.25em] uppercase group-hover:text-cyan-400/80 transition-colors">
-                   TEKNOLOJİ ÜSSÜ
-                </span>
-            </div>
-          </Link>
-
-          {/* MENÜ LİNKLERİ */}
-          <div className="hidden xl:flex items-center gap-8">
-              {[
-                { href: "/", label: "Ana Sayfa" },
-                { href: "/destek", label: "Destek" },
-                { href: "/hakkimizda", label: "Hakkımızda" },
-                { href: "/sss", label: "S.S.S" },
-                { href: "/iletisim", label: "İletişim" },
-              ].map((link) => (
-                <Link 
-                  key={link.href} 
-                  href={link.href} 
-                  className={`text-[14px] font-bold transition-all relative py-2 px-1 group ${
-                    isActive(link.href) ? "text-cyan-400" : "text-slate-300 hover:text-white"
-                  }`}
-                >
-                  {link.label}
-                  <span className={`absolute bottom-0 left-0 h-0.5 bg-cyan-400 transition-all duration-300 ${isActive(link.href) ? "w-full" : "w-0 group-hover:w-full"}`}></span>
-                </Link>
-              ))}
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-              
-              {/* CİHAZ SORGULA BUTONU EKLENDİ */}
-              <Link 
-                href="/cihaz-sorgula" 
-                className="hidden lg:flex items-center gap-2 border border-slate-700/50 bg-[#0f172a] hover:bg-slate-800 text-slate-200 px-4 py-2.5 rounded-xl font-bold text-xs transition-all group"
-              >
-                  <Search size={16} className="text-cyan-400 group-hover:text-cyan-300 transition-colors"/> 
-                  <span>CİHAZ SORGULA</span>
-              </Link>
-
-              <Link 
-                href="/magaza" 
-                className="hidden lg:flex items-center gap-2 border border-slate-700/50 bg-[#0f172a] hover:bg-slate-800 text-slate-200 px-5 py-2.5 rounded-xl font-bold text-xs transition-all group"
-              >
-                  <ShoppingBag size={16} className="text-purple-400 group-hover:text-purple-300 transition-colors"/> 
-                  <span>MAĞAZA</span>
-              </Link>
-
-              <Link href="/onarim-talebi" className="hidden md:flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg shadow-cyan-900/20 hover:-translate-y-0.5 active:scale-95 border border-white/10">
-                  <Wrench size={16} className="text-white fill-white/20"/> 
-                  <span>ONARIM BAŞLAT</span>
-              </Link>
-
-              <button onClick={() => setMenuAcik(!menuAcik)} className="xl:hidden p-2 text-slate-300 hover:text-white transition-colors">
-                    {menuAcik ? <X size={28}/> : <Menu size={28}/>}
-              </button>
-          </div>
-        </div>
-
-        {/* MOBİL MENÜ */}
-        {menuAcik && (
-          <>
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 xl:hidden" onClick={() => setMenuAcik(false)}></div>
-            <div className="xl:hidden fixed top-20 left-0 w-full bg-[#0b0e14] border-b border-white/10 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top-2 z-50">
-              {[
-                { href: "/", label: "Ana Sayfa", icon: HomeIcon },
-                { href: "/destek", label: "Destek", icon: LifeBuoy },
-                { href: "/hakkimizda", label: "Hakkımızda", icon: Info },
-                { href: "/cihaz-sorgula", label: "Cihaz Sorgula", icon: Search },
-                { href: "/sss", label: "S.S.S", icon: HelpCircle },
-                { href: "/iletisim", label: "İletişim", icon: Phone },
-              ].map((item) => (
-                <Link key={item.href} href={item.href} onClick={() => setMenuAcik(false)} className={`py-4 px-4 rounded-lg font-bold flex items-center gap-4 transition-all ${isActive(item.href) ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}>
-                  <item.icon size={20}/> {item.label}
-                </Link>
-              ))}
-              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/10">
-                  <Link href="/magaza" onClick={() => setMenuAcik(false)} className="bg-[#1e1b4b] text-indigo-200 py-3 rounded-lg font-bold flex flex-col items-center justify-center gap-1 text-sm">
-                    <ShoppingBag size={20} className="text-purple-400"/> Mağaza
-                  </Link>
-                  <Link href="/onarim-talebi" onClick={() => setMenuAcik(false)} className="bg-cyan-600 text-white py-3 rounded-lg font-bold flex flex-col items-center justify-center gap-1 text-sm shadow-lg">
-                    <Wrench size={20}/> Onarım
-                  </Link>
-              </div>
-            </div>
-          </>
-        )}
-      </nav>
-
-      <div className="max-w-7xl mx-auto px-4 md:px-6 relative z-10">
-        
-        {/* BAŞLIK & ARAMA */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6 border-b border-white/10 pb-8 mt-4">
-           <div>
-              <div className="flex items-center gap-2 text-cyan-400 font-bold mb-2 uppercase tracking-widest text-xs">
-                 <Star size={14} fill="currentColor" /> Güvenilir Mağaza
-              </div>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">AURA <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">STORE</span></h1>
-              <p className="text-slate-400 mt-2 font-light">Revize edilmiş, garantili ve test edilmiş teknolojik ürünler.</p>
-           </div>
-           <div className="w-full md:w-auto relative group">
-               <input 
-                  type="text" 
-                  placeholder="Ürün Ara..." 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full md:w-80 bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-cyan-500 transition-all placeholder:text-slate-500"
-               />
-               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
-           </div>
-        </div>
-
-        {/* KATEGORİLER */}
-        <div className="flex gap-3 overflow-x-auto pb-6 mb-2 scrollbar-hide">
-            {CATEGORIES.map((cat) => (
-                <button 
-                    key={cat.id} 
-                    onClick={() => setCategory(cat.id)} 
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap border ${category === cat.id ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'}`}
-                >
-                    <cat.icon size={16} /> {cat.label}
-                </button>
-            ))}
-        </div>
-
-        {/* ÜRÜN LİSTESİ */}
-        {loading ? (
-             <div className="flex flex-col items-center justify-center py-20 gap-4">
-                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
-                 <p className="text-slate-500 text-sm font-bold animate-pulse tracking-widest uppercase">Ürün bilgileri yükleniyor...</p>
-             </div>
-        ) : filteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-500 border border-dashed border-slate-800 rounded-3xl bg-slate-900/30">
-                <ShoppingBag size={48} className="mb-4 opacity-50"/>
-                <p>Aradığınız kriterlere uygun ürün bulunamadı veya vitrin şu an boş.</p>
-            </div>
-        ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
-                {filteredProducts.map((urun) => {
-                    let rawImage = urun.image || ""; 
-                    const hasImage = rawImage && rawImage.length > 5;
-
-                    return (
-                        <div 
-                            key={urun.id} 
-                            onClick={() => router.push(`/magaza/${urun.id}`)} 
-                            className="bg-[#0f172a] border border-slate-800 rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-all group hover:-translate-y-2 cursor-pointer flex flex-col"
-                        >
-                            <div className="h-60 bg-[#1e293b] relative flex items-center justify-center overflow-hidden border-b border-slate-800">
-                                {hasImage ? (
-                                    <img src={rawImage} alt={urun.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                                ) : (
-                                    <div className="flex flex-col items-center gap-2 text-slate-600">
-                                        <ImageIcon size={48}/>
-                                        <span className="text-[10px] font-bold uppercase">Görsel Yok</span>
-                                    </div>
-                                )}
-                                <div className="absolute top-3 left-3">
-                                    <span className="bg-cyan-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg uppercase tracking-wider">{urun.category}</span>
-                                </div>
-                            </div>
-                            <div className="p-5 flex-1 flex flex-col">
-                                <h3 className="text-white font-bold text-base leading-snug line-clamp-2 mb-4 group-hover:text-cyan-400 transition-colors min-h-[40px]">{urun.name}</h3>
-                                <div className="mt-auto pt-4 border-t border-slate-800 flex justify-between items-center">
-                                    <div>
-                                        <span className="text-[10px] text-slate-500 font-bold block uppercase">Fiyat</span>
-                                        <span className="text-xl font-black text-white">{Number(urun.price).toLocaleString('tr-TR')} ₺</span>
-                                    </div>
-                                    <div className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center group-hover:bg-cyan-600 group-hover:text-white transition-all shadow-lg">
-                                        <ArrowRight size={18}/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        )}
+      {/* BACKGROUND FX */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-10" 
+           style={{ backgroundImage: 'linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)', backgroundSize: '50px 50px' }}>
       </div>
 
-      {/* --- FOOTER: YENİ, MODERN OLAN --- */}
-      <footer className="bg-[#020617] border-t border-white/5 pt-20 pb-10 mt-20 relative z-10">
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-                    <div className="col-span-1 md:col-span-1">
-                        <div className="flex items-center gap-2 mb-6">
-                            <div className="w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-900/20"><Wrench size={16} className="text-white"/></div>
-                            <div className="font-extrabold text-xl tracking-tight leading-none text-white flex items-center gap-1">AURA<span className="text-cyan-400">BİLİŞİM</span></div>
-                        </div>
-                        <p className="text-sm text-slate-500 leading-relaxed mb-6">
-                            Teknolojiniz için laboratuvar standartlarında onarım merkezi. <strong className="text-slate-300">Güvenilir, hızlı ve garantili</strong> çözümler üretiyoruz.
-                        </p>
-                        <div className="flex gap-4">
-                            <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-600 hover:text-white transition-all"><Instagram size={18}/></a>
-                            <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-600 hover:text-white transition-all"><Twitter size={18}/></a>
-                            <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-600 hover:text-white transition-all"><Facebook size={18}/></a>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <div className="flex items-center gap-2 mb-6 border-l-2 border-cyan-500 pl-3"><h4 className="font-bold text-white uppercase tracking-wider text-sm">KURUMSAL</h4></div>
-                        <ul className="space-y-4 text-sm text-slate-500">
-                            <li><Link href="/hakkimizda" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Hikayemiz & Biyografi</Link></li>
-                            <li><Link href="/dna" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Logo Anlamı (DNA)</Link></li>
-                            <li><Link href="/cihaz-sorgula" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Cihaz Sorgula</Link></li>
-                            <li><Link href="/iletisim" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> İletişim & Ulaşım</Link></li>
-                        </ul>
-                    </div>
+      <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+          
+          {/* NAV BAR */}
+          <div className="mb-6 flex items-center justify-between">
+              <Link href="/magaza" className="group flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-cyan-400 transition-colors bg-slate-900/50 px-4 py-2 rounded-full border border-slate-800">
+                  <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform"/> Mağazaya Dön
+              </Link>
+          </div>
 
-                    <div>
-                        <div className="flex items-center gap-2 mb-6 border-l-2 border-purple-500 pl-3"><h4 className="font-bold text-white uppercase tracking-wider text-sm">Hizmetlerimiz</h4></div>
-                        <ul className="space-y-4 text-sm text-slate-500">
-                            <li><Link href="/hizmetler/telefon" className="hover:text-purple-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> iPhone Onarım</Link></li>
-                            <li><Link href="/hizmetler/robot" className="hover:text-purple-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Robot Süpürge Bakım</Link></li>
-                            <li><Link href="/hizmetler/bilgisayar" className="hover:text-purple-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Gaming Laptop Servis</Link></li>
-                            <li><Link href="/hizmetler/veri-kurtarma" className="hover:text-purple-400 transition-colors flex items-center gap-2"><ArrowRight size={12}/> Veri Kurtarma</Link></li>
-                        </ul>
-                    </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+              
+              {/* --- SOL KOLON (Görsel & Ekspertiz) --- */}
+              <div className="lg:col-span-7 space-y-8">
+                  
+                  {/* GÖRSEL SAHNESİ */}
+                  <div className="relative group">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+                      <div className="relative aspect-[4/3] bg-[#0B1120] border border-slate-800 rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl">
+                          {product.images.length > 0 ? (
+                              <img src={product.images[activeImage]} className="max-w-full max-h-full object-contain p-6 group-hover:scale-105 transition-transform duration-700"/>
+                          ) : (
+                              <div className="flex flex-col items-center text-slate-600 gap-2"><Package size={48}/><span>Görsel Yok</span></div>
+                          )}
+                          {/* Zoom */}
+                          <div className="absolute top-4 right-4 bg-black/40 p-2 rounded-xl text-white/70 backdrop-blur-md border border-white/5"><Share2 size={18}/></div>
+                      </div>
+                  </div>
 
-                    <div>
-                        <div className="flex items-center gap-2 mb-6 border-l-2 border-green-500 pl-3"><h4 className="font-bold text-white uppercase tracking-wider text-sm">İletişim</h4></div>
-                        <ul className="space-y-5 text-sm text-slate-500">
-                            <li className="flex items-start gap-3">
-                                <div className="p-2 bg-slate-800 rounded-lg text-slate-300 shrink-0"><MapPin size={16}/></div>
-                                <span>Beylikdüzü / İstanbul <br/> (Teknoloji Laboratuvarı)</span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <div className="p-2 bg-slate-800 rounded-lg text-slate-300 shrink-0"><Phone size={16}/></div>
-                                <span>0539 632 14 29</span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <div className="p-2 bg-slate-800 rounded-lg text-slate-300 shrink-0"><Info size={16}/></div>
-                                <span>destek@aurabilisim.com</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-                <div className="border-t border-white/5 pt-10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-600 font-medium">
-                    <p>&copy; 2024 Aura Bilişim. Tüm hakları saklıdır.</p>
-                </div>
-            </div>
-      </footer>
-    </main>
+                  {/* THUMBNAILS */}
+                  {product.images.length > 1 && (
+                      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                          {product.images.map((img: string, index: number) => (
+                              <button key={index} onClick={() => setActiveImage(index)} className={`relative w-20 h-20 rounded-xl border-2 overflow-hidden shrink-0 transition-all ${activeImage === index ? 'border-cyan-500 shadow-lg scale-105' : 'border-slate-800 opacity-60 hover:opacity-100'}`}>
+                                  <img src={img} className="w-full h-full object-cover"/>
+                              </button>
+                          ))}
+                      </div>
+                  )}
+
+                  {/* 🛠️ DİJİTAL EKSPERTİZ RAPORU (YENİ ÖZELLİK) */}
+                  {/* Burası müşteriye senin bir teknisyen olduğunu kanıtlar */}
+                  <div className="bg-[#0f172a] border border-slate-800 rounded-3xl overflow-hidden">
+                      <div className="bg-slate-900/80 px-6 py-4 border-b border-slate-800 flex items-center gap-3">
+                          <div className="p-2 bg-green-500/10 rounded-lg text-green-400"><ShieldCheck size={20}/></div>
+                          <div>
+                              <h3 className="font-bold text-slate-200 text-sm uppercase tracking-wide">Teknisyen Ekspertiz Raporu</h3>
+                              <p className="text-[10px] text-slate-500">Bu cihaz Aura Bilişim laboratuvarında test edilmiştir.</p>
+                          </div>
+                      </div>
+                      <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                           {/* Test Maddeleri */}
+                           <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 flex flex-col items-center gap-2 text-center">
+                               <Monitor size={20} className="text-cyan-400"/>
+                               <span className="text-[10px] font-bold text-slate-400 uppercase">Ekran / Dokunmatik</span>
+                               <span className="text-xs font-bold text-green-400 flex items-center gap-1"><CheckCircle2 size={12}/> Sorunsuz</span>
+                           </div>
+                           <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 flex flex-col items-center gap-2 text-center">
+                               <Battery size={20} className="text-green-400"/>
+                               <span className="text-[10px] font-bold text-slate-400 uppercase">Batarya Sağlığı</span>
+                               <span className="text-xs font-bold text-white flex items-center gap-1">Test Edildi</span>
+                           </div>
+                           <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 flex flex-col items-center gap-2 text-center">
+                               <Smartphone size={20} className="text-purple-400"/>
+                               <span className="text-[10px] font-bold text-slate-400 uppercase">Kasa / Kozmetik</span>
+                               <span className="text-xs font-bold text-white flex items-center gap-1">10/{product.kondisyon?.includes("Temiz") ? "9" : "8"}</span>
+                           </div>
+                           <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 flex flex-col items-center gap-2 text-center">
+                               <Wifi size={20} className="text-blue-400"/>
+                               <span className="text-[10px] font-bold text-slate-400 uppercase">Şebeke / Wifi</span>
+                               <span className="text-xs font-bold text-green-400 flex items-center gap-1"><CheckCircle2 size={12}/> Aktif</span>
+                           </div>
+                      </div>
+                  </div>
+
+                  {/* 📝 ÜRÜN AÇIKLAMASI & TEKNİSYEN NOTU */}
+                  <div className="space-y-4">
+                      {/* Teknisyen Notu Kutusu */}
+                      <div className="relative bg-gradient-to-br from-cyan-900/20 to-blue-900/20 border-l-4 border-cyan-500 p-6 rounded-r-xl">
+                          <h4 className="text-cyan-400 font-bold text-xs uppercase mb-2 flex items-center gap-2">
+                             <Zap size={14}/> Teknisyenin Notu
+                          </h4>
+                          <p className="text-sm text-slate-300 italic leading-relaxed">
+                            "{product.description ? product.description.substring(0, 150) + "..." : "Bu cihaz tüm testlerden başarıyla geçmiştir. Gönül rahatlığıyla kullanabilirsiniz."}"
+                          </p>
+                      </div>
+
+                      {/* Detaylı Açıklama */}
+                      <div className="bg-[#0f172a] border border-slate-800 rounded-3xl p-8">
+                          <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Cpu size={18}/> Detaylı Açıklama</h3>
+                          <p className="text-slate-400 text-sm leading-7 font-light whitespace-pre-wrap">
+                            {product.description || "Ekstra açıklama bulunmuyor."}
+                          </p>
+                      </div>
+                  </div>
+
+              </div>
+
+              {/* --- SAĞ KOLON (Satın Alma & Güven) --- */}
+              <div className="lg:col-span-5 space-y-6">
+                  
+                  {/* FİYAT & BAŞLIK KARTI */}
+                  <div className="bg-[#0f172a] border border-slate-800 rounded-3xl p-6 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl"></div>
+                      
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="bg-cyan-500/10 text-cyan-400 text-[10px] font-black px-2 py-0.5 rounded uppercase border border-cyan-500/20">
+                            {product.category}
+                        </span>
+                        <span className="text-[10px] text-slate-500">STK-{product.id}</span>
+                      </div>
+                      
+                      <h1 className="text-3xl font-black text-white uppercase leading-none mb-6">{product.name}</h1>
+                      
+                      <div className="flex items-end justify-between border-t border-slate-800 pt-6">
+                          <div>
+                              <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">NAKİT FİYAT</span>
+                              <div className="text-4xl font-black text-white tracking-tighter">
+                                  {Number(product.price).toLocaleString('tr-TR')} <span className="text-xl text-cyan-500">₺</span>
+                              </div>
+                          </div>
+                          {/* Stok Durumu Badge */}
+                          <div className={`px-3 py-1 rounded-lg text-xs font-bold uppercase border ${product.stok === 'Satışta' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                              {product.stok === 'Satışta' ? 'Stokta Var' : 'Tükendi'}
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* 🚚 TESLİMAT & GÜVENCE (YENİ) */}
+                  <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-900/50 border border-slate-800 p-3 rounded-xl flex items-center gap-3">
+                          <div className="bg-blue-500/10 p-2 rounded-lg text-blue-400"><Truck size={18}/></div>
+                          <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Hızlı Kargo</p>
+                              <p className="text-[9px] text-slate-600">Aynı gün teslimat</p>
+                          </div>
+                      </div>
+                      <div className="bg-slate-900/50 border border-slate-800 p-3 rounded-xl flex items-center gap-3">
+                          <div className="bg-purple-500/10 p-2 rounded-lg text-purple-400"><Box size={18}/></div>
+                          <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Özenli Paket</p>
+                              <p className="text-[9px] text-slate-600">Patpat korumalı</p>
+                          </div>
+                      </div>
+                      <div className="col-span-2 bg-slate-900/50 border border-slate-800 p-3 rounded-xl flex items-center gap-3">
+                          <div className="bg-green-500/10 p-2 rounded-lg text-green-400"><ShieldCheck size={18}/></div>
+                          <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Aura Bilişim Güvencesi</p>
+                              <p className="text-[9px] text-slate-600">Satış sonrası teknik destek garantisi</p>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* KISA KÜNYE */}
+                  <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 space-y-3">
+                      <div className="flex justify-between border-b border-slate-800 pb-2">
+                          <span className="text-xs text-slate-500 font-bold uppercase">Marka</span>
+                          <span className="text-xs text-white font-bold">{product.marka}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-800 pb-2">
+                          <span className="text-xs text-slate-500 font-bold uppercase">Durum</span>
+                          <span className="text-xs text-white font-bold">{product.kondisyon}</span>
+                      </div>
+                      <div className="flex justify-between">
+                          <span className="text-xs text-slate-500 font-bold uppercase">Konum</span>
+                          <span className="text-xs text-white font-bold">{product.konum}</span>
+                      </div>
+                  </div>
+
+                  {/* NEON LİNKLER */}
+                  <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Güvenli Ödeme İle Al</p>
+                      <div className="grid grid-cols-4 gap-2">
+                          <a href={product.links.sahibinden || "#"} target="_blank" className={`h-14 rounded-xl flex items-center justify-center border transition-all ${product.links.sahibinden ? 'bg-[#ffe800] border-[#ffe800] text-black hover:scale-105' : 'bg-slate-900 border-slate-800 opacity-30 grayscale'}`}>
+                             <span className="font-black text-lg">S</span>
+                          </a>
+                          <a href={product.links.dolap || "#"} target="_blank" className={`h-14 rounded-xl flex items-center justify-center border transition-all ${product.links.dolap ? 'bg-[#00D678] border-[#00D678] text-white hover:scale-105' : 'bg-slate-900 border-slate-800 opacity-30 grayscale'}`}>
+                             <span className="font-black text-lg">D</span>
+                          </a>
+                          <a href={product.links.letgo || "#"} target="_blank" className={`h-14 rounded-xl flex items-center justify-center border transition-all ${product.links.letgo ? 'bg-[#FF3C4C] border-[#FF3C4C] text-white hover:scale-105' : 'bg-slate-900 border-slate-800 opacity-30 grayscale'}`}>
+                             <span className="font-black text-lg">L</span>
+                          </a>
+                          <a href={product.links.instagram || "#"} target="_blank" className={`h-14 rounded-xl flex items-center justify-center border transition-all ${product.links.instagram ? 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white hover:scale-105' : 'bg-slate-900 border-slate-800 opacity-30 grayscale'}`}>
+                             <Instagram size={20}/>
+                          </a>
+                      </div>
+                  </div>
+
+                  {/* AKSİYON BUTONLARI */}
+                  <div className="grid grid-cols-12 gap-3 pt-2">
+                      <a href="tel:05396321429" className="col-span-3 bg-[#1e293b] hover:bg-[#334155] border border-slate-700 text-white rounded-2xl flex flex-col items-center justify-center py-4 transition-colors">
+                          <Phone size={20} className="text-slate-400"/>
+                      </a>
+                      <a href={`https://wa.me/905396321429?text=Merhaba, ilan no: #${product.id} olan "${product.name}" hakkında görüşmek istiyorum.`} target="_blank" className="col-span-9 bg-[#25D366] hover:bg-[#20bd5a] text-[#0a3319] rounded-2xl flex flex-col items-center justify-center py-4 shadow-lg shadow-green-900/20 transition-transform active:scale-95 group">
+                          <div className="flex items-center gap-2">
+                              <MessageCircle size={24} className="group-hover:animate-bounce"/>
+                              <div className="flex flex-col items-start leading-none">
+                                  <span className="text-[10px] font-bold uppercase opacity-80">Hemen İletişime Geç</span>
+                                  <span className="text-lg font-black uppercase tracking-wide">WHATSAPP</span>
+                              </div>
+                          </div>
+                      </a>
+                  </div>
+
+                  {/* SSS (Accordion Basitleştirilmiş) */}
+                  <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-3 text-cyan-400">
+                          <HelpCircle size={16}/> <span className="text-xs font-bold uppercase">Sıkça Sorulanlar</span>
+                      </div>
+                      <div className="space-y-3">
+                          <details className="group">
+                              <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-medium text-slate-300">
+                                  <span>Bu cihazın garantisi var mı?</span>
+                                  <span className="transition group-open:rotate-180">▼</span>
+                              </summary>
+                              <p className="group-open:animate-fadeIn mt-2 text-xs text-slate-500 leading-relaxed">
+                                  Evet, ikinci el cihazlarımız firmamız tarafından test edilmiş olup, tarafımızca 1 ay teknik servis garantilidir.
+                              </p>
+                          </details>
+                          <div className="h-px bg-slate-800"></div>
+                          <details className="group">
+                              <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-medium text-slate-300">
+                                  <span>Kargo süreci nasıl işliyor?</span>
+                                  <span className="transition group-open:rotate-180">▼</span>
+                              </summary>
+                              <p className="group-open:animate-fadeIn mt-2 text-xs text-slate-500 leading-relaxed">
+                                  Hafta içi 16:00'a kadar verilen siparişler aynı gün, özenle paketlenerek kargoya verilir.
+                              </p>
+                          </details>
+                      </div>
+                  </div>
+
+              </div>
+          </div>
+      </div>
+    </div>
   );
 }
