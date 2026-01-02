@@ -6,7 +6,7 @@ import {
   ArrowLeft, Save, Printer, User, Smartphone, Zap, Laptop, Watch, Box, 
   CheckSquare, ClipboardCheck, History, CreditCard, AlertTriangle, Send, Phone, Globe, MapPin, MessageCircle, Lock,
   Lightbulb, Battery, Fan, Eye, ShieldCheck, Database, Wrench, HardDrive, Wifi, Trash2, Camera, Upload, X, Image as ImageIcon,
-  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle
+  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase"; 
 
@@ -16,6 +16,7 @@ const UPSELL_DATA: any = {
 };
 
 // --- DİNAMİK AURA İPUÇLARI (KATEGORİ BAZLI) ---
+// Bu listeler kısaltılmadı, tam liste.
 const CATEGORY_TIPS: any = {
   "Cep Telefonu": [
     { id: "pil", title: "Pil Sağlığı & Şarj", desc: "Batarya kimyasını korumak için cihazı %20-%80 arasında şarj edin.", icon: Battery, color: "text-green-400" },
@@ -92,6 +93,7 @@ export default function ServisDetaySayfasi() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [expertiseId, setExpertiseId] = useState<number | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState("Sistem");
   
   // FIRSAT ÜRÜNLERİ (DATABASE'DEN GELECEK)
   const [availableUpsells, setAvailableUpsells] = useState<any[]>([]);
@@ -99,6 +101,22 @@ export default function ServisDetaySayfasi() {
   // --- ONAY MODALI STATE ---
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [approvalData, setApprovalData] = useState({ amount: 0, desc: "" });
+
+  // --- WIKI (ARIZA KÜTÜPHANESİ) STATE ---
+  const [isWikiModalOpen, setIsWikiModalOpen] = useState(false);
+  const [wikiSearchTerm, setWikiSearchTerm] = useState("");
+  const [wikiResults, setWikiResults] = useState<any[]>([]);
+  const [wikiViewMode, setWikiViewMode] = useState<'search' | 'add'>('search');
+  const [newWikiEntry, setNewWikiEntry] = useState({ title: "", problem: "", solution: "" });
+
+  // --- STOK & PARÇA YÖNETİMİ STATE ---
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [stockSearchTerm, setStockSearchTerm] = useState("");
+  const [stockResults, setStockResults] = useState<any[]>([]);
+  const [usedParts, setUsedParts] = useState<any[]>([]); // Serviste kullanılan parçalar
+
+  // --- TIMELINE (ZAMAN TÜNELİ) STATE ---
+  const [timelineLogs, setTimelineLogs] = useState<any[]>([]);
 
   const [formData, setFormData] = useState<any>({
     id: 0, 
@@ -133,24 +151,16 @@ export default function ServisDetaySayfasi() {
   const getCategoryInfo = (catName: string) => CATEGORY_DATA[catName] || CATEGORY_DATA["Diğer"];
   const getCurrentTips = () => CATEGORY_TIPS[formData.category] || CATEGORY_TIPS["Diğer"];
 
-  // --- KATEGORİYE GÖRE FIRSAT ÜRÜNLERİNİ ÇEK ---
+  // --- KULLANICIYI VE VERİLERİ ÇEK ---
   useEffect(() => {
-      const fetchUpsells = async () => {
-          const { data } = await supabase
-            .from('aura_upsell_products')
-            .select('*')
-            .eq('category', formData.category)
-            .eq('is_active', true);
-          
-          if(data) setAvailableUpsells(data);
-          else setAvailableUpsells([]); 
+      // Kullanıcı bilgisini al
+      const getUser = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.email) setCurrentUserEmail(user.email);
       };
-      
-      fetchUpsells();
-  }, [formData.category]); 
+      getUser();
 
-  useEffect(() => {
-    async function fetchData() {
+      async function fetchData() {
         if (!params?.id) return;
         try {
             if (params.id === 'yeni') {
@@ -195,6 +205,10 @@ export default function ServisDetaySayfasi() {
                         sold_upsells: data.sold_upsells || []
                     });
                     if (data.serial_no) checkExpertise(data.serial_no);
+                    
+                    // Alt verileri çek
+                    fetchTimeline(data.id);
+                    fetchUsedParts(data.id);
                 }
             }
         } catch (error) { console.error(error); } finally { setLoading(false); }
@@ -202,10 +216,174 @@ export default function ServisDetaySayfasi() {
     fetchData();
   }, [params.id]);
 
+  // --- KATEGORİYE GÖRE FIRSAT ÜRÜNLERİNİ ÇEK ---
+  useEffect(() => {
+      const fetchUpsells = async () => {
+          const { data } = await supabase
+            .from('aura_upsell_products')
+            .select('*')
+            .eq('category', formData.category)
+            .eq('is_active', true);
+          
+          if(data) setAvailableUpsells(data);
+          else setAvailableUpsells([]); 
+      };
+      
+      fetchUpsells();
+  }, [formData.category]); 
+
+  // --- FONKSİYONLAR ---
+
   const checkExpertise = async (imei: string) => {
       if (!imei || imei.length < 5) { setExpertiseId(null); return; }
       const { data } = await supabase.from('aura_expertise').select('id').eq('serial_no', imei).single();
       if (data) setExpertiseId(data.id); else setExpertiseId(null);
+  };
+
+  // TIMELINE FONKSİYONLARI
+  const fetchTimeline = async (jobId: number) => {
+      const { data } = await supabase.from('aura_timeline').select('*').eq('job_id', jobId).order('created_at', { ascending: false });
+      if (data) setTimelineLogs(data);
+  };
+
+  const logToTimeline = async (action: string, desc: string) => {
+      if (params.id === 'yeni') return; 
+      
+      const newLog = {
+          job_id: params.id,
+          action_type: action,
+          description: desc,
+          created_by: currentUserEmail
+      };
+      
+      await supabase.from('aura_timeline').insert([newLog]);
+      setTimelineLogs(prev => [newLog, ...prev]);
+  };
+
+  // STOK FONKSİYONLARI
+  const fetchUsedParts = async (jobId: number) => {
+      const { data } = await supabase.from('aura_servis_parcalari')
+        .select(`*, aura_stok(urun_adi)`)
+        .eq('job_id', jobId);
+      if(data) setUsedParts(data);
+  };
+
+  const handleStockSearch = async () => {
+      if(stockSearchTerm.length < 2) return;
+      const { data } = await supabase.from('aura_stok')
+        .select('*')
+        .ilike('urun_adi', `%${stockSearchTerm}%`)
+        .gt('stok_adedi', 0) 
+        .limit(10);
+      setStockResults(data || []);
+  };
+
+  const addPartToJob = async (part: any) => {
+      if(params.id === 'yeni') { alert("Önce servisi kaydetmelisiniz."); return; }
+      
+      const quantityStr = prompt(`Kaç adet "${part.urun_adi}" kullanacaksınız?`, "1");
+      if(!quantityStr || isNaN(Number(quantityStr)) || Number(quantityStr) < 1) return;
+      const qty = Number(quantityStr);
+
+      if(qty > part.stok_adedi) { 
+          alert(`Yetersiz stok! Mevcut stok: ${part.stok_adedi}`); 
+          return; 
+      }
+
+      // Tutar Hesaplama
+      const totalCost = Number(part.alis_fiyati) * qty;
+      const totalPrice = Number(part.satis_fiyati) * qty;
+
+      const confirmMsg = `${part.urun_adi} (x${qty}) stoktan düşülecek.\n\nToplam Fiyat: ${totalPrice}₺\nToplam Maliyet: ${totalCost}₺\n\nOnaylıyor musunuz?`;
+      if(!confirm(confirmMsg)) return;
+
+      // 1. Ara tabloya ekle
+      const { error } = await supabase.from('aura_servis_parcalari').insert([{
+          job_id: params.id,
+          stok_id: part.id,
+          adet: qty,
+          alis_fiyati_anlik: part.alis_fiyati,
+          satis_fiyati_anlik: part.satis_fiyati
+      }]);
+
+      if(error) { alert("Hata: " + error.message); return; }
+
+      // 2. Stoktan Düş
+      await supabase.from('aura_stok').update({ stok_adedi: part.stok_adedi - qty }).eq('id', part.id);
+
+      // 3. Servis Fiyatını ve Maliyetini Güncelle (ADET ÇARPIMI)
+      const newCost = Number(formData.cost) + totalCost;
+      const newPrice = Number(formData.price) + totalPrice;
+
+      await supabase.from('aura_jobs').update({ price: newPrice, cost: newCost }).eq('id', params.id);
+
+      // 4. UI Güncelle
+      setFormData({ ...formData, price: newPrice, cost: newCost });
+      logToTimeline("Parça Kullanıldı", `${part.urun_adi} (x${qty}) stoktan düşüldü. (Fiyat: +${totalPrice}₺)`);
+      fetchUsedParts(Number(params.id));
+      setIsStockModalOpen(false);
+  };
+
+  const removePartFromJob = async (partRelId: number, partStokId: number, alis: number, satis: number, adet: number) => {
+      if(!confirm(`Bu parçayı (${adet} adet) iptal etmek istiyor musunuz? Stok geri iade edilecek.`)) return;
+      
+      // 1. Tablodan sil
+      await supabase.from('aura_servis_parcalari').delete().eq('id', partRelId);
+
+      // 2. Stoğu geri ekle (Adet kadar)
+      const { data: currStock } = await supabase.from('aura_stok').select('stok_adedi').eq('id', partStokId).single();
+      if(currStock) await supabase.from('aura_stok').update({ stok_adedi: currStock.stok_adedi + adet }).eq('id', partStokId);
+
+      // 3. Fiyatları düş (Adet çarpımı kadar)
+      const removedCost = alis * adet;
+      const removedPrice = satis * adet;
+
+      const newCost = Number(formData.cost) - removedCost;
+      const newPrice = Number(formData.price) - removedPrice;
+      
+      await supabase.from('aura_jobs').update({ price: newPrice, cost: newCost }).eq('id', params.id);
+      setFormData({ ...formData, price: newPrice, cost: newCost });
+      
+      logToTimeline("Parça İptali", `Parça kullanımı iptal edildi, ${adet} adet stok iade alındı.`);
+      fetchUsedParts(Number(params.id));
+  };
+
+  // WIKI FONKSİYONLARI
+  const handleWikiSearch = async () => {
+      if (!wikiSearchTerm) return;
+      const { data } = await supabase.from('aura_wiki')
+          .select('*')
+          .ilike('title', `%${wikiSearchTerm}%`)
+          .limit(5);
+      setWikiResults(data || []);
+  };
+
+  const handleAddToWiki = async () => {
+      if (!newWikiEntry.title || !newWikiEntry.solution) { alert("Başlık ve Çözüm alanları zorunludur."); return; }
+      
+      const payload = {
+          title: newWikiEntry.title,
+          device_category: formData.category,
+          problem_desc: newWikiEntry.problem,
+          solution_steps: newWikiEntry.solution,
+          author: currentUserEmail
+      };
+
+      const { error } = await supabase.from('aura_wiki').insert([payload]);
+      if (!error) {
+          alert("Çözüm kütüphaneye eklendi! Teşekkürler.");
+          setWikiViewMode('search');
+          setWikiSearchTerm(newWikiEntry.title);
+          handleWikiSearch(); // Listeyi yenile
+      } else {
+          alert("Hata: " + error.message);
+      }
+  };
+
+  const applyWikiSolution = (solution: string) => {
+      setFormData({ ...formData, notes: (formData.notes ? formData.notes + "\n\n" : "") + "📚 WIKI ÇÖZÜMÜ:\n" + solution });
+      setIsWikiModalOpen(false);
+      logToTimeline("Wiki Kullanıldı", "Arıza kütüphanesinden çözüm uygulandı.");
   };
 
   const toggleUpsell = (item: any) => {
@@ -234,8 +412,12 @@ export default function ServisDetaySayfasi() {
     };
 
     let res;
-    if (params.id === 'yeni') res = await supabase.from('aura_jobs').insert([payload]).select();
-    else res = await supabase.from('aura_jobs').update(payload).eq('id', params.id);
+    if (params.id === 'yeni') {
+        res = await supabase.from('aura_jobs').insert([payload]).select();
+    } else {
+        res = await supabase.from('aura_jobs').update(payload).eq('id', params.id);
+        logToTimeline("Kayıt Güncellendi", `Durum: ${formData.status}, Tutar: ${formData.price}TL olarak güncellendi.`);
+    }
 
     setLoading(false);
     if (!res.error) {
@@ -254,6 +436,7 @@ export default function ServisDetaySayfasi() {
     if (!error) {
         alert("Onay isteği gönderildi!");
         setFormData({ ...formData, status: 'Onay Bekliyor', approval_status: 'pending', approval_amount: approvalData.amount, approval_desc: approvalData.desc });
+        logToTimeline("Onay İsteği", `Müşteriden ${approvalData.amount} TL tutarında ek onay istendi.`);
         setApprovalModalOpen(false);
     }
     setLoading(false);
@@ -279,6 +462,7 @@ export default function ServisDetaySayfasi() {
         }
     }
     setFormData({ ...formData, images: newImages });
+    logToTimeline("Fotoğraf Yüklendi", `${files.length} adet yeni fotoğraf eklendi.`);
     setUploading(false);
   };
 
@@ -312,6 +496,7 @@ export default function ServisDetaySayfasi() {
         rawMessage = `Merhaba *${formData.customer}*,\n\n*${takipKodu}* takip numaralı cihazınızın durumu: *${formData.status}*.\n\nBilgilerinize sunarız.\n\n*Aura Bilişim*`;
     }
 
+    logToTimeline("WhatsApp Mesajı", "Müşteriye durum bildirimi gönderildi.");
     const encodedMessage = encodeURIComponent(rawMessage);
     window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, "_blank");
   };
@@ -411,7 +596,7 @@ export default function ServisDetaySayfasi() {
 
             {/* ORTA KOLON */}
             <div className="col-span-12 lg:col-span-5 space-y-6">
-                <div className="bg-[#151921] border border-slate-800 rounded-xl p-6 shadow-lg h-full">
+                <div className="bg-[#151921] border border-slate-800 rounded-xl p-6 shadow-lg">
                     <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-5 flex items-center gap-2"><Smartphone size={14} className="text-blue-500"/> Cihaz Kimliği</h3>
                     <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-700">{Object.keys(CATEGORY_DATA).map(cat => ( <button key={cat} onClick={() => handleCategoryChange(cat)} className={`px-3 py-1 rounded text-[10px] font-bold border whitespace-nowrap transition-all ${formData.category === cat ? 'bg-cyan-600 text-white border-cyan-500' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}>{cat}</button> ))}</div>
                     
@@ -439,7 +624,13 @@ export default function ServisDetaySayfasi() {
                         </div>
 
                         <div>
-                            <label className="text-[10px] text-slate-500 font-bold ml-1">ŞİKAYET / ARIZA</label>
+                            <div className="flex justify-between items-center mb-1 ml-1">
+                                <label className="text-[10px] text-slate-500 font-bold">ŞİKAYET / ARIZA</label>
+                                {/* WIKI BUTTON */}
+                                <button onClick={() => { setIsWikiModalOpen(true); setWikiSearchTerm(formData.device); handleWikiSearch(); }} className="text-[10px] flex items-center gap-1 text-purple-400 hover:text-purple-300 font-bold bg-purple-900/20 px-2 py-0.5 rounded border border-purple-500/30">
+                                    <Book size={10}/> Wiki'de Ara
+                                </button>
+                            </div>
                             <textarea value={formData.issue} onChange={e => setFormData((p:any)=>({...p, issue: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm h-24 outline-none resize-none focus:border-cyan-500" placeholder="Arıza detayını giriniz..."></textarea>
                         </div>
                         
@@ -454,10 +645,75 @@ export default function ServisDetaySayfasi() {
                         </div>
                     </div>
                 </div>
+
+                {/* --- STOK / PARÇA YÖNETİMİ (YENİ) --- */}
+                {params.id !== 'yeni' && (
+                    <div className="bg-[#151921] border border-slate-800 rounded-xl p-6 shadow-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><PackageMinus size={14} className="text-yellow-500"/> Kullanılan Parçalar</h3>
+                            <button onClick={() => setIsStockModalOpen(true)} className="text-[10px] bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-lg"><Plus size={12}/> STOKTAN DÜŞ</button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            {usedParts.length > 0 ? usedParts.map((part) => (
+                                <div key={part.id} className="flex justify-between items-center bg-[#0b0e14] border border-slate-800 p-2.5 rounded-lg group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500 font-bold text-xs">{part.adet}x</div>
+                                        <div>
+                                            <p className="text-xs font-bold text-white">{part.aura_stok?.urun_adi}</p>
+                                            <p className="text-[10px] text-slate-500">
+                                                Mal: {(part.alis_fiyati_anlik * part.adet)}₺ • Sat: {(part.satis_fiyati_anlik * part.adet)}₺
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => removePartFromJob(part.id, part.stok_id, part.alis_fiyati_anlik, part.satis_fiyati_anlik, part.adet)} className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button>
+                                </div>
+                            )) : (
+                                <div className="text-center text-[10px] text-slate-600 border border-dashed border-slate-800 p-4 rounded-lg">
+                                    Henüz parça eklenmedi. "Stoktan Düş" butonunu kullanın.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* SAĞ KOLON (Kontroller & İşlemler) */}
+            {/* SAĞ KOLON (Kontroller, İşlemler ve YENİ TIMELINE) */}
             <div className="col-span-12 lg:col-span-4 space-y-6">
+                
+                {/* --- YENİ EKLENEN: ZAMAN TÜNELİ (TIMELINE) --- */}
+                {params.id !== 'yeni' && (
+                    <div className="bg-[#151921] border border-slate-800 rounded-xl overflow-hidden shadow-lg flex flex-col max-h-[300px]">
+                        <div className="p-3 bg-slate-900/50 border-b border-slate-800 flex justify-between items-center">
+                            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Clock size={14} className="text-emerald-500"/> Canlı Akış</h3>
+                            <span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20">LOGLAR</span>
+                        </div>
+                        <div className="overflow-y-auto custom-scrollbar p-3 space-y-3">
+                            {timelineLogs.length > 0 ? timelineLogs.map((log: any) => (
+                                <div key={log.id} className="flex gap-3 text-xs">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1.5"></div>
+                                        <div className="w-px h-full bg-slate-800"></div>
+                                    </div>
+                                    <div className="pb-2">
+                                        <p className="text-slate-300 font-bold">{log.action_type}</p>
+                                        <p className="text-slate-500 text-[10px] leading-tight">{log.description}</p>
+                                        <div className="flex gap-2 mt-1">
+                                            <span className="text-[9px] text-slate-600">{new Date(log.created_at).toLocaleString('tr-TR')}</span>
+                                            <span className="text-[9px] text-cyan-900/70">{log.created_by?.split('@')[0]}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )) : <div className="text-center text-[10px] text-slate-600 py-4">Henüz kayıt yok.</div>}
+                        </div>
+                    </div>
+                )}
+
+                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><History size={14} className="text-purple-500"/> İşlemler</h3>
+                    <textarea value={formData.notes} onChange={e => setFormData((p:any)=>({...p, notes: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm h-32 outline-none focus:border-purple-500 resize-none" placeholder="Yapılan işlemler..."></textarea>
+                </div>
+
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                     <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><AlertTriangle size={14} className="text-orange-500"/> Ön Kontrol</h3>
                     <div className="grid grid-cols-2 gap-2">
@@ -465,10 +721,6 @@ export default function ServisDetaySayfasi() {
                             <button key={item} onClick={() => { const curr = formData.preCheck.includes(item) ? formData.preCheck.filter((i:any)=>i!==item) : [...formData.preCheck, item]; setFormData({...formData, preCheck: curr}); }} className={`flex items-center gap-2 p-2 rounded border text-left text-[10px] transition-all ${formData.preCheck.includes(item) ? 'bg-red-500/10 border-red-500/50 text-red-400 font-bold' : 'bg-[#0b0e14] border-slate-800 text-slate-600 hover:border-slate-700'}`}><div className={`w-2 h-2 rounded-full ${formData.preCheck.includes(item)?'bg-red-500':'bg-slate-700'}`}></div>{item}</button>
                         ))}
                     </div>
-                </div>
-                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><History size={14} className="text-purple-500"/> İşlemler</h3>
-                    <textarea value={formData.notes} onChange={e => setFormData((p:any)=>({...p, notes: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm h-32 outline-none focus:border-purple-500 resize-none" placeholder="Yapılan işlemler..."></textarea>
                 </div>
                 
                 {/* FOTOĞRAF GALERİSİ */}
@@ -507,6 +759,103 @@ export default function ServisDetaySayfasi() {
                 </div>
             </div>
         </div>
+
+        {/* --- STOK SEÇİM MODALI --- */}
+        {isStockModalOpen && (
+            <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="bg-[#1e293b] rounded-2xl w-full max-w-lg border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
+                    <div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center">
+                        <h3 className="text-white font-bold flex items-center gap-2"><Box size={18} className="text-yellow-400"/> STOKTAN PARÇA SEÇ</h3>
+                        <button onClick={() => setIsStockModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button>
+                    </div>
+                    <div className="p-4 bg-[#0b0e14]">
+                        <div className="relative">
+                            <input type="text" value={stockSearchTerm} onChange={(e) => { setStockSearchTerm(e.target.value); if(e.target.value.length>1) handleStockSearch(); }} className="w-full bg-[#151921] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-yellow-500" placeholder="Parça ara (Örn: iPhone 11 Ekran)..." autoFocus/>
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                        {stockResults.map((part) => (
+                            <button key={part.id} onClick={() => addPartToJob(part)} className="w-full flex justify-between items-center p-3 hover:bg-slate-800 rounded-lg border border-transparent hover:border-slate-700 transition-all group text-left">
+                                <div>
+                                    <p className="text-sm font-bold text-white group-hover:text-yellow-400">{part.urun_adi}</p>
+                                    <p className="text-[10px] text-slate-500">{part.kategori} • Stok: {part.stok_adedi} Adet</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-bold text-slate-300">Satış: {part.satis_fiyati}₺</p>
+                                    <p className="text-[9px] text-slate-600">Maliyet: {part.alis_fiyati}₺</p>
+                                </div>
+                            </button>
+                        ))}
+                        {stockResults.length === 0 && stockSearchTerm.length > 1 && <div className="text-center py-8 text-slate-500 text-xs">Sonuç bulunamadı.</div>}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* --- WIKI (ARIZA KÜTÜPHANESİ) MODALI --- */}
+        {isWikiModalOpen && (
+            <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="bg-[#1e293b] rounded-2xl w-full max-w-2xl border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]">
+                    <div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center">
+                        <h3 className="text-white font-bold flex items-center gap-2"><Book size={18} className="text-purple-400"/> AURA WIKI</h3>
+                        <button onClick={() => setIsWikiModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button>
+                    </div>
+                    
+                    {wikiViewMode === 'search' ? (
+                        <div className="p-6 flex-1 overflow-y-auto">
+                            <div className="relative mb-6">
+                                <input type="text" value={wikiSearchTerm} onChange={(e) => setWikiSearchTerm(e.target.value)} onKeyDown={(e)=>e.key==='Enter' && handleWikiSearch()} className="w-full bg-[#0b0e14] border border-slate-600 rounded-xl py-3 pl-11 pr-4 text-white focus:border-purple-500 outline-none" placeholder="Arıza ara (Örn: iPhone 11 ses gelmiyor)..."/>
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
+                                <button onClick={handleWikiSearch} className="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">ARA</button>
+                            </div>
+
+                            {wikiResults.length > 0 ? (
+                                <div className="space-y-3">
+                                    {wikiResults.map((res:any) => (
+                                        <div key={res.id} className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl hover:bg-slate-800 transition-colors">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h4 className="text-purple-400 font-bold text-sm">{res.title}</h4>
+                                                <button onClick={() => applyWikiSolution(res.solution_steps)} className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded font-bold">UYGULA</button>
+                                            </div>
+                                            <p className="text-slate-400 text-xs mb-2 line-clamp-2">{res.problem_desc}</p>
+                                            <div className="text-[10px] text-slate-500 flex gap-3">
+                                                <span>Yazar: {res.author?.split('@')[0]}</span>
+                                                <span>Kategori: {res.device_category}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-10">
+                                    <Book size={40} className="text-slate-700 mx-auto mb-3"/>
+                                    <p className="text-slate-400 font-bold">Sonuç Bulunamadı</p>
+                                    <p className="text-slate-600 text-xs mb-4">Bu arıza henüz kütüphanede yok.</p>
+                                    <button onClick={() => { setWikiViewMode('add'); setNewWikiEntry({...newWikiEntry, title: wikiSearchTerm, problem: formData.issue}); }} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 mx-auto"><Plus size={14}/> YENİ EKLE</button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="p-6 flex-1 overflow-y-auto space-y-4">
+                            <div className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer hover:text-white mb-2" onClick={() => setWikiViewMode('search')}><ArrowLeft size={14}/> Arama Sonuçlarına Dön</div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">BAŞLIK</label>
+                                <input type="text" value={newWikiEntry.title} onChange={(e)=>setNewWikiEntry({...newWikiEntry, title: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm" placeholder="Örn: Xiaomi Note 10 Pro Şarj Soketi"/>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">SORUN TANIMI</label>
+                                <textarea value={newWikiEntry.problem} onChange={(e)=>setNewWikiEntry({...newWikiEntry, problem: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-20 resize-none" placeholder="Sorun tam olarak nedir?"/>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">ÇÖZÜM ADIMLARI</label>
+                                <textarea value={newWikiEntry.solution} onChange={(e)=>setNewWikiEntry({...newWikiEntry, solution: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-40 resize-none" placeholder="Adım adım nasıl çözüldü?"/>
+                            </div>
+                            <button onClick={handleAddToWiki} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg">KÜTÜPHANEYE KAYDET</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
 
         {/* ONAY MODALI */}
         {approvalModalOpen && (

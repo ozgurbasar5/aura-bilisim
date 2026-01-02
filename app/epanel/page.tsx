@@ -31,6 +31,22 @@ const ProcessBox = ({ title, count, percent, color, colorName, icon }: any) => (
   </div>
 );
 
+// Alt Bileşen: İnce Liste Satırı
+function StatRow({ icon, label, count, total, color }: any) {
+    const width = total > 0 ? (count / total) * 100 : 0;
+    return (
+        <div className="group">
+            <div className="flex justify-between text-xs font-bold mb-2 text-slate-400 group-hover:text-white transition-colors">
+                <span className="flex items-center gap-2">{icon} {label}</span>
+                <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px]">{count}</span>
+            </div>
+            <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div className={`h-full ${color} transition-all duration-1000 shadow-[0_0_10px_currentColor]`} style={{ width: `${width}%` }}></div>
+            </div>
+        </div>
+    )
+}
+
 export default function EPanelDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -56,7 +72,7 @@ export default function EPanelDashboard() {
     totalStockValue: 0,
     
     avgServiceTicket: 0, 
-    avgStoreProfit: 0    
+    avgStoreProfit: 0     
   });
 
   useEffect(() => {
@@ -67,7 +83,7 @@ export default function EPanelDashboard() {
         const { data: jobs } = await supabase.from('aura_jobs').select('*');
         const { data: products } = await supabase.from('urunler').select('*');
         const { data: quickSales } = await supabase.from('satis_gecmisi').select('*'); // Hızlı Satışlar
-        const { data: expenses } = await supabase.from('giderler').select('*');       // Giderler (Kira/Fatura)
+        const { data: expenses } = await supabase.from('aura_finans').select('*').eq('tur', 'Gider'); // Giderler
         
         const now = new Date();
         const currentMonth = now.getMonth() + 1;
@@ -108,7 +124,8 @@ export default function EPanelDashboard() {
                 // Tamamlanan (Ciro)
                 if ((status.includes("teslim") || status.includes("hazır")) && isThisMonth) {
                     totalRevenue += price;
-                    totalCost += cost; // Parça maliyetini giderlere ekle
+                    // Servis maliyeti (parça maliyeti)
+                    totalCost += cost; 
                     sRevenue += price;
                     sCount++;
                 }
@@ -128,9 +145,9 @@ export default function EPanelDashboard() {
             products.forEach((prod: any) => {
                 const status = (prod.stok_durumu || "").toLowerCase();
                 const price = Number(prod.fiyat) || 0;
-                const cost = Number(prod.maliyet) || 0;
+                const cost = Number(prod.maliyet) || 0; 
                 
-                // Basit mantık: Satıldıysa bu ay satılmış sayıyoruz (veya updated_at kontrolü eklenebilir)
+                // Satıldıysa
                 if (status.includes("satıldı") || status.includes("tamam")) {
                     totalRevenue += price;
                     totalCost += cost;
@@ -161,27 +178,26 @@ export default function EPanelDashboard() {
                     totalRevenue += price;
                     mRevenue += price;
                     mSoldCount++;
-                    // Hızlı satışın maliyeti girilmediyse 0 kabul edilir
                 }
             });
         }
 
-        // 4. GİDERLER (KİRA, FATURA VB.)
+        // 4. GİDERLER (KİRA, FATURA, STOK ALIMI)
         if (expenses) {
             expenses.forEach((exp: any) => {
-                const date = new Date(exp.created_at);
+                const date = new Date(exp.created_at || exp.tarih); 
                 const isThisMonth = (date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear);
                 const amount = Number(exp.tutar) || 0;
 
                 if (isThisMonth) {
-                    totalCost += amount; // Toplam maliyete ekle
+                    totalCost += amount; 
                 }
             });
         }
 
         // --- SONUÇLAR ---
         const totalProfit = totalRevenue - totalCost;
-        const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+        const profitMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
         const activeServiceTotal = sWaiting + sProcessing + sReady;
         const storeActiveTotal = mPacking + mShipped + mSoldCount;
 
@@ -197,7 +213,7 @@ export default function EPanelDashboard() {
             monthlyRevenue: totalRevenue,
             monthlyCost: totalCost,
             monthlyProfit: totalProfit,
-            profitMargin: Math.round(profitMargin),
+            profitMargin: profitMargin,
             bekleyenAlacak: totalPending,
 
             serviceCount: sCount,
@@ -245,7 +261,7 @@ export default function EPanelDashboard() {
                 <span className="text-cyan-500">|ıIı</span> KOMUTA MERKEZİ
             </h1>
             <p className="text-xs text-slate-500 font-bold uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
-                AURA BİLİŞİM v3.5 FINAL <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                AURA BİLİŞİM v7.0 FINAL <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
             </p>
           </div>
           <div className="flex gap-3">
@@ -467,20 +483,4 @@ export default function EPanelDashboard() {
       </div>
     </div>
   );
-}
-
-// Alt Bileşen: İnce Liste Satırı
-function StatRow({ icon, label, count, total, color }: any) {
-    const width = total > 0 ? (count / total) * 100 : 0;
-    return (
-        <div className="group">
-            <div className="flex justify-between text-xs font-bold mb-2 text-slate-400 group-hover:text-white transition-colors">
-                <span className="flex items-center gap-2">{icon} {label}</span>
-                <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px]">{count}</span>
-            </div>
-            <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                <div className={`h-full ${color} transition-all duration-1000 shadow-[0_0_10px_currentColor]`} style={{ width: `${width}%` }}></div>
-            </div>
-        </div>
-    )
 }

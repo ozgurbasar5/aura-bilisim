@@ -1,12 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { 
   MapPin, Phone, Info, Instagram, Twitter, Facebook, ArrowRight,
-  ShieldCheck, Lock, Wrench 
+  ShieldCheck, Lock
 } from "lucide-react";
 
 export default function Footer() {
+  const pathname = usePathname();
+
+  // --- DÜZELTME: KONTROL BURADA (Eğer ileride hook eklerseniz sorun olmaz) ---
+  if (pathname?.startsWith("/epanel") || pathname === "/login") {
+    return null;
+  }
+  // -------------------------------------------------------------------------
+
   return (
     <footer className="bg-[#020617] border-t border-white/5 pt-20 pb-10 mt-20 relative z-10">
       
@@ -20,15 +29,10 @@ export default function Footer() {
             
             {/* 1. SÜTUN: LOGO & HAKKINDA */}
             <div className="col-span-1 md:col-span-1">
-                {/* LOGO ALANI - ANİMASYON EKLENDİ 
-                    'group' sınıfı eklendi, böylece hover durumunda iç elementler tetiklenecek.
-                */}
                 <Link href="/" className="flex items-center gap-3.5 mb-6 group select-none">
                     <div className="relative w-11 h-11 flex items-center justify-center">
-                        {/* ARKADAKİ GLOW EFEKTİ (HOVER İLE PARLAR) */}
                         <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-60 group-hover:opacity-100 group-hover:bg-cyan-400/30 transition-all duration-500"></div>
-                        
-                        <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none">
                           <defs>
                             <linearGradient id="footerCoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                               <stop offset="0%" stopColor="#22d3ee" />
@@ -39,24 +43,16 @@ export default function Footer() {
                               <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
                             </radialGradient>
                           </defs>
-                          
-                          {/* DIŞ KALKAN (HOVER İLE RENGİ DEĞİŞİR) */}
                           <path d="M 50 12 L 22 40 L 22 52 L 12 52 L 12 35 L 45 2 Z" fill="#fff" className="opacity-95 group-hover:fill-cyan-50 transition-colors"/>
                           <path d="M 50 88 L 78 60 L 78 48 L 88 48 L 88 65 L 55 98 Z" fill="#fff" className="opacity-95 group-hover:fill-cyan-50 transition-colors"/>
-                          
-                          {/* MERKEZ ÇİP (HOVER İLE BÜYÜR) */}
                           <rect x="36" y="36" width="28" height="28" rx="3" transform="rotate(45 50 50)" fill="url(#footerCoreGradient)" className="group-hover:scale-105 transition-transform duration-300 origin-center outline outline-1 outline-white/20"/>
                           <circle cx="50" cy="50" r="5" fill="url(#footerCenterGlow)" className="animate-pulse-slow"/>
-                          
-                          {/* DEVREYOLLARI (HOVER İLE BELİRGİNLEŞİR) */}
                           <rect x="24" y="42" width="8" height="1.5" fill="url(#footerCoreGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
                           <rect x="24" y="46" width="5" height="1.5" fill="url(#footerCoreGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
                           <rect x="68" y="56.5" width="8" height="1.5" fill="url(#footerCoreGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
                           <rect x="71" y="52.5" width="5" height="1.5" fill="url(#footerCoreGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
                         </svg>
                     </div>
-                    
-                    {/* LOGO METNİ (HOVER İLE RENK DEĞİŞTİRİR) */}
                     <div className="flex flex-col justify-center">
                         <div className="font-extrabold text-[22px] tracking-tight leading-none text-white flex items-center gap-1 group-hover:text-cyan-50 transition-colors">AURA<span className="text-cyan-400">BİLİŞİM</span></div>
                         <span className="text-[9px] text-slate-400 font-bold tracking-[0.25em] uppercase group-hover:text-cyan-400/80 transition-colors">TEKNOLOJİ ÜSSÜ</span>

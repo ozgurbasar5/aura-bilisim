@@ -4,32 +4,53 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
-import AyarlarModal from "@/components/AyarlarModal"; // Ayarlar Modalı geri eklendi
+import AyarlarModal from "@/components/AyarlarModal";
+import AuraAI from "@/components/AuraAI"; // YENİ: Yapay Zeka Bileşeni
 import { 
   LayoutDashboard, PackagePlus, LogOut, 
   Search, Calculator, StickyNote, Users, 
   CircuitBoard, Activity, Signal,
   Menu, Bell, ChevronRight, Smartphone, ClipboardList, Settings,
   X, ShoppingBag, ChevronDown, Loader2,
-  MessageSquare, Package, ShieldCheck, Tag, CreditCard, Wallet, Layers, Database, User
+  MessageSquare, Package, ShieldCheck, Tag, CreditCard, Wallet, User
 } from "lucide-react"; 
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
-// MATRIX EFEKTİ (Optimize Edildi)
+// MATRIX EFEKTİ (Optimize Edildi & Geri Planda Çalışır)
 const MatrixRain = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    
+    // Canvas boyutlandırma
+    const resizeCanvas = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    };
+    resizeCanvas(); // İlk boyutlandırma
+
+    // Pencere yeniden boyutlandırma olayını dinle
+    window.addEventListener('resize', resizeCanvas);
+
     const chars = "01XYZAURAPRO$#@";
     const fontSize = 14;
-    const columns = canvas.width / fontSize;
-    const drops: number[] = Array(Math.floor(columns)).fill(1);
     
+    // Sütun sayısını ve düşen damlaları yeniden hesapla
+    let columns = Math.floor(canvas.width / fontSize);
+    let drops: number[] = Array(columns).fill(1);
+
+    // Pencere boyutu değiştiğinde sütunları güncelle
+    const handleResize = () => {
+        resizeCanvas();
+        columns = Math.floor(canvas.width / fontSize);
+        drops = Array(columns).fill(1); // Damlaları sıfırla
+    };
+    window.addEventListener('resize', handleResize);
+
     const draw = () => {
       ctx.fillStyle = "rgba(2, 6, 23, 0.1)"; 
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -43,8 +64,14 @@ const MatrixRain = () => {
       }
     };
     const interval = setInterval(draw, 50);
-    return () => clearInterval(interval);
+
+    return () => {
+        clearInterval(interval);
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('resize', resizeCanvas); // Temizlik
+    };
   }, []);
+
   return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full -z-20 opacity-[0.05] pointer-events-none print:hidden" />;
 };
 
@@ -55,7 +82,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   const [authorized, setAuthorized] = useState(false); 
   const [loadingCheck, setLoadingCheck] = useState(true); 
   
-  // KULLANICI STATE'LERİ (BİRLEŞTİRİLDİ)
+  // KULLANICI STATE'LERİ
   const [userEmail, setUserEmail] = useState("Sistem...");
   const [currentUserFull, setCurrentUserFull] = useState<any>(null); // Ayarlar için full veri
   const [isAdmin, setIsAdmin] = useState(false); 
@@ -210,6 +237,9 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
     <div className="flex h-screen bg-[#020617] text-white overflow-hidden relative font-sans selection:bg-cyan-500/30 selection:text-cyan-100">
       <MatrixRain />
       
+      {/* YENİ: Aura AI Modülü (Her Sayfada Sağ Altta) */}
+      <AuraAI />
+
       {/* --- SIDEBAR --- */}
       <aside className={`${isSidebarOpen ? 'w-72' : 'w-20'} bg-[#0f172a]/90 backdrop-blur-2xl border-r border-cyan-500/10 flex flex-col z-50 transition-all duration-300 shadow-[5px_0_30px_rgba(0,0,0,0.5)] print:hidden`}>
         {/* LOGO ALANI */}
@@ -221,7 +251,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
              {isSidebarOpen && (
                  <div className="animate-in fade-in slide-in-from-left-2 duration-300">
                    <h1 className="text-2xl font-black text-white tracking-tighter leading-none italic">AURA<span className="text-cyan-400">PRO</span></h1>
-                   <p className="text-[9px] text-cyan-600/80 font-bold tracking-[0.3em] uppercase mt-0.5">V6.0 SYSTEM</p>
+                   <p className="text-[9px] text-cyan-600/80 font-bold tracking-[0.3em] uppercase mt-0.5">V7.0 AI SYSTEM</p>
                  </div>
              )}
           </div>
@@ -240,9 +270,10 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <NavItem icon={<ShieldCheck size={20}/>} label="Ekspertiz İstasyonu" href="/epanel/ekspertiz" isOpen={isSidebarOpen} active={pathname.includes('/ekspertiz')} />
             <NavItem icon={<PackagePlus size={20}/>} label="Hızlı Kayıt" href="/epanel/hizli-kayit" isOpen={isSidebarOpen} active={pathname.includes('/hizli-kayit')} />
 
-            {/* GRUP 3: TİCARİ & FİNANS (Yeni Eklenenler) */}
+            {/* GRUP 3: TİCARİ & FİNANS */}
             <div className="my-2"></div>
             <NavGroup title="TİCARİ & FİNANS" isOpen={isSidebarOpen} />
+            <NavItem icon={<Package size={20}/>} label="Stok Yönetimi" href="/epanel/stok" isOpen={isSidebarOpen} active={pathname.includes('/stok')} />
             <NavItem icon={<ShoppingBag size={20}/>} label="Aura Store" href="/epanel/magaza" isOpen={isSidebarOpen} active={pathname.includes('/magaza')} />
             <NavItem icon={<CreditCard size={20}/>} label="Satış Yönetimi" href="/epanel/satis" isOpen={isSidebarOpen} active={pathname.includes('/satis')} />
             <NavItem icon={<Wallet size={20}/>} label="Finans & Kasa" href="/epanel/finans" isOpen={isSidebarOpen} active={pathname.includes('/finans')} highlight />
@@ -395,7 +426,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
         {/* FOOTER */}
         <footer className="h-8 bg-[#020617] border-t border-white/5 flex items-center justify-between px-6 text-[10px] font-mono text-slate-600 select-none z-50 print:hidden shrink-0">
             <div className="flex gap-4"><span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div> SYSTEM: ONLINE</span><span className="flex items-center gap-1.5"><Signal size={10}/> {ping}ms</span></div>
-            <div className="opacity-50 hover:opacity-100 transition-opacity">AURA PRO OS v6.0 | DESIGNED BY OZGUR</div>
+            <div className="opacity-50 hover:opacity-100 transition-opacity">AURA PRO OS v7.0 | DESIGNED BY OZGUR</div>
         </footer>
       </div>
     </div>
@@ -410,7 +441,11 @@ function NavGroup({ title, isOpen }: { title: string, isOpen: boolean }) {
 
 function NavItem({ icon, label, href, isOpen, active, badge, badgeColor = "bg-red-500", highlight }: any) {
     return (
-        <Link href={href} className={`flex items-center gap-3 p-2.5 rounded-lg font-bold text-sm transition-all group relative overflow-hidden ${active ? 'text-white bg-gradient-to-r from-cyan-900/40 to-blue-900/20 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'} ${highlight ? 'text-cyan-400' : ''}`}>
+        <Link 
+            href={href} 
+            title={!isOpen ? label : ""} // Akıllı Tooltip: Sidebar kapalıyken üzerine gelince isim yazar
+            className={`flex items-center gap-3 p-2.5 rounded-lg font-bold text-sm transition-all group relative overflow-hidden ${active ? 'text-white bg-gradient-to-r from-cyan-900/40 to-blue-900/20 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'} ${highlight ? 'text-cyan-400' : ''}`}
+        >
             {active && <div className="absolute left-0 top-0 h-full w-1 bg-cyan-500 shadow-[0_0_10px_#06b6d4]"></div>}
             <div className={`relative ${active ? 'text-cyan-400' : ''}`}>{icon}{badge > 0 && <span className={`absolute -top-1.5 -right-1.5 w-4 h-4 ${badgeColor} rounded-full text-[9px] flex items-center justify-center text-white border border-[#0f172a] shadow-sm`}>{badge}</span>}</div>
             {isOpen && <span className="animate-in fade-in slide-in-from-left-2 duration-200">{label}</span>}

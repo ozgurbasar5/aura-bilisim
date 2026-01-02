@@ -466,7 +466,7 @@ function CihazSorgulaContent() {
                             <div className="text-5xl font-black text-white mb-8 tracking-tight drop-shadow-xl">{Number(result.price).toLocaleString('tr-TR')}<span className="text-2xl text-slate-500 ml-1">₺</span></div>
                             
                             <a 
-                                href={`https://wa.me/905396321469?text=Merhaba, SRV-${result.tracking_code} kodlu cihazım (${result.device}) hakkında bilgi almak istiyorum.`}
+                                href={`https://wa.me/905396321429?text=Merhaba, SRV-${result.tracking_code} kodlu cihazım (${result.device}) hakkında bilgi almak istiyorum.`}
                                 target="_blank" 
                                 rel="noreferrer"
                                 className="w-full py-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-[#0a3319] font-black uppercase tracking-wide flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(37,211,102,0.4)]"

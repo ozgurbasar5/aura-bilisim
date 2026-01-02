@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Search, ShoppingBag, Wrench, Menu, X, Home, 
-  LifeBuoy, Info, HelpCircle, Phone 
+  Search, ShoppingBag, Wrench, Menu, X, Home 
 } from "lucide-react";
 
 export default function Navbar() {
@@ -21,17 +20,21 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // --- DÜZELTME: KONTROLÜ BURAYA (HOOKLARDAN SONRAYA) ALDIK ---
+  // Tüm hooklar (useState, useEffect) çalıştıktan sonra karar veriyoruz.
+  if (pathname?.startsWith("/epanel") || pathname === "/login") {
+    return null;
+  }
+  // -----------------------------------------------------------
+
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${scrolled ? "bg-[#020617]/95 backdrop-blur-xl border-white/5 h-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" : "bg-[#020617] border-transparent h-24"} print:hidden`}>
         <div className="container mx-auto px-6 h-full flex items-center justify-between">
-          {/* LOGO ALANI - 'group' sınıfı ile hover efekti tetikleniyor */}
+          {/* LOGO ALANI */}
           <Link href="/" className="flex items-center gap-3.5 group select-none shrink-0" onClick={() => setMenuAcik(false)}>
-            
             <div className="relative w-11 h-11 flex items-center justify-center">
-                {/* ARKADAKİ GLOW (Hover ile parlar) */}
                 <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-60 group-hover:opacity-100 group-hover:bg-cyan-400/30 transition-all duration-500"></div>
-                
-                <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none">
                   <defs>
                     <linearGradient id="navGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#22d3ee" />
@@ -42,24 +45,16 @@ export default function Navbar() {
                       <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
                     </radialGradient>
                   </defs>
-                  
-                  {/* DIŞ KALKAN (Hover ile renk değişimi) */}
                   <path d="M 50 12 L 22 40 L 22 52 L 12 52 L 12 35 L 45 2 Z" fill="#fff" className="opacity-95 group-hover:fill-cyan-50 transition-colors"/>
                   <path d="M 50 88 L 78 60 L 78 48 L 88 48 L 88 65 L 55 98 Z" fill="#fff" className="opacity-95 group-hover:fill-cyan-50 transition-colors"/>
-                  
-                  {/* MERKEZ ÇİP (Hover ile büyüme/scale) */}
                   <rect x="36" y="36" width="28" height="28" rx="3" transform="rotate(45 50 50)" fill="url(#navGradient)" className="group-hover:scale-105 transition-transform duration-300 origin-center outline outline-1 outline-white/20"/>
                   <circle cx="50" cy="50" r="5" fill="url(#navGlow)" className="animate-pulse-slow"/>
-                  
-                  {/* DEVRE YOLLARI (Hover ile belirginleşme) */}
                   <rect x="24" y="42" width="8" height="1.5" fill="url(#navGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
                   <rect x="24" y="46" width="5" height="1.5" fill="url(#navGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
                   <rect x="68" y="56.5" width="8" height="1.5" fill="url(#navGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
                   <rect x="71" y="52.5" width="5" height="1.5" fill="url(#navGradient)" className="group-hover:opacity-100 opacity-80 transition-opacity"/>
                 </svg>
             </div>
-            
-            {/* YAZI ALANI (Hover ile renk değişimi) */}
             <div className="flex flex-col justify-center">
                 <div className="font-extrabold text-[22px] tracking-tight leading-none text-white flex items-center gap-1 group-hover:text-cyan-50 transition-colors">AURA<span className="text-cyan-400">BİLİŞİM</span></div>
                 <span className="text-[9px] text-slate-400 font-bold tracking-[0.25em] uppercase group-hover:text-cyan-400/80 transition-colors">TEKNOLOJİ ÜSSÜ</span>

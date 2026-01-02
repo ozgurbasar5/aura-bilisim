@@ -7,17 +7,19 @@ import Footer from "./Footer";
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Yönetim Paneli ve Login sayfalarında Navbar/Footer GİZLE
-  // (Burası kalmalı yoksa panelin içine müşteri menüsü girer)
-  const isPanelOrLogin = pathname.startsWith("/epanel") || pathname === "/login";
+  // Yönetim Paneli ve Login sayfalarında Navbar/Footer GİZLE
+  // pathname null kontrolü eklendi (nadiren de olsa hata vermemesi için)
+  const isPanelOrLogin = pathname?.startsWith("/epanel") || pathname === "/login";
 
   if (isPanelOrLogin) {
+    // Paneldeyiz: Sadece içeriği (sayfayı) göster, menüleri koyma
     return <>{children}</>;
   }
 
+  // Normal sitedeyiz: Menü, İçerik ve Footer göster
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Üst Bar (Her yerde sabit) */}
+      {/* Üst Bar */}
       <Navbar />
       
       {/* Sayfa İçeriği */}
@@ -25,7 +27,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
 
-      {/* Alt Bar (Her yerde sabit) */}
+      {/* Alt Bar */}
       <Footer />
     </div>
   );
