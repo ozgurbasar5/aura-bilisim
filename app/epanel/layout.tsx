@@ -4,14 +4,15 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
+import AyarlarModal from "@/components/AyarlarModal"; // Ayarlar Modalı geri eklendi
 import { 
   LayoutDashboard, PackagePlus, LogOut, 
   Search, Calculator, StickyNote, Users, 
   CircuitBoard, Activity, Signal,
   Menu, Bell, ChevronRight, Smartphone, ClipboardList, Settings,
   X, ShoppingBag, ChevronDown, Loader2,
-  MessageSquare, Package, ShieldCheck, Tag, CreditCard, Wallet, Layers, Database
-} from "lucide-react"; // Wallet ve Layers eklendi
+  MessageSquare, Package, ShieldCheck, Tag, CreditCard, Wallet, Layers, Database, User
+} from "lucide-react"; 
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
 // MATRIX EFEKTİ (Optimize Edildi)
@@ -53,9 +54,14 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   
   const [authorized, setAuthorized] = useState(false); 
   const [loadingCheck, setLoadingCheck] = useState(true); 
+  
+  // KULLANICI STATE'LERİ (BİRLEŞTİRİLDİ)
   const [userEmail, setUserEmail] = useState("Sistem...");
+  const [currentUserFull, setCurrentUserFull] = useState<any>(null); // Ayarlar için full veri
   const [isAdmin, setIsAdmin] = useState(false); 
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Ayarlar Modal Kontrolü
   
   // Widget Durumları
   const [showCalc, setShowCalc] = useState(false);
@@ -94,8 +100,23 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
         }
 
         setUserEmail(session.user.email || "");
+
+        // Profil detaylarını çek (Avatar ve Rol için - Ayarlar Modalı için Gerekli)
+        const { data: profile } = await supabase
+            .from('personel_izinleri')
+            .select('*')
+            .eq('email', session.user.email)
+            .single();
+        
+        // Full kullanıcı verisini set et
+        const fullUser = { ...session.user, ...profile };
+        setCurrentUserFull(fullUser);
+
         const ADMIN_EMAILS = ["admin@aurabilisim.com", "ozgurbasar5@gmail.com", "patron@aura.com"]; 
-        setIsAdmin(ADMIN_EMAILS.includes(session.user.email || ""));
+        // DB rolü veya email listesi kontrolü
+        const adminCheck = profile?.rol === 'admin' || ADMIN_EMAILS.includes(session.user.email || "");
+        setIsAdmin(adminCheck);
+
         setAuthorized(true); 
         
         checkCounts();
@@ -119,7 +140,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); searchInputRef.current?.focus(); }
-      if (e.key === 'Escape') { setShowResultBox(false); setShowCalc(false); setShowNotes(false); setShowNotifications(false); setShowUserMenu(false); }
+      if (e.key === 'Escape') { setShowResultBox(false); setShowCalc(false); setShowNotes(false); setShowNotifications(false); setShowUserMenu(false); setIsSettingsOpen(false); }
     };
     const handleClickOutside = (event: MouseEvent) => {
         if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) { setShowResultBox(false); }
@@ -172,7 +193,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
       setShowResultBox(false); setSearchTerm(""); 
   };
   
-  const cikisYap = async () => { await supabase.auth.signOut(); router.replace("/login"); };
+  const cikisYap = async () => { await supabase.auth.signOut(); window.location.reload(); };
   const saveNote = (val: string) => { setMyNote(val); localStorage.setItem("teknisyen_notu", val); };
   const handleCalc = (val: string) => { if (val === 'C') setCalcDisplay(""); else if (val === '=') { try { setCalcDisplay(eval(calcDisplay).toString()); } catch { setCalcDisplay("ERR"); } } else setCalcDisplay(calcDisplay + val); };
 
@@ -200,7 +221,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
              {isSidebarOpen && (
                  <div className="animate-in fade-in slide-in-from-left-2 duration-300">
                    <h1 className="text-2xl font-black text-white tracking-tighter leading-none italic">AURA<span className="text-cyan-400">PRO</span></h1>
-                   <p className="text-[9px] text-cyan-600/80 font-bold tracking-[0.3em] uppercase mt-0.5">V5.9 SYSTEM</p>
+                   <p className="text-[9px] text-cyan-600/80 font-bold tracking-[0.3em] uppercase mt-0.5">V6.0 SYSTEM</p>
                  </div>
              )}
           </div>
@@ -219,7 +240,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <NavItem icon={<ShieldCheck size={20}/>} label="Ekspertiz İstasyonu" href="/epanel/ekspertiz" isOpen={isSidebarOpen} active={pathname.includes('/ekspertiz')} />
             <NavItem icon={<PackagePlus size={20}/>} label="Hızlı Kayıt" href="/epanel/hizli-kayit" isOpen={isSidebarOpen} active={pathname.includes('/hizli-kayit')} />
 
-            {/* GRUP 3: TİCARİ & FİNANS */}
+            {/* GRUP 3: TİCARİ & FİNANS (Yeni Eklenenler) */}
             <div className="my-2"></div>
             <NavGroup title="TİCARİ & FİNANS" isOpen={isSidebarOpen} />
             <NavItem icon={<ShoppingBag size={20}/>} label="Aura Store" href="/epanel/magaza" isOpen={isSidebarOpen} active={pathname.includes('/magaza')} />
@@ -227,7 +248,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <NavItem icon={<Wallet size={20}/>} label="Finans & Kasa" href="/epanel/finans" isOpen={isSidebarOpen} active={pathname.includes('/finans')} highlight />
             <NavItem icon={<Tag size={20}/>} label="Fırsat Ürünleri" href="/epanel/firsat-urunleri" isOpen={isSidebarOpen} active={pathname.includes('/firsat-urunleri')} />
 
-            {/* GRUP 4: MÜŞTERİ */}
+            {/* GRUP 4: İLİŞKİLER */}
             <div className="my-2"></div>
             <NavGroup title="İLİŞKİLER" isOpen={isSidebarOpen} />
             <NavItem icon={<MessageSquare size={20}/>} label="Mesajlar" href="/epanel/destek" isOpen={isSidebarOpen} active={pathname.includes('/destek')} badge={mesajSayisi} badgeColor="bg-pink-500 animate-pulse"/>
@@ -241,18 +262,33 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             )}
         </nav>
 
-        {/* ALT: KULLANICI */}
+        {/* ALT: KULLANICI PROFİLİ VE POPUP */}
         <div className="p-4 border-t border-white/5 bg-[#020617]/50 relative shrink-0">
            <button onClick={() => isSidebarOpen && setShowUserMenu(!showUserMenu)} className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${showUserMenu ? 'bg-white/10' : 'hover:bg-white/5'}`}>
-               <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center text-white font-black text-xs relative shadow-inner shrink-0">
-                   {userEmail.charAt(0).toUpperCase()}
+               <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center text-white font-black text-xs relative shadow-inner shrink-0 overflow-hidden">
+                   {currentUserFull?.avatar_url ? (
+                       <img src={currentUserFull.avatar_url} alt="Profil" className="w-full h-full object-cover" />
+                   ) : (
+                       userEmail.charAt(0).toUpperCase()
+                   )}
                    <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-[#020617] rounded-full"></span>
                </div>
                {isSidebarOpen && <div className="flex-1 text-left overflow-hidden animate-in fade-in slide-in-from-left-2"><p className="text-white text-[11px] font-bold truncate">{userEmail.split('@')[0]}</p><p className="text-[9px] text-slate-500 font-bold uppercase">{isAdmin ? 'Admin' : 'Teknisyen'}</p></div>}
                {isSidebarOpen && <ChevronDown size={14} className="text-slate-500"/>}
            </button>
+           
+           {/* PROFİL MENÜSÜ POPUP */}
            {showUserMenu && isSidebarOpen && (
-               <div className="absolute bottom-full left-4 right-4 mb-2 bg-[#1e293b] border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
+               <div className="absolute bottom-full left-4 right-4 mb-2 bg-[#1e293b] border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in">
+                   {/* Ayarlar Butonu */}
+                   <button 
+                        onClick={() => { setIsSettingsOpen(true); setShowUserMenu(false); }} 
+                        className="w-full text-left px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-800 flex items-center gap-2"
+                   >
+                       <User size={14} className="text-cyan-400"/> PROFİL AYARLARI
+                   </button>
+                   
+                   {/* Çıkış Butonu */}
                    <button onClick={cikisYap} className="w-full text-left px-4 py-3 text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-700"><LogOut size={14}/> GÜVENLİ ÇIKIŞ</button>
                </div>
            )}
@@ -344,6 +380,14 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
                 </div>
             </div>
         )}
+
+        {/* --- AYARLAR MODALI --- */}
+        <AyarlarModal 
+            isOpen={isSettingsOpen} 
+            onClose={() => setIsSettingsOpen(false)} 
+            user={currentUserFull}
+            onUpdate={() => window.location.reload()} 
+        />
 
         {/* CONTENT */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 relative z-10 custom-scrollbar">{children}</main>
