@@ -2,16 +2,14 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-// DÜZELTME: 'X' ikonu buraya eklendi.
 import { 
   Search, CheckCircle2, AlertCircle, 
-  Activity, User, Calendar,
-  MessageCircle, Zap, Battery, Fan, Eye, ShieldCheck, Camera, Wrench, Cpu, Radio, X
+  Activity, User, 
+  MessageCircle, Zap, Battery, Fan, Eye, ShieldCheck, Camera, Wrench, Cpu, Radio, X, ShoppingBag, Plus, Star, Send
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
 
-// --- AURA İPUÇLARI (SABİT VERİLER) ---
-const AURA_TIPS: any = {
+const AURA_TIPS: any = { 
     "genel": { title: "Aura Koruma", desc: "Cihaz performansını korumak için orijinal şarj aksesuarları kullanın.", icon: ShieldCheck, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
     "pil": { title: "Pil Sağlığı", desc: "Ömrü uzatmak için şarjı %20-%80 arasında tutmaya özen gösterin.", icon: Battery, color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20" },
     "sensor": { title: "Sensör Bakımı", desc: "Robot süpürge sensörlerini haftada bir mikrofiber bezle silin.", icon: Eye, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
@@ -37,6 +35,11 @@ function CihazSorgulaContent() {
   const [error, setError] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // Yorum State'leri
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
   const STEPS = ["Kayıt Açıldı", "İşlemde", "Test Ediliyor", "Hazır / Teslim"];
 
   useEffect(() => {
@@ -47,7 +50,7 @@ function CihazSorgulaContent() {
 
   const performSearch = async (searchValue: string) => {
     if (!searchValue) return;
-    setLoading(true); setResult(null); setError("");
+    setLoading(true); setResult(null); setError(""); setReviewSubmitted(false);
 
     let cleanCode = searchValue.trim().toUpperCase().replace(/\s/g, ''); 
     if (/^\d+$/.test(cleanCode)) {
@@ -65,7 +68,14 @@ function CihazSorgulaContent() {
           .single();
 
         if (error) throw error;
-        if (data) { setResult(data); } else { setError("Kayıt bulunamadı. Lütfen takip numarasını kontrol ediniz."); }
+        if (data) { 
+            setResult(data); 
+            // Yorum kontrolü
+            const { data: existingReview } = await supabase.from('aura_reviews').select('id').eq('job_id', data.id).single();
+            if (existingReview) setReviewSubmitted(true);
+        } else { 
+            setError("Kayıt bulunamadı. Lütfen takip numarasını kontrol ediniz."); 
+        }
     } catch (err) {
         setError("Kayıt bulunamadı veya sistem hatası.");
     } finally {
@@ -76,6 +86,76 @@ function CihazSorgulaContent() {
   const handleManualSearch = (e: React.FormEvent) => {
     e.preventDefault();
     performSearch(code);
+  };
+
+  // --- YORUM GÖNDERME ---
+  const submitReview = async () => {
+      if(rating === 0) return alert("Lütfen puan veriniz.");
+      setLoading(true);
+      const { error } = await supabase.from('aura_reviews').insert([{
+          job_id: result.id,
+          customer_name: result.customer,
+          rating: rating,
+          comment: comment
+      }]);
+      setLoading(false);
+      if(!error) {
+          setReviewSubmitted(true);
+          alert("Değerli yorumunuz için teşekkür ederiz!");
+      } else {
+          alert("Hata oluştu: " + error.message);
+      }
+  };
+
+  // --- ONAY İŞLEMİ ---
+  const handleClientApproval = async (id: number, decision: 'approved' | 'rejected', newPrice?: number) => {
+    if (!confirm(decision === 'approved' ? "İşlemi onaylıyor musunuz?" : "Reddetmek istediğinize emin misiniz?")) return;
+
+    setLoading(true);
+    
+    const updates: any = {
+        approval_status: decision,
+        status: decision === 'approved' ? 'İşlemde' : 'İptal/Reddedildi'
+    };
+    
+    if (decision === 'approved' && newPrice) {
+        updates.price = newPrice;
+    }
+
+    const { error } = await supabase.from('aura_jobs').update(updates).eq('id', id);
+    
+    if (!error) {
+        alert(decision === 'approved' ? "Teşekkürler! Onayınız alındı." : "Talebiniz alındı. İşlem reddedildi.");
+        window.location.reload(); 
+    } else {
+        alert("Hata oluştu.");
+    }
+    setLoading(false);
+  };
+
+  // --- UPSELL SATIN ALMA ---
+  const handleBuyUpsell = async (item: any) => {
+      if(!confirm(`${item.name} ürününü ${item.price} TL karşılığında servis kaydınıza eklemek istiyor musunuz?`)) return;
+      
+      setLoading(true);
+      
+      const newPrice = Number(result.price) + item.price;
+      const newSold = [...(result.sold_upsells || []), item];
+      const newRecommended = result.recommended_upsells.filter((i:any) => i.id !== item.id);
+
+      const { error } = await supabase.from('aura_jobs').update({
+          price: newPrice,
+          sold_upsells: newSold,
+          recommended_upsells: newRecommended
+      }).eq('id', result.id);
+
+      if(!error) {
+          alert("Ürün başarıyla eklendi! Toplam tutar güncellendi.");
+          window.location.reload();
+      } else {
+          alert("Hata oluştu.");
+      }
+      setLoading(false);
   };
 
   const maskName = (name: string) => {
@@ -89,12 +169,13 @@ function CihazSorgulaContent() {
       const s = status.toLowerCase();
       if (s.includes("teslim") || s.includes("kargo")) return 4;
       if (s.includes("hazır") || s.includes("tamam")) return 3;
-      if (s.includes("işlem") || s.includes("parça") || s.includes("tamir")) return 2;
+      if (s.includes("işlem") || s.includes("parça") || s.includes("tamir") || s.includes("onay")) return 2;
       return 1; 
   };
 
   const currentStep = result ? getCurrentStep(result.status) : 0;
   const isFinished = currentStep >= 3; 
+  const isDelivered = result?.status === "Teslim Edildi";
   const tip = result ? (AURA_TIPS[result.tip_id] || AURA_TIPS["genel"]) : null;
 
   return (
@@ -156,8 +237,131 @@ function CihazSorgulaContent() {
 
         {/* --- SONUÇ PANELİ --- */}
         {result && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-12 duration-700">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-12 duration-700 relative">
                 
+                {/* --- MÜŞTERİ MEMNUNİYETİ (Sadece Teslim Edildiyse) --- */}
+                {isDelivered && !reviewSubmitted && (
+                    <div className="lg:col-span-12 mb-4 animate-in zoom-in-95 duration-500">
+                        <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-[2rem] p-8 text-center relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-orange-500"></div>
+                            <h2 className="text-2xl font-black text-white mb-2">Hizmetimizden Memnun Kaldınız mı?</h2>
+                            <p className="text-slate-400 text-sm mb-6">Deneyiminizi bizimle paylaşarak daha iyi hizmet vermemize yardımcı olun.</p>
+                            
+                            <div className="flex justify-center gap-2 mb-6">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button key={star} onClick={() => setRating(star)} className={`transition-all hover:scale-110 ${star <= rating ? 'text-yellow-400' : 'text-slate-700 hover:text-yellow-400/50'}`}>
+                                        <Star size={40} fill={star <= rating ? "currentColor" : "none"} />
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            {rating > 0 && (
+                                <div className="max-w-md mx-auto animate-in slide-in-from-bottom-4">
+                                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="w-full bg-[#0B1120] border border-slate-700 rounded-xl p-4 text-white outline-none focus:border-yellow-500 h-24 mb-4 resize-none" placeholder="Düşüncelerinizi yazın..."></textarea>
+                                    <button onClick={submitReview} className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-xl flex items-center justify-center gap-2"><Send size={18}/> GÖNDER</button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* --- TEŞEKKÜR MESAJI (Yorum Yapıldıysa) --- */}
+                {isDelivered && reviewSubmitted && (
+                    <div className="lg:col-span-12 mb-4 animate-in zoom-in-95 duration-500">
+                        <div className="bg-green-500/10 border border-green-500/30 rounded-[2rem] p-6 text-center">
+                            <CheckCircle2 size={40} className="text-green-500 mx-auto mb-2"/>
+                            <h3 className="text-xl font-bold text-white">Teşekkür Ederiz!</h3>
+                            <p className="text-green-400 text-sm">Geri bildiriminiz bizim için çok değerli.</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- KRİTİK ONAY KARTI --- */}
+                {result.approval_status === 'pending' && (
+                    <div className="lg:col-span-12 mb-4">
+                        <div className="relative overflow-hidden rounded-[2rem] border-2 border-purple-500 bg-[#0F1623] p-8 shadow-[0_0_40px_rgba(168,85,247,0.2)]">
+                            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-purple-600/20 blur-3xl animate-pulse"></div>
+                            
+                            <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                                <div className="flex-1 text-center md:text-left">
+                                    <div className="flex items-center justify-center md:justify-start gap-4 mb-3">
+                                        <div className="h-12 w-12 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 border border-purple-500/50 animate-bounce">
+                                            <Zap size={24} />
+                                        </div>
+                                        <h2 className="text-2xl font-black text-white uppercase tracking-tight">Kritik Onay Bekleniyor</h2>
+                                    </div>
+                                    <p className="text-slate-400 text-sm leading-relaxed mb-4">
+                                        Teknisyenlerimiz cihazınızda ekstra bir durum tespit etti. İşleme devam edebilmek için onayınız gerekiyor. 
+                                        Aşağıdaki detayları inceleyip karar verebilirsiniz.
+                                    </p>
+                                    
+                                    <div className="bg-white/5 rounded-xl p-4 border border-white/10 text-left">
+                                        <div className="flex justify-between items-center mb-2 border-b border-white/5 pb-2">
+                                            <span className="text-xs font-bold text-slate-500 uppercase">Ekstra Tutar</span>
+                                            <span className="text-xl font-black text-purple-400">+{result.approval_amount} ₺</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-xs font-bold text-slate-500 uppercase block mb-1">Teknisyen Notu</span>
+                                            <p className="text-sm text-white font-medium italic">"{result.approval_desc}"</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="w-full md:w-auto flex flex-col gap-3 min-w-[200px]">
+                                    <button 
+                                        onClick={() => handleClientApproval(result.id, 'approved', Number(result.price) + Number(result.approval_amount))}
+                                        className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-purple-900/40 hover:scale-105 transition-all flex items-center justify-center gap-2 uppercase tracking-wide text-sm"
+                                    >
+                                        <CheckCircle2 size={18}/> Onaylıyorum
+                                    </button>
+                                    <button 
+                                        onClick={() => handleClientApproval(result.id, 'rejected')}
+                                        className="w-full py-3 px-6 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 font-bold transition-all flex items-center justify-center gap-2 uppercase tracking-wide text-xs"
+                                    >
+                                        <X size={16}/> Reddet
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- AURA FIRSATLAR (UPSELL) KARTI --- */}
+                {result.recommended_upsells && result.recommended_upsells.length > 0 && (
+                    <div className="lg:col-span-12 mb-4">
+                        <div className="relative overflow-hidden rounded-[2rem] border border-pink-500/30 bg-[#0F1623] p-8 shadow-[0_0_30px_rgba(236,72,153,0.1)]">
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="h-10 w-10 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-400 border border-pink-500/50">
+                                        <ShoppingBag size={20} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black text-white uppercase tracking-tight">Cihazınız İçin Önerilenler</h2>
+                                        <p className="text-xs text-slate-400">Teknisyenlerimiz cihazınızın performansını ve ömrünü artırmak için bu ürünleri öneriyor.</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {result.recommended_upsells.map((item:any, index:number) => (
+                                        <div key={index} className="bg-white/5 border border-pink-500/20 rounded-xl p-4 flex justify-between items-center group hover:bg-pink-500/10 transition-colors">
+                                            <div>
+                                                <h4 className="text-sm font-bold text-white mb-1">{item.name}</h4>
+                                                <span className="text-xs text-pink-300 font-mono font-bold">{item.price} ₺</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleBuyUpsell(item)}
+                                                className="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold rounded-lg shadow-lg shadow-pink-900/20 flex items-center gap-2 group-hover:scale-105 transition-transform"
+                                            >
+                                                <Plus size={14}/> EKLE
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* SOL PANEL: CİHAZ KARTI & DURUM */}
                 <div className="lg:col-span-8 space-y-6">
                     {/* ANA KART */}

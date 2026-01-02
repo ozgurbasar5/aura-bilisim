@@ -10,7 +10,7 @@ import {
   CircuitBoard, Activity, Signal, Cpu, 
   Menu, Bell, ChevronRight, Smartphone, ClipboardList, Settings,
   Zap, X, ShoppingBag, Maximize2, Minimize2, User, Home, ChevronDown, Loader2,
-  MessageSquare, Package, ShieldCheck // Ekspertiz ikonu eklendi
+  MessageSquare, Package, ShieldCheck, Tag // Tag ikonu eklendi (Fırsat Yönetimi için)
 } from "lucide-react";
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
@@ -223,7 +223,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
     <div className="flex h-screen bg-[#020617] text-white overflow-hidden relative font-sans selection:bg-cyan-500/30 selection:text-cyan-100">
       <MatrixRain />
       
-      {/* SIDEBAR */}
+      {/* SIDEBAR (YAZDIRIRKEN GİZLENİR - print:hidden) */}
       <aside className={`${isSidebarOpen ? 'w-72' : 'w-20'} bg-[#0f172a]/80 backdrop-blur-xl border-r border-cyan-500/10 flex flex-col z-50 transition-all duration-300 shadow-[10px_0_40px_rgba(0,0,0,0.6)] print:hidden`}>
         <div className="h-20 flex items-center justify-center border-b border-white/5 relative overflow-hidden group">
           <div className={`flex items-center gap-3 transition-all duration-300 ${isSidebarOpen ? 'scale-100' : 'scale-90'}`}>
@@ -245,7 +245,6 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             
             <NavItem icon={<ClipboardList size={20}/>} label="Atölye Listesi" href="/epanel/atolye" isOpen={isSidebarOpen} active={pathname.includes('/atolye')} badge={bekleyenSayisi} badgeColor="bg-orange-500"/>
             
-            {/* YENİ EKLENEN EKSPERTİZ BUTONU */}
             <NavItem icon={<ShieldCheck size={20}/>} label="Ekspertiz İstasyonu" href="/epanel/ekspertiz" isOpen={isSidebarOpen} active={pathname.includes('/ekspertiz')} />
             
             <NavItem icon={<MessageSquare size={20}/>} label="Gelen Mesajlar" href="/epanel/destek" isOpen={isSidebarOpen} active={pathname.includes('/destek')} badge={mesajSayisi} badgeColor="bg-pink-500 animate-pulse"/>
@@ -253,6 +252,9 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <NavItem icon={<Users size={20}/>} label="Online Başvurular" href="/epanel/basvurular" isOpen={isSidebarOpen} active={pathname.includes('/basvurular')} badge={basvuruSayisi} badgeColor="bg-red-600" />
             
             <NavItem icon={<ShoppingBag size={20}/>} label="Aura Store" href="/epanel/magaza" isOpen={isSidebarOpen} active={pathname.includes('/magaza')} />
+
+            {/* --- YENİ EKLENEN FIRSAT YÖNETİMİ --- */}
+            <NavItem icon={<Tag size={20}/>} label="Fırsat Yönetimi" href="/epanel/firsat-urunleri" isOpen={isSidebarOpen} active={pathname.includes('/firsat-urunleri')} />
             
             <div className="my-2 border-t border-white/5 pt-2"></div>
             
@@ -284,6 +286,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
 
       {/* HEADER VE İÇERİK */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
+        {/* HEADER (YAZDIRIRKEN GİZLENİR - print:hidden) */}
         <header className="h-20 bg-[#020617]/80 backdrop-blur-md border-b border-cyan-500/10 flex items-center justify-between px-6 z-30 gap-6 print:hidden">
            <div className="flex items-center gap-6 flex-1">
               <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-slate-400 hover:text-white transition-colors"><Menu size={20} /></button>
@@ -303,7 +306,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
                                 searchResults.map((result) => (
                                   <div key={`${result.type}-${result.id}`} onClick={() => goToResult(result)} className="p-3 hover:bg-slate-800 cursor-pointer border-b border-slate-700/50 flex items-center justify-between transition-colors">
                                       <div className="flex items-center gap-3">
-                                          {/* İKON (Ürün mü Servis mi?) */}
+                                          {/* İKON */}
                                           <div className={`h-9 w-9 rounded-lg flex items-center justify-center font-bold text-xs border ${result.type === 'service' ? 'bg-purple-900/20 text-purple-400 border-purple-500/20' : 'bg-green-900/20 text-green-400 border-green-500/20'}`}>
                                               {result.type === 'service' ? <Smartphone size={16}/> : <Package size={16}/>}
                                           </div>
@@ -368,6 +371,8 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
         )}
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8 relative z-10 custom-scrollbar">{children}</main>
+        
+        {/* FOOTER (YAZDIRIRKEN GİZLENİR - print:hidden) */}
         <footer className="h-8 bg-[#020617] border-t border-white/5 flex items-center justify-between px-6 text-[10px] font-mono text-slate-500 select-none z-50 print:hidden">
             <div className="flex gap-4"><span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div> SYSTEM: ONLINE</span><span className="flex items-center gap-1.5"><Signal size={10}/> PING: {ping}ms</span></div>
             <div className="opacity-50">AURA PRO OS v5.9.1 | HIBRIT MOD</div>
