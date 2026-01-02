@@ -1,20 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { supabase } from "@/app/lib/supabase";
 import { 
-  ShoppingBag, Plus, Search, Filter, 
-  Image as ImageIcon, Trash2, Edit, 
-  Package, DollarSign, Tag, Archive
+  Plus, Search, Package, ShoppingBag, 
+  Tag, MoreVertical, Trash2, Edit, Truck, Clock, CheckCircle2, XCircle, Filter, DollarSign, Image as ImageIcon, Archive
 } from "lucide-react";
-import { supabase } from "@/app/lib/supabase"; // Veritabanı bağlantısı
 
-export default function MagazaVitrin() {
-  const router = useRouter();
+export default function MagazaPaneli() {
   const [products, setProducts] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Tümü");
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("Tümü");
 
   // Kategori Listesi
   const CATEGORIES = [
@@ -23,108 +21,120 @@ export default function MagazaVitrin() {
       "Aksesuar", "Yedek Parça", "Sarf Malzeme"
   ];
 
-  // --- VERİ ÇEKME (SQL) ---
-  const fetchProducts = async () => {
-    try {
-        setLoading(true);
-        // Supabase'den verileri çek (En yeniden eskiye)
-        let { data, error } = await supabase
-            .from('urunler')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        if (data) {
-            // SQL verisini (Türkçe sütunlar) UI formatına (İngilizce keyler) çeviriyoruz
-            const mappedData = data.map((item: any) => ({
-                id: item.id,
-                name: item.ad,
-                price: item.fiyat,
-                cost: item.maliyet || 0, // Maliyet verisini çek
-                category: item.kategori,
-                // UI bir dizi (array) bekliyor, tek resim varsa diziye koyuyoruz
-                images: item.resim_url ? [item.resim_url] : [],
-                // SQL'de true/false veya string olabilir, kontrol edelim
-                status: (item.stok_durumu === "Satışta" || item.stok_durumu === "true") ? "Satışta" : item.stok_durumu || "Stok Dışı"
-            }));
-            setProducts(mappedData);
-        }
-    } catch (e) {
-        console.error("Veri çekme hatası:", e);
-    } finally {
-        setLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  // --- HESAPLAMALAR ---
-  // Sadece "Satışta" olanların toplam değeri (Vitrin Değeri)
-  const activeProducts = products.filter(p => p.status === "Satışta");
-  const activeValue = activeProducts.reduce((acc, p) => acc + (Number(p.price) || 0), 0);
-
-  // Bu ay satılanların cirosu (Durumu 'Satıldı' içerenler)
-  const soldProducts = products.filter(p => (p.status || "").toLowerCase().includes("satıldı"));
-  const soldValue = soldProducts.reduce((acc, p) => acc + (Number(p.price) || 0), 0);
-
-  // Filtreleme Mantığı
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = (p.name || "").toLowerCase().includes(search.toLowerCase()) || 
-                          (p.category || "").toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = selectedCategory === "Tümü" || p.category === selectedCategory;
+  const fetchProducts = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('urunler').select('*').order('created_at', { ascending: false });
     
-    return matchesSearch && matchesCategory;
-  }).sort((a, b) => {
-      // Satışta olanlar önce gelsin
-      if (a.status === "Satışta" && b.status !== "Satışta") return -1;
-      if (a.status !== "Satışta" && b.status === "Satışta") return 1;
-      return 0;
-  });
-
-  // --- SİLME İŞLEMİ (SQL) ---
-  const deleteProduct = async (e: any, id: number) => {
-      e.stopPropagation();
-      if(!confirm("Bu stok kartını veritabanından kalıcı olarak silmek istediğine emin misin?")) return;
-      
-      try {
-          const { error } = await supabase.from('urunler').delete().eq('id', id);
-          if (error) throw error;
-          
-          // Listeyi güncelle (State'ten silerek hızlandır)
-          setProducts(prev => prev.filter(p => p.id !== id));
-      } catch (err) {
-          alert("Silme işlemi başarısız oldu.");
-          console.error(err);
-      }
+    if (data) {
+        // Veriyi işle
+        const processedData = data.map((item:any) => ({
+            ...item,
+            // Eğer status null ise veya 'true' ise 'Satışta' yap
+            stok_durumu: (item.stok_durumu === 'true' || !item.stok_durumu) ? 'Satışta' : item.stok_durumu,
+            images: item.resim_url ? [item.resim_url] : [] // Tek resim varsa array yap
+        }));
+        setProducts(processedData);
+    }
+    setLoading(false);
   };
 
+  // --- KRİTİK FONKSİYON: DURUM VE FİNANS GÜNCELLEME ---
+  const updateStatus = async (id: number, newStatus: string, product: any) => {
+      // 1. Önce Ürünler Tablosunu Güncelle (Görsel Durum)
+      const { error: productError } = await supabase
+          .from('urunler')
+          .update({ stok_durumu: newStatus })
+          .eq('id', id);
+
+      if (productError) {
+          alert("Durum güncellenemedi!");
+          return;
+      }
+
+      // 2. FİNANSAL TABLOYU SENKRONİZE ET (aura_store_sales)
+      // Mantık: Önce bu ürünle ilgili eski finans kaydını temizle, sonra yeni duruma göre ekle.
+      
+      // A. Eski kaydı sil (Varsa)
+      await supabase.from('aura_store_sales').delete().eq('product_name', product.ad);
+
+      // B. Yeni Duruma Göre İşlem Yap
+      if (newStatus !== 'Satışta') {
+          // Eğer ürün "Satışta" değilse, bir satış süreci başlamıştır (Kargo, Opsiyon veya Satıldı)
+          // Finans tablosuna ekle
+          
+          let satisDurumu = '';
+          if (newStatus === 'Satıldı') satisDurumu = 'Tamamlandı'; // Ciroya geçer
+          else if (newStatus === 'Kargoda') satisDurumu = 'Kargoda'; // Bekleyene geçer
+          else if (newStatus === 'Opsiyonlandı') satisDurumu = 'Opsiyonlandı'; // Bekleyene geçer
+
+          // Müşteri adı (Otomatik veya sabit)
+          const musteriAdi = product.musteri_adi || "Mağaza Müşterisi"; 
+
+          await supabase.from('aura_store_sales').insert([{
+              product_name: product.ad,
+              customer_name: musteriAdi,
+              price: product.fiyat,
+              cost: product.maliyet,
+              status: satisDurumu,
+              created_at: new Date().toISOString() // İşlem tarihi şu an
+          }]);
+      }
+
+      // Listeyi Yenile
+      fetchProducts();
+  };
+
+  const handleDelete = async (id: number, productName: string) => {
+      if(!confirm("Ürünü ve finansal kayıtlarını silmek istiyor musunuz?")) return;
+      
+      // Hem ürünü hem finans kaydını sil
+      await supabase.from('urunler').delete().eq('id', id);
+      await supabase.from('aura_store_sales').delete().eq('product_name', productName);
+      
+      fetchProducts();
+  };
+
+  // --- HESAPLAMALAR ---
+  const activeValue = products.filter(p => p.stok_durumu === 'Satışta').reduce((acc, p) => acc + Number(p.fiyat), 0);
+  const soldValue = products.filter(p => p.stok_durumu === 'Satıldı').reduce((acc, p) => acc + Number(p.fiyat), 0);
+  const activeCount = products.filter(p => p.stok_durumu === 'Satışta').length;
+
+  const filteredProducts = products.filter(p => {
+      const matchesSearch = p.ad.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesFilter = filter === "Tümü" || p.kategori === filter;
+      return matchesSearch && matchesFilter;
+  });
+
+  if (loading) return <div className="p-20 text-center text-slate-500 font-bold animate-pulse">Mağaza yükleniyor...</div>;
+
   return (
-    <div className="p-6 text-slate-200 animate-in fade-in zoom-in-95 duration-500 pb-20 space-y-6">
+    <div className="max-w-[1600px] mx-auto pb-20 px-6 animate-in fade-in duration-500 text-slate-200">
       
       {/* HEADER & İSTATİSTİKLER */}
-      <div className="flex flex-col xl:flex-row justify-between items-end gap-6 border-b border-slate-800 pb-6">
+      <div className="flex flex-col xl:flex-row justify-between items-end gap-6 border-b border-slate-800 pb-6 pt-6">
           <div>
             <h1 className="text-3xl font-black text-white flex items-center gap-3">
-                <ShoppingBag className="text-purple-500" size={32}/> AURA STORE
+                <ShoppingBag className="text-purple-500" size={32} /> AURA STORE
             </h1>
-            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1 ml-1">VİTRİN & STOK YÖNETİMİ</p>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1 ml-1">
+                STOK & SATIŞ YÖNETİMİ
+            </p>
           </div>
-          
+
           {/* Hızlı İstatistik Kartları */}
           <div className="flex flex-wrap gap-3">
-              {/* Kart 1: Vitrin Adedi */}
               <div className="bg-[#151921] border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-3">
                   <div className="p-2 bg-slate-800 rounded-lg text-slate-400"><Tag size={18}/></div>
                   <div>
                       <p className="text-[10px] text-slate-500 font-bold uppercase">VİTRİNDEKİ</p>
-                      <p className="text-xl font-bold text-white">{activeProducts.length} <span className="text-xs text-slate-600">Adet</span></p>
+                      <p className="text-xl font-bold text-white">{activeCount} <span className="text-xs text-slate-600">Adet</span></p>
                   </div>
               </div>
 
-              {/* Kart 2: Vitrin Değeri */}
               <div className="bg-[#151921] border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-3">
                   <div className="p-2 bg-slate-800 rounded-lg text-emerald-500"><DollarSign size={18}/></div>
                   <div>
@@ -133,7 +143,6 @@ export default function MagazaVitrin() {
                   </div>
               </div>
 
-              {/* Kart 3: Satılan Ciro */}
               <div className="bg-[#151921] border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-3">
                   <div className="p-2 bg-slate-800 rounded-lg text-purple-500"><Archive size={18}/></div>
                   <div>
@@ -143,113 +152,128 @@ export default function MagazaVitrin() {
               </div>
           </div>
 
-          <button onClick={() => router.push('/epanel/magaza/yeni')} className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-purple-900/40 transition-all flex items-center gap-2 active:scale-95">
-              <Plus size={20}/> ÜRÜN EKLE
-          </button>
+          <Link href="/epanel/magaza/yeni" className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 transition-all hover:scale-105 flex items-center gap-2">
+              <Plus size={18}/> YENİ ÜRÜN
+          </Link>
       </div>
 
-      {/* ARAMA & FİLTRE */}
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* Kategori Barı */}
-        <div className="bg-[#151921] p-2 rounded-xl border border-slate-800 flex-1 overflow-x-auto scrollbar-hide flex gap-2">
-            {CATEGORIES.map(cat => (
-                <button 
-                    key={cat} 
-                    onClick={() => setSelectedCategory(cat)} 
-                    className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${selectedCategory === cat ? 'bg-slate-800 text-white border-slate-600 shadow-md' : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
-                >
-                    {cat}
-                </button>
-            ))}
-        </div>
-
-        {/* Arama Kutusu */}
-        <div className="relative w-full md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/>
-            <input 
+      {/* FİLTRE & ARAMA */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20}/>
+              <input 
                 type="text" 
-                placeholder="Model, Marka Ara..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full h-full bg-[#151921] border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-purple-500 transition-all placeholder:text-slate-600"
-            />
-        </div>
+                placeholder="Ürün Ara..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-[#1E293B] border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white outline-none focus:border-purple-500 transition-all"
+              />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+              {CATEGORIES.map(cat => (
+                  <button 
+                    key={cat}
+                    onClick={() => setFilter(cat)}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all ${filter === cat ? 'bg-purple-600 border-purple-500 text-white' : 'bg-[#1E293B] border-slate-700 text-slate-400 hover:text-white'}`}
+                  >
+                      {cat}
+                  </button>
+              ))}
+          </div>
       </div>
 
-      {/* ÜRÜN GRID LİSTESİ */}
-      {loading ? (
-           <div className="text-center py-20 text-slate-500 font-bold animate-pulse">Veriler yükleniyor...</div>
-      ) : filteredProducts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-slate-800 rounded-3xl bg-slate-900/20">
-              <div className="bg-slate-800 p-4 rounded-full mb-4 opacity-50"><Package size={48} className="text-slate-400"/></div>
-              <h3 className="text-xl font-bold text-slate-400">Vitrin Boş</h3>
-              <p className="text-slate-600 text-sm mt-1">Aradığınız kriterlere uygun ürün bulunamadı.</p>
-          </div>
-      ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProducts.map((product) => (
-                  <div 
-                    key={product.id} 
-                    onClick={() => router.push(`/epanel/magaza/${product.id}`)}
-                    className="group bg-[#151921] border border-slate-800 rounded-2xl overflow-hidden hover:border-slate-600 transition-all hover:shadow-2xl hover:shadow-black/50 relative flex flex-col cursor-pointer"
-                  >
+      {/* ÜRÜN LİSTESİ (GRID) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+              <div key={product.id} className="bg-[#1E293B]/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden group hover:border-purple-500/30 transition-all flex flex-col hover:shadow-2xl hover:shadow-black/50">
+                  
+                  {/* Görsel Alanı */}
+                  <div className="h-48 bg-[#0F172A] relative overflow-hidden flex items-center justify-center border-b border-slate-800">
+                      {product.images && product.images.length > 0 ? (
+                          <img src={product.images[0]} alt={product.ad} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"/>
+                      ) : (
+                          <div className="flex flex-col items-center gap-2 text-slate-700">
+                              <ImageIcon size={32}/>
+                              <span className="text-[10px] font-bold uppercase">Görsel Yok</span>
+                          </div>
+                      )}
                       
-                      {/* STATÜ ROZETİ */}
-                      <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase z-20 shadow-lg backdrop-blur-md border border-white/10
-                        ${(product.status || "").includes('Satıldı') ? 'bg-emerald-600/90 text-white' : 
-                          (product.status || "").includes('Kargoda') ? 'bg-blue-600/90 text-white' : 
-                          product.status === 'Satışta' ? 'bg-yellow-500/90 text-black' : 
-                          'bg-slate-700 text-white'}`}>
-                          {product.status === 'Satışta' ? 'VİTRİNDE' : product.status}
+                      {/* Durum Badge */}
+                      <div className="absolute top-3 right-3 z-20">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border shadow-lg backdrop-blur-md ${
+                              product.stok_durumu === 'Satıldı' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                              product.stok_durumu === 'Kargoda' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 animate-pulse' :
+                              product.stok_durumu === 'Opsiyonlandı' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                              'bg-slate-500/20 text-slate-300 border-slate-500/30'
+                          }`}>
+                              {product.stok_durumu === 'Satışta' ? 'VİTRİNDE' : product.stok_durumu}
+                          </span>
                       </div>
+                  </div>
 
-                      {/* GÖRSEL ALANI */}
-                      <div className="h-48 bg-slate-900/50 relative flex items-center justify-center overflow-hidden border-b border-slate-800">
-                          {product.images && product.images.length > 0 ? (
-                              <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"/>
-                          ) : (
-                              <div className="flex flex-col items-center gap-2 text-slate-700">
-                                  <ImageIcon size={32}/>
-                                  <span className="text-[10px] font-bold uppercase">Görsel Yok</span>
-                              </div>
-                          )}
-                          
-                          {/* Hover Aksiyonları */}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
-                              <button className="bg-white text-black p-2 rounded-lg font-bold flex items-center gap-2 hover:bg-slate-200 text-xs">
-                                  <Edit size={14}/> DÜZENLE
-                              </button>
-                              <button 
-                                onClick={(e) => deleteProduct(e, product.id)}
-                                className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors"
-                              >
-                                  <Trash2 size={14}/>
-                              </button>
+                  {/* İçerik */}
+                  <div className="p-5 flex-1 flex flex-col">
+                      <div className="flex justify-between items-start mb-2">
+                          <div>
+                              <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider bg-purple-900/20 px-2 py-0.5 rounded">{product.kategori}</span>
+                              <h3 className="text-white font-bold text-lg leading-tight line-clamp-2 mt-2">{product.ad}</h3>
                           </div>
                       </div>
-
-                      {/* BİLGİ ALANI */}
-                      <div className="p-4 flex-1 flex flex-col">
-                          <div className="mb-3">
-                              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider bg-slate-800 px-1.5 py-0.5 rounded">{product.category || 'Genel'}</span>
-                              <h3 className="text-white font-bold text-sm leading-snug mt-2 line-clamp-2 min-h-[40px]">{product.name}</h3>
-                          </div>
-
-                          <div className="mt-auto flex justify-between items-end border-t border-slate-800/50 pt-3">
+                      
+                      <div className="mt-auto pt-4 space-y-3">
+                          <div className="flex justify-between items-end border-b border-slate-800/50 pb-3">
                               <div>
-                                  <span className="text-[9px] text-slate-500 font-bold block">MALİYET</span>
-                                  <span className="text-xs font-mono text-slate-400">{Number(product.cost || 0).toLocaleString()} ₺</span>
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase">SATIŞ FİYATI</p>
+                                  <p className="text-2xl font-black text-white">{Number(product.fiyat).toLocaleString('tr-TR')} ₺</p>
                               </div>
-                              <div className="text-right">
-                                  <span className="text-[9px] text-slate-500 font-bold block">SATIŞ</span>
-                                  <span className="text-lg font-black text-emerald-400">{Number(product.price).toLocaleString()} ₺</span>
-                              </div>
+                              {Number(product.maliyet) > 0 && (
+                                  <div className="text-right">
+                                      <p className="text-[10px] text-slate-500 font-bold uppercase">MALİYET</p>
+                                      <p className="text-sm font-mono text-slate-400">{Number(product.maliyet).toLocaleString('tr-TR')} ₺</p>
+                                  </div>
+                              )}
+                          </div>
+
+                          {/* DURUM DEĞİŞTİRME BUTONLARI (FİNANS TETİKLEYİCİ) */}
+                          <div className="grid grid-cols-1">
+                              <select 
+                                  value={product.stok_durumu} 
+                                  onChange={(e) => updateStatus(product.id, e.target.value, product)}
+                                  className={`w-full p-2.5 rounded-lg text-xs font-bold outline-none border cursor-pointer appearance-none text-center transition-colors ${
+                                      product.stok_durumu === 'Satışta' ? 'bg-slate-700 text-white border-slate-600 hover:bg-slate-600' :
+                                      product.stok_durumu === 'Satıldı' ? 'bg-green-600 text-white border-green-500' :
+                                      'bg-slate-800 text-slate-300 border-slate-700'
+                                  }`}
+                              >
+                                  <option value="Satışta">📦 Satışta (Stok)</option>
+                                  <option value="Opsiyonlandı">⏳ Opsiyonlandı (Bekleyen)</option>
+                                  <option value="Kargoda">🚚 Kargoda (Bekleyen)</option>
+                                  <option value="Satıldı">✅ Satıldı (Ciro)</option>
+                              </select>
+                          </div>
+
+                          <div className="flex justify-between gap-2 pt-1">
+                              <Link href={`/epanel/magaza/${product.id}`} className="flex-1 py-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-xs font-bold flex items-center justify-center gap-1 border border-transparent hover:border-slate-700">
+                                  <Edit size={14}/> DÜZENLE
+                              </Link>
+                              <button onClick={() => handleDelete(product.id, product.ad)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20">
+                                  <Trash2 size={16}/>
+                              </button>
                           </div>
                       </div>
                   </div>
-              ))}
+              </div>
+          ))}
+      </div>
+
+      {filteredProducts.length === 0 && (
+          <div className="text-center py-20 text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl bg-slate-900/20 mt-8">
+              <Package size={48} className="mx-auto mb-4 opacity-20"/>
+              <h3 className="text-xl font-bold text-slate-400">Vitrin Boş</h3>
+              <p className="text-slate-600 text-sm mt-1">Aradığınız kriterlere uygun ürün bulunamadı.</p>
           </div>
       )}
+
     </div>
   );
 }
