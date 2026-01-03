@@ -12,6 +12,8 @@ import {
   Instagram, Facebook, Twitter, MapPin
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+// DİKKAT: Supabase dosyan yoksa burası hata verebilir. 
+// Eğer hata alırsan bu satırı ve aşağıdaki useEffect'i geçici olarak kapatabilirsin.
 import { supabase } from "@/app/lib/supabase"; 
 
 export default function Home() {
@@ -26,18 +28,24 @@ export default function Home() {
   const pathname = usePathname();
   const isActive = (path: string) => pathname === path;
 
+  // Scroll takibi (Navbar şeffaflığı için)
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Markalar listesi (Sonsuz döngü için çoğaltıldı)
   const brandsSource = ["APPLE", "SAMSUNG", "XIAOMI", "ROBOROCK", "DYSON", "HUAWEI", "OPPO", "MONSTER", "ASUS", "LENOVO"];
   const brands = [...brandsSource, ...brandsSource, ...brandsSource, ...brandsSource];
 
+  // Vitrin Ürünlerini Çek (Supabase)
   useEffect(() => {
     const fetchShowcase = async () => {
       try {
+        // Eğer supabase ayarlı değilse hata vermesin diye try-catch içindeyiz
+        if (!supabase) return; 
+
         let { data } = await supabase
           .from('urunler')
           .select('*')
@@ -50,6 +58,7 @@ export default function Home() {
              id: item.id,
              name: item.ad,
              price: item.fiyat,
+             // Resim dizisi mi yoksa tek url mi kontrolü
              image: (item.images && item.images.length > 0) ? item.images[0] : item.resim_url,
              category: item.kategori,
              tag: "Fırsat" 
@@ -57,7 +66,7 @@ export default function Home() {
            setVitrinUrunleri(mapped);
         }
       } catch (e) {
-        console.error(e);
+        console.error("Veri çekme hatası (Supabase kurulu olmayabilir):", e);
       } finally {
         setLoading(false);
       }
@@ -73,6 +82,7 @@ export default function Home() {
     }
   };
 
+  // Ürün resmi yoksa arka plan için rastgele gradient
   const getRandomGradient = (index: number) => {
     const gradients = [
       "bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-800",
@@ -93,6 +103,7 @@ export default function Home() {
           <Link href="/" className="flex items-center gap-3.5 group select-none shrink-0" onClick={() => setMenuAcik(false)}>
             <div className="relative w-11 h-11 flex items-center justify-center">
                 <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-60 group-hover:opacity-100 group-hover:bg-cyan-400/30 transition-all duration-500"></div>
+                {/* LOGO SVG */}
                 <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <linearGradient id="coreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -130,7 +141,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-              {/* CİHAZ SORGULA BUTONU EKLENDİ */}
+              {/* CİHAZ SORGULA BUTONU */}
               <Link href="/cihaz-sorgula" className="hidden lg:flex items-center gap-2 border border-slate-700/50 bg-[#0f172a] hover:bg-slate-800 text-slate-200 px-4 py-2.5 rounded-xl font-bold text-xs transition-all group">
                   <Search size={16} className="text-cyan-400 group-hover:text-cyan-300 transition-colors"/> <span>CİHAZ SORGULA</span>
               </Link>
@@ -159,6 +170,7 @@ export default function Home() {
         )}
       </nav>
 
+      {/* ARKA PLAN DEKORASYON */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0"></div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-cyan-600/15 rounded-full blur-[150px] pointer-events-none z-0 animate-pulse-slow"></div>
 
@@ -210,6 +222,7 @@ export default function Home() {
         </div>
       </div>
 
+      {/* MARKALAR (Infinite Scroll) */}
       <section className="relative py-24 bg-[#010205] border-b border-white/5 overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-900/20 blur-[100px] rounded-full pointer-events-none"></div>
         <div className="container mx-auto px-6 relative z-10 text-center mb-12">
@@ -221,9 +234,11 @@ export default function Home() {
         <div className="relative w-full overflow-hidden group space-y-8 opacity-60 hover:opacity-100 transition-opacity duration-500">
             <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#010205] to-transparent z-10"></div>
             <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#010205] to-transparent z-10"></div>
+            {/* Sola Kayan Markalar */}
             <div className="flex w-max animate-infinite-scroll hover:[animation-play-state:paused]">
                 {brands.map((brand, index) => (<div key={index} className="mx-8 text-4xl font-black text-slate-800 hover:text-cyan-500 transition-colors duration-300 cursor-default uppercase select-none whitespace-nowrap">{brand}</div>))}
             </div>
+            {/* Sağa Kayan Markalar */}
              <div className="flex w-max animate-infinite-scroll-reverse hover:[animation-play-state:paused]">
                 {brands.reverse().map((brand, index) => (<div key={index} className="mx-8 text-4xl font-black text-slate-800 hover:text-indigo-500 transition-colors duration-300 cursor-default uppercase select-none whitespace-nowrap">{brand}</div>))}
             </div>
@@ -239,7 +254,6 @@ export default function Home() {
                 <p className="text-slate-400 text-lg max-w-2xl font-light">Laboratuvarımızda uygulanan profesyonel müdahale süreçleri.</p>
             </div>
             
-            {/* ÇALIŞAN BUTON (Tüm Hizmetleri Gör) */}
             <Link 
               href="/hizmetler" 
               className="hidden md:flex items-center gap-2 text-cyan-400 font-bold hover:text-cyan-300 transition-colors bg-cyan-500/10 px-4 py-2 rounded-full border border-cyan-500/20 relative z-30"
@@ -354,9 +368,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- PREMIUM HAKKIMIZDA & DNA (GÜNCELLENEN KISIM) --- */}
+      {/* --- PREMIUM HAKKIMIZDA & DNA --- */}
       <section className="relative py-32 bg-[#020611] border-t border-white/5 overflow-hidden">
-        {/* Arka Plan Efektleri */}
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-cyan-900/10 to-transparent pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-900/10 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -383,14 +396,12 @@ export default function Home() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                        {/* Buton 1: Hakkımızda */}
                         <Link href="/kurumsal" className="group relative px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all overflow-hidden flex items-center justify-center gap-3 border border-white/10 hover:border-white/20">
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                             <FileSearch size={20} className="text-slate-400 group-hover:text-white transition-colors"/>
                             Hikayemiz & Vizyon
                         </Link>
 
-                        {/* Buton 2: DNA (Logo Analizi) */}
                         <Link href="/dna" className="group relative px-8 py-4 bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-600 hover:to-blue-600 text-white rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] flex items-center justify-center gap-3">
                             <Cpu size={20} className="animate-pulse"/>
                             Teknik DNA & Mühendislik
