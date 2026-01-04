@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { 
   Cpu, ShieldCheck, Zap, Users, Trophy, Target, 
   Microscope, Wrench, Code2, Layers,
-  Activity, Server, ClipboardCheck, FileText, Lock, Eye, Handshake, ScanFace
+  Activity, Server, ClipboardCheck, FileText, Lock, Eye, Handshake, ScanFace,
+  Dna, ArrowRight
 } from "lucide-react";
 
 export default function Hakkimizda() {
@@ -35,6 +37,25 @@ export default function Hakkimizda() {
 
       <div className="container mx-auto px-6 space-y-24 mb-32 relative z-10">
         
+        {/* --- DNA ÖZETİ & YÖNLENDİRME --- */}
+        <div className="bg-[#0b0e14] border border-cyan-500/20 rounded-3xl p-8 md:p-12 relative overflow-hidden group shadow-[0_0_40px_rgba(6,182,212,0.1)]">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
+            <div className="flex flex-col md:flex-row items-center gap-8">
+                <div className="p-4 bg-cyan-950/30 rounded-2xl border border-cyan-500/30">
+                    <Dna size={48} className="text-cyan-400 animate-pulse"/>
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                    <h2 className="text-2xl font-bold text-white mb-2">Teknik DNA'mız</h2>
+                    <p className="text-slate-400 mb-6 max-w-2xl">
+                        Mükemmeliyetçilik, şeffaflık ve sürekli inovasyon. Bizi diğerlerinden ayıran temel yapı taşlarımızı ve çalışma felsefemizi keşfedin.
+                    </p>
+                    <Link href="/dna" className="inline-flex items-center gap-2 text-cyan-400 font-bold hover:text-cyan-300 transition-colors border-b border-cyan-500/30 pb-1 hover:border-cyan-400">
+                        Kodlarımızı İnceleyin <ArrowRight size={16}/>
+                    </Link>
+                </div>
+            </div>
+        </div>
+
         {/* --- BÖLÜM 1: LABORATUVAR YAKLAŞIMI --- */}
         <div className="bg-gradient-to-b from-[#0f172a] to-[#020617] border border-white/10 rounded-3xl p-8 md:p-12 relative overflow-hidden group hover:border-cyan-500/30 transition-all shadow-2xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">

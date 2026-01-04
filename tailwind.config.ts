@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class", // <--- 1. DARK MODE AKTİF EDİLDİ
+  darkMode: "class", // Dark mode desteği
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -18,7 +18,6 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // Aura Özel Renk Paleti (İsteğe bağlı kullanım için)
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -41,7 +40,6 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      // --- GELİŞMİŞ ANİMASYON TANIMLARI ---
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -51,17 +49,18 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        // Sonsuz Kaydırma (Markalar için)
         "infinite-scroll": {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-100%)" },
         },
-        // Yüzen Nesneler (Arka plan balonları)
+        "infinite-scroll-reverse": {
+          from: { transform: "translateX(-100%)" },
+          to: { transform: "translateX(0)" },
+        },
         float: {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-20px)" },
         },
-        // Metin içindeki renk geçişi
         "text-gradient": {
           "0%, 100%": {
             "background-size": "200% 200%",
@@ -72,25 +71,27 @@ const config: Config = {
             "background-position": "right center",
           },
         },
-        // TechBar üzerindeki parlama efekti (Shimmer)
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
-        // Yavaş nabız (Logo ping'i için)
         pulse: {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
-        // Kartlara 3D efekti veren Tilt
         tilt: {
           "0%, 50%, 100%": { transform: "rotate(0deg)" },
           "25%": { transform: "rotate(1deg)" },
           "75%": { transform: "rotate(-1deg)" },
         },
-        // Spin Reverse (Çarklar için)
         "spin-reverse": {
           to: { transform: "rotate(-360deg)" },
         },
+        scanline: {
+          '0%': { top: '0%', opacity: '0' },
+          '10%': { opacity: '1' },
+          '90%': { opacity: '1' },
+          '100%': { top: '100%', opacity: '0' },
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -106,10 +107,11 @@ const config: Config = {
         "spin-reverse": "spin-reverse 1s linear infinite",
         tilt: "tilt 10s infinite linear",
         shimmer: "shimmer 2s infinite",
+        scanline: "scanline 3s linear infinite",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")], // <--- animate-in gibi classların çalışması için şart
+  plugins: [require("tailwindcss-animate")],
 };
 
 export default config;

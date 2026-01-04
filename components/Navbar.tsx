@@ -28,11 +28,15 @@ export default function Navbar() {
   // -----------------------------------------------------------
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${scrolled ? "bg-[#020617]/95 backdrop-blur-xl border-white/5 h-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" : "bg-[#020617] border-transparent h-24"} print:hidden`}>
-        <div className="container mx-auto px-6 h-full flex items-center justify-between">
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out border-b ${
+      scrolled 
+        ? "bg-[#020617]/80 backdrop-blur-xl border-cyan-500/10 h-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" 
+        : "bg-transparent border-transparent h-28"
+    } print:hidden`}>
+        <div className="container mx-auto px-6 h-full flex items-center justify-between transition-all duration-500">
           {/* LOGO ALANI */}
           <Link href="/" className="flex items-center gap-3.5 group select-none shrink-0" onClick={() => setMenuAcik(false)}>
-            <div className="relative w-11 h-11 flex items-center justify-center">
+            <div className={`relative flex items-center justify-center transition-all duration-500 ${scrolled ? "w-9 h-9" : "w-12 h-12"}`}>
                 <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-60 group-hover:opacity-100 group-hover:bg-cyan-400/30 transition-all duration-500"></div>
                 <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg relative z-10" fill="none">
                   <defs>
@@ -56,8 +60,8 @@ export default function Navbar() {
                 </svg>
             </div>
             <div className="flex flex-col justify-center">
-                <div className="font-extrabold text-[22px] tracking-tight leading-none text-white flex items-center gap-1 group-hover:text-cyan-50 transition-colors">AURA<span className="text-cyan-400">BİLİŞİM</span></div>
-                <span className="text-[9px] text-slate-400 font-bold tracking-[0.25em] uppercase group-hover:text-cyan-400/80 transition-colors">TEKNOLOJİ ÜSSÜ</span>
+                <div className={`font-extrabold tracking-tight leading-none text-white flex items-center gap-1 group-hover:text-cyan-50 transition-all duration-500 ${scrolled ? "text-lg" : "text-2xl"}`}>AURA<span className="text-cyan-400">BİLİŞİM</span></div>
+                <span className={`text-slate-400 font-bold tracking-[0.25em] uppercase group-hover:text-cyan-400/80 transition-all duration-500 ${scrolled ? "text-[8px]" : "text-[10px]"}`}>TEKNOLOJİ ÜSSÜ</span>
             </div>
           </Link>
 
