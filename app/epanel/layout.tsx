@@ -7,6 +7,8 @@ import { supabase } from "@/app/lib/supabase";
 import AyarlarModal from "@/components/AyarlarModal";
 import AuraAI from "@/components/AuraAI"; 
 // ThemeProvider kaldırıldı, saf Dark Mode'a geçildi.
+// app/epanel/layout.tsx içindeki import bölümü
+
 import { 
   LayoutDashboard, LogOut, Search, Calculator, StickyNote, Users, 
   Activity, Signal, Menu, Bell, ChevronDown, MessageSquare, 
@@ -361,7 +363,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <NavItem icon={<Building2 size={20}/>} label="Bayi Başvuruları" href="/epanel/bayi-basvurulari" isOpen={isSidebarOpen} active={pathname.includes('/bayi-basvurulari')} />
             <NavItem icon={<Briefcase size={20}/>} label="Bayi Yönetimi" href="/epanel/bayiler" isOpen={isSidebarOpen} active={pathname.includes('/bayiler')} />
            
-           <NavItem 
+  <NavItem 
   icon={<Wrench size={20}/>} 
   label="Bayi Atölyesi" 
   href="/epanel/bayi-atolye" 
