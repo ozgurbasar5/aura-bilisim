@@ -95,29 +95,33 @@ export default function BayilerPage() {
     try {
         const { error } = await supabase.from('aura_jobs').insert([
             {
-                customer: selectedDealer.sirket_adi, // Müşteri adı yerine Bayi Adı
-                phone: selectedDealer.telefon,       // Bayi Telefonu
+                customer: selectedDealer.sirket_adi,
+                phone: selectedDealer.telefon,
+                customer_type: "Bayi", // Sütun adını kontrol et: customer_type
+                category: "Bayi Cihazı",
                 device: `${newDevice.device} ${newDevice.model}`,
                 serial_no: newDevice.serial_no,
-                complaint: newDevice.problem, // Arıza
-                password: newDevice.password, // Ekran şifresi
+                problem: newDevice.problem, // 'complaint' yerine 'problem' kullanıyoruz
+                password: newDevice.password,
                 status: "Bekliyor",
-                category: "Bayi Cihazı", // Kategoriyi belirtiyoruz
+                tracking_code: `SRV-${Math.floor(10000 + Math.random() * 90000)}`, // Takip kodu üretimi
                 created_at: new Date().toISOString()
             }
         ]);
 
-        if (error) throw error;
+        if (error) {
+            console.error("Supabase Hatası:", error.message);
+            alert("Hata: " + error.message); // Hatayı ekranda görerek teşhis edebilirsin
+            return;
+        }
 
         alert("Cihaz başarıyla atölyeye kaydedildi!");
         setIsModalOpen(false);
-        setNewDevice({ device: "", model: "", serial_no: "", problem: "", password: "" });
-        fetchData(); // Verileri yenile
+        // ... (formu temizleme kodları)
     } catch (error) {
-        console.error("Kayıt hatası:", error);
-        alert("Kayıt sırasında bir hata oluştu.");
+        console.error("Genel Hata:", error);
     }
-  };
+};
 
   const openRegisterModal = (dealer: any) => {
       setSelectedDealer(dealer);

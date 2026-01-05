@@ -12,8 +12,9 @@ import {
   Activity, Signal, Menu, Bell, ChevronDown, MessageSquare, 
   Package, ShieldCheck, CreditCard, Wallet, User,
   Zap, Terminal, ClipboardList, ShoppingBag, X, Code2, ChevronRight,
-  Building2, Briefcase // <-- YENİ EKLENEN İKONLAR
-} from "lucide-react"; 
+  Building2, Briefcase, 
+  Wrench // <--- BURAYA EKLEYİN
+} from "lucide-react";
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
 // --- 1. MATRIX EFEKTİ (Sabit Dark Mode) ---
@@ -327,6 +328,8 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
           </Link>
         </div>
         
+        
+
         <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
             <NavGroup title="ANA KOMUTA" isOpen={isSidebarOpen} />
             <NavItem icon={<LayoutDashboard size={20}/>} label="Komuta Merkezi" href="/epanel" isOpen={isSidebarOpen} active={pathname === '/epanel'} />
@@ -357,6 +360,14 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <NavGroup title="KURUMSAL / B2B" isOpen={isSidebarOpen} />
             <NavItem icon={<Building2 size={20}/>} label="Bayi Başvuruları" href="/epanel/bayi-basvurulari" isOpen={isSidebarOpen} active={pathname.includes('/bayi-basvurulari')} />
             <NavItem icon={<Briefcase size={20}/>} label="Bayi Yönetimi" href="/epanel/bayiler" isOpen={isSidebarOpen} active={pathname.includes('/bayiler')} />
+           
+           <NavItem 
+  icon={<Wrench size={20}/>} 
+  label="Bayi Atölyesi" 
+  href="/epanel/bayi-atolye" 
+  isOpen={isSidebarOpen} 
+  active={pathname.includes('/bayi-atolye')} 
+/>
 
             {isAdmin && (
               <>
@@ -365,6 +376,8 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
               </>
             )}
         </nav>
+
+        
 
         {/* ALT USER KARTI */}
         <div className="p-4 border-t border-white/5 bg-[#050810] relative shrink-0">
