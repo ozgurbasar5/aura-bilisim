@@ -33,7 +33,7 @@ import {
   // Sistem
   BarChart3, Thermometer, Droplets, GripVertical,
   
-  // Yeni Eklenen
+  // YENİ EKLENEN
   Building2
 } from "lucide-react";
 
@@ -1306,9 +1306,10 @@ export default function Home() {
         )}
       </nav>
 
-      {/* ARKA PLAN DEKORASYON (Dokunulmadı) */}
+      {/* ARKA PLAN DEKORASYON */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0"></div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-cyan-600/15 rounded-full blur-[150px] pointer-events-none z-0 animate-pulse-slow"></div>
+
       {/* HERO SECTION */}
       <section className="relative pt-44 pb-20 z-10 overflow-hidden">
         <div className="container mx-auto px-6 text-center relative">
@@ -1405,8 +1406,6 @@ export default function Home() {
       {/* --- AURA DIAGNOSTICS (YENİ) --- */}
       <AuraDiagnostics />
 
-      {/* --- BEFORE / AFTER SLIDER --- */}
-      <BeforeAfter />
 
       {/* --- MACRO GALLERY (YENİ VEKTÖREL) --- */}
       <MacroGallery />

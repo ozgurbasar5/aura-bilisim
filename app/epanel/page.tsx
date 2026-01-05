@@ -52,9 +52,11 @@ const KanbanCard = ({ job }: any) => (
         <div className="flex justify-between items-start mb-2 relative z-10">
             <span className="text-[10px] font-mono text-slate-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">#{job.id.toString().padStart(4, '0')}</span>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                job.device.toLowerCase().includes('iphone') ? 'text-purple-400 bg-purple-500/10 border border-purple-500/20' :
-                job.device.toLowerCase().includes('robot') ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20' : 'text-cyan-400 bg-cyan-500/10 border border-cyan-500/20'
-            }`}>{job.category || 'Cihaz'}</span>
+    // job.device var mı diye sor (?), varsa küçült (?), sonra içinde 'iphone' ara
+    job.device?.toLowerCase()?.includes('iphone') ? 'text-purple-400 bg-purple-500/10 border border-purple-500/20' :
+    job.device?.toLowerCase()?.includes('robot') ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20' : 
+    'text-cyan-400 bg-cyan-500/10 border border-cyan-500/20'
+}`}>{job.category || 'Cihaz'}</span>
         </div>
         <h4 className="text-sm font-bold text-white mb-1 truncate relative z-10">{job.customer}</h4>
         <p className="text-xs text-slate-400 truncate mb-3 relative z-10 flex items-center gap-1"><Smartphone size={12}/> {job.device}</p>
