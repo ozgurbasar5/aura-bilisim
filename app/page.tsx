@@ -1406,8 +1406,6 @@ export default function Home() {
       {/* --- AURA DIAGNOSTICS (YENİ) --- */}
       <AuraDiagnostics />
 
-      {/* --- BEFORE / AFTER SLIDER --- */}
-      <BeforeAfter />
 
       {/* --- MACRO GALLERY (YENİ VEKTÖREL) --- */}
       <MacroGallery />
