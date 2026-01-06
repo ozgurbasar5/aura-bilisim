@@ -16,7 +16,6 @@ const UPSELL_DATA: any = {
 };
 
 // --- DİNAMİK AURA İPUÇLARI (KATEGORİ BAZLI) ---
-// Bu listeler kısaltılmadı, tam liste.
 const CATEGORY_TIPS: any = {
   "Cep Telefonu": [
     { id: "pil", title: "Pil Sağlığı & Şarj", desc: "Batarya kimyasını korumak için cihazı %20-%80 arasında şarj edin.", icon: Battery, color: "text-green-400" },
@@ -153,7 +152,6 @@ export default function ServisDetaySayfasi() {
 
   // --- KULLANICIYI VE VERİLERİ ÇEK ---
   useEffect(() => {
-      // Kullanıcı bilgisini al
       const getUser = async () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (user?.email) setCurrentUserEmail(user.email);
@@ -193,20 +191,20 @@ export default function ServisDetaySayfasi() {
                         price: data.price || 0,
                         cost: data.cost || 0,
                         date: new Date(data.created_at).toLocaleDateString('tr-TR'),
-                        accessories: data.accessories || [],
-                        preCheck: data.pre_checks || [],
-                        finalCheck: data.final_checks || [],
+                        // DİZİ KONTROLLERİ BURADA DA ÖNEMLİ
+                        accessories: Array.isArray(data.accessories) ? data.accessories : [],
+                        preCheck: Array.isArray(data.pre_checks) ? data.pre_checks : [],
+                        finalCheck: Array.isArray(data.final_checks) ? data.final_checks : [],
                         tip_id: data.tip_id || "genel",
-                        images: data.images || [],
+                        images: Array.isArray(data.images) ? data.images : [],
                         approval_status: data.approval_status || 'none',
                         approval_amount: data.approval_amount || 0,
                         approval_desc: data.approval_desc || "",
-                        recommended_upsells: data.recommended_upsells || [],
-                        sold_upsells: data.sold_upsells || []
+                        recommended_upsells: Array.isArray(data.recommended_upsells) ? data.recommended_upsells : [],
+                        sold_upsells: Array.isArray(data.sold_upsells) ? data.sold_upsells : []
                     });
                     if (data.serial_no) checkExpertise(data.serial_no);
                     
-                    // Alt verileri çek
                     fetchTimeline(data.id);
                     fetchUsedParts(data.id);
                 }
@@ -240,7 +238,6 @@ export default function ServisDetaySayfasi() {
       if (data) setExpertiseId(data.id); else setExpertiseId(null);
   };
 
-  // TIMELINE FONKSİYONLARI
   const fetchTimeline = async (jobId: number) => {
       const { data } = await supabase.from('aura_timeline').select('*').eq('job_id', jobId).order('created_at', { ascending: false });
       if (data) setTimelineLogs(data);
@@ -260,7 +257,6 @@ export default function ServisDetaySayfasi() {
       setTimelineLogs(prev => [newLog, ...prev]);
   };
 
-  // STOK FONKSİYONLARI
   const fetchUsedParts = async (jobId: number) => {
       const { data } = await supabase.from('aura_servis_parcalari')
         .select(`*, aura_stok(urun_adi)`)
@@ -290,14 +286,12 @@ export default function ServisDetaySayfasi() {
           return; 
       }
 
-      // Tutar Hesaplama
       const totalCost = Number(part.alis_fiyati) * qty;
       const totalPrice = Number(part.satis_fiyati) * qty;
 
       const confirmMsg = `${part.urun_adi} (x${qty}) stoktan düşülecek.\n\nToplam Fiyat: ${totalPrice}₺\nToplam Maliyet: ${totalCost}₺\n\nOnaylıyor musunuz?`;
       if(!confirm(confirmMsg)) return;
 
-      // 1. Ara tabloya ekle
       const { error } = await supabase.from('aura_servis_parcalari').insert([{
           job_id: params.id,
           stok_id: part.id,
@@ -308,16 +302,13 @@ export default function ServisDetaySayfasi() {
 
       if(error) { alert("Hata: " + error.message); return; }
 
-      // 2. Stoktan Düş
       await supabase.from('aura_stok').update({ stok_adedi: part.stok_adedi - qty }).eq('id', part.id);
 
-      // 3. Servis Fiyatını ve Maliyetini Güncelle (ADET ÇARPIMI)
       const newCost = Number(formData.cost) + totalCost;
       const newPrice = Number(formData.price) + totalPrice;
 
       await supabase.from('aura_jobs').update({ price: newPrice, cost: newCost }).eq('id', params.id);
 
-      // 4. UI Güncelle
       setFormData({ ...formData, price: newPrice, cost: newCost });
       logToTimeline("Parça Kullanıldı", `${part.urun_adi} (x${qty}) stoktan düşüldü. (Fiyat: +${totalPrice}₺)`);
       fetchUsedParts(Number(params.id));
@@ -327,14 +318,11 @@ export default function ServisDetaySayfasi() {
   const removePartFromJob = async (partRelId: number, partStokId: number, alis: number, satis: number, adet: number) => {
       if(!confirm(`Bu parçayı (${adet} adet) iptal etmek istiyor musunuz? Stok geri iade edilecek.`)) return;
       
-      // 1. Tablodan sil
       await supabase.from('aura_servis_parcalari').delete().eq('id', partRelId);
 
-      // 2. Stoğu geri ekle (Adet kadar)
       const { data: currStock } = await supabase.from('aura_stok').select('stok_adedi').eq('id', partStokId).single();
       if(currStock) await supabase.from('aura_stok').update({ stok_adedi: currStock.stok_adedi + adet }).eq('id', partStokId);
 
-      // 3. Fiyatları düş (Adet çarpımı kadar)
       const removedCost = alis * adet;
       const removedPrice = satis * adet;
 
@@ -348,7 +336,6 @@ export default function ServisDetaySayfasi() {
       fetchUsedParts(Number(params.id));
   };
 
-  // WIKI FONKSİYONLARI
   const handleWikiSearch = async () => {
       if (!wikiSearchTerm) return;
       const { data } = await supabase.from('aura_wiki')
@@ -374,7 +361,7 @@ export default function ServisDetaySayfasi() {
           alert("Çözüm kütüphaneye eklendi! Teşekkürler.");
           setWikiViewMode('search');
           setWikiSearchTerm(newWikiEntry.title);
-          handleWikiSearch(); // Listeyi yenile
+          handleWikiSearch(); 
       } else {
           alert("Hata: " + error.message);
       }
@@ -387,7 +374,7 @@ export default function ServisDetaySayfasi() {
   };
 
   const toggleUpsell = (item: any) => {
-      const current = [...formData.recommended_upsells];
+      const current = Array.isArray(formData.recommended_upsells) ? [...formData.recommended_upsells] : [];
       const exists = current.find((i:any) => i.id === item.id);
       if (exists) {
           setFormData({...formData, recommended_upsells: current.filter((i:any) => i.id !== item.id)});
@@ -451,7 +438,7 @@ export default function ServisDetaySayfasi() {
     if (!e.target.files.length) return;
     setUploading(true);
     const files = Array.from(e.target.files);
-    const newImages = [...formData.images];
+    const newImages = Array.isArray(formData.images) ? [...formData.images] : [];
     for (const file of files as File[]) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -467,7 +454,7 @@ export default function ServisDetaySayfasi() {
   };
 
   const removeImage = (index: number) => {
-      const newImages = [...formData.images];
+      const newImages = Array.isArray(formData.images) ? [...formData.images] : [];
       newImages.splice(index, 1);
       setFormData({ ...formData, images: newImages });
   };
@@ -503,7 +490,7 @@ export default function ServisDetaySayfasi() {
 
   const toggleArrayItem = (field: string, item: string) => {
     setFormData((prev: any) => {
-        const current = prev[field] || [];
+        const current = Array.isArray(prev[field]) ? prev[field] : [];
         const updated = current.includes(item) ? current.filter((i: string) => i !== item) : [...current, item];
         return { ...prev, [field]: updated };
     });
@@ -575,8 +562,12 @@ export default function ServisDetaySayfasi() {
                     <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ShoppingBag size={14} className="text-pink-500"/> Fırsat Öner (Upsell)</h3>
                     <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                         {availableUpsells.length > 0 ? availableUpsells.map((item:any) => {
-                            const isSelected = formData.recommended_upsells.some((i:any) => i.id === item.id);
-                            const isSold = formData.sold_upsells.some((i:any) => i.id === item.id);
+                            // GÜVENLİ ARRAY KONTROLÜ
+                            const recUpsells = Array.isArray(formData.recommended_upsells) ? formData.recommended_upsells : [];
+                            const sldUpsells = Array.isArray(formData.sold_upsells) ? formData.sold_upsells : [];
+                            
+                            const isSelected = recUpsells.some((i:any) => i.id === item.id);
+                            const isSold = sldUpsells.some((i:any) => i.id === item.id);
                             
                             if(isSold) return <div key={item.id} className="p-2 bg-green-500/10 border border-green-500/30 rounded text-xs text-green-400 flex justify-between"><span>{item.name}</span><span className="font-bold">SATILDI</span></div>;
 
@@ -590,7 +581,7 @@ export default function ServisDetaySayfasi() {
                             <div className="text-center text-[10px] text-slate-600">Bu kategori için ürün bulunamadı.</div>
                         )}
                     </div>
-                    {formData.recommended_upsells.length > 0 && <div className="text-[10px] text-slate-500 text-center mt-2">Seçili {formData.recommended_upsells.length} ürün müşteriye gösterilecek.</div>}
+                    {Array.isArray(formData.recommended_upsells) && formData.recommended_upsells.length > 0 && <div className="text-[10px] text-slate-500 text-center mt-2">Seçili {formData.recommended_upsells.length} ürün müşteriye gösterilecek.</div>}
                 </div>
             </div>
 
@@ -634,13 +625,21 @@ export default function ServisDetaySayfasi() {
                             <textarea value={formData.issue} onChange={e => setFormData((p:any)=>({...p, issue: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm h-24 outline-none resize-none focus:border-cyan-500" placeholder="Arıza detayını giriniz..."></textarea>
                         </div>
                         
-                        {/* TESLİM ALINANLAR */}
+                        {/* TESLİM ALINANLAR (GÜVENLİ) */}
                         <div className="bg-black/20 p-3 rounded-xl border border-slate-800">
                             <label className="text-[10px] text-cyan-500 font-bold uppercase mb-2 block">Teslim Alınanlar</label>
                             <div className="flex flex-wrap gap-2">
-                                {catInfo.accessories.map((acc: string) => (
-                                    <button key={acc} onClick={() => { const curr = formData.accessories.includes(acc) ? formData.accessories.filter((i:any)=>i!==acc) : [...formData.accessories, acc]; setFormData({...formData, accessories: curr}); }} className={`px-2 py-1 rounded border text-[10px] font-bold transition-all ${formData.accessories.includes(acc) ? 'bg-cyan-900/40 border-cyan-500 text-cyan-400 scale-105' : 'bg-[#0b0e14] border-slate-800 text-slate-500 hover:border-slate-600'}`}>{acc}</button>
-                                ))}
+                                {catInfo.accessories.map((acc: string) => {
+                                    // Güvenli Array Kontrolü
+                                    const accArray = Array.isArray(formData.accessories) ? formData.accessories : [];
+                                    const isSelected = accArray.includes(acc);
+                                    return (
+                                        <button key={acc} onClick={() => { 
+                                            const curr = isSelected ? accArray.filter((i:any)=>i!==acc) : [...accArray, acc]; 
+                                            setFormData({...formData, accessories: curr}); 
+                                        }} className={`px-2 py-1 rounded border text-[10px] font-bold transition-all ${isSelected ? 'bg-cyan-900/40 border-cyan-500 text-cyan-400 scale-105' : 'bg-[#0b0e14] border-slate-800 text-slate-500 hover:border-slate-600'}`}>{acc}</button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -717,13 +716,23 @@ export default function ServisDetaySayfasi() {
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                     <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><AlertTriangle size={14} className="text-orange-500"/> Ön Kontrol</h3>
                     <div className="grid grid-cols-2 gap-2">
-                        {catInfo.preChecks.map((item: string) => (
-                            <button key={item} onClick={() => { const curr = formData.preCheck.includes(item) ? formData.preCheck.filter((i:any)=>i!==item) : [...formData.preCheck, item]; setFormData({...formData, preCheck: curr}); }} className={`flex items-center gap-2 p-2 rounded border text-left text-[10px] transition-all ${formData.preCheck.includes(item) ? 'bg-red-500/10 border-red-500/50 text-red-400 font-bold' : 'bg-[#0b0e14] border-slate-800 text-slate-600 hover:border-slate-700'}`}><div className={`w-2 h-2 rounded-full ${formData.preCheck.includes(item)?'bg-red-500':'bg-slate-700'}`}></div>{item}</button>
-                        ))}
+                        {catInfo.preChecks.map((item: string) => {
+                            // GÜVENLİ ARRAY KONTROLÜ
+                            const preArray = Array.isArray(formData.preCheck) ? formData.preCheck : [];
+                            const isSelected = preArray.includes(item);
+                            return (
+                                <button key={item} onClick={() => { 
+                                    const curr = isSelected ? preArray.filter((i:any)=>i!==item) : [...preArray, item]; 
+                                    setFormData({...formData, preCheck: curr}); 
+                                }} className={`flex items-center gap-2 p-2 rounded border text-left text-[10px] transition-all ${isSelected ? 'bg-red-500/10 border-red-500/50 text-red-400 font-bold' : 'bg-[#0b0e14] border-slate-800 text-slate-600 hover:border-slate-700'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${isSelected?'bg-red-500':'bg-slate-700'}`}></div>{item}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
                 
-                {/* FOTOĞRAF GALERİSİ */}
+                {/* FOTOĞRAF GALERİSİ (GÜVENLİ) */}
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                     <div className="flex justify-between mb-4">
                         <h3 className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-2"><Camera size={14} className="text-cyan-500"/> Fotoğraflar</h3>
@@ -732,7 +741,7 @@ export default function ServisDetaySayfasi() {
                             <input type="file" multiple className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading}/>
                         </label>
                     </div>
-                    {formData.images.length > 0 ? (
+                    {Array.isArray(formData.images) && formData.images.length > 0 ? (
                         <div className="grid grid-cols-3 gap-2">
                             {formData.images.map((img:string, i:number)=>(
                                 <div key={i} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-700">
@@ -746,15 +755,20 @@ export default function ServisDetaySayfasi() {
                     )}
                 </div>
                 
-                {/* SON KONTROL */}
+                {/* SON KONTROL (GÜVENLİ) */}
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                     <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ClipboardCheck size={14} className="text-green-500"/> Kalite Kontrol</h3>
                     <div className="space-y-2">
-                         {catInfo.finalChecks.map((item: string) => (
-                            <button key={item} onClick={() => toggleArrayItem("finalCheck", item)} className={`flex items-center gap-3 p-2 w-full rounded-lg border text-[11px] font-bold text-left transition-all ${formData.finalCheck.includes(item) ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-[#0b0e14] border-slate-800 text-slate-600 hover:border-slate-700'}`}>
-                                <div className={`min-w-[14px] h-[14px] rounded flex items-center justify-center border ${formData.finalCheck.includes(item) ? 'bg-green-600 border-green-600 text-white' : 'border-slate-700'}`}>{formData.finalCheck.includes(item) && <ClipboardCheck size={8}/>}</div>{item}
-                            </button>
-                        ))}
+                         {catInfo.finalChecks.map((item: string) => {
+                             // GÜVENLİ ARRAY KONTROLÜ
+                             const finalArray = Array.isArray(formData.finalCheck) ? formData.finalCheck : [];
+                             const isSelected = finalArray.includes(item);
+                             return (
+                                <button key={item} onClick={() => toggleArrayItem("finalCheck", item)} className={`flex items-center gap-3 p-2 w-full rounded-lg border text-[11px] font-bold text-left transition-all ${isSelected ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-[#0b0e14] border-slate-800 text-slate-600 hover:border-slate-700'}`}>
+                                    <div className={`min-w-[14px] h-[14px] rounded flex items-center justify-center border ${isSelected ? 'bg-green-600 border-green-600 text-white' : 'border-slate-700'}`}>{isSelected && <ClipboardCheck size={8}/>}</div>{item}
+                                </button>
+                             );
+                         })}
                     </div>
                 </div>
             </div>
@@ -920,15 +934,21 @@ export default function ServisDetaySayfasi() {
                     <div className="col-span-1 border border-slate-300 rounded-lg p-3">
                         <h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Teslim Alınanlar</h4>
                         <div className="flex flex-wrap gap-1">
-                            {formData.accessories.length > 0 ? formData.accessories.map((acc:string) => (
-                                <span key={acc} className="border border-slate-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{acc}</span>
-                            )) : <span className="text-xs italic text-slate-400">Yok</span>}
+                            {Array.isArray(formData.accessories) && formData.accessories.length > 0 ? (
+                                formData.accessories.map((acc:string, i:number) => (
+                                    <span key={i} className="border border-slate-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                                        {acc}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className="text-xs italic text-slate-400">Yok</span>
+                            )}
                         </div>
                     </div>
                     <div className="col-span-1 border border-slate-300 rounded-lg p-3">
                         <h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Ön Kontrol</h4>
                         <div className="flex flex-wrap gap-1">
-                            {formData.preCheck.length > 0 ? formData.preCheck.map((chk:string) => (
+                            {Array.isArray(formData.preCheck) && formData.preCheck.length > 0 ? formData.preCheck.map((chk:string) => (
                                 <span key={chk} className="text-[10px] flex items-center gap-1">☑ {chk}</span>
                             )) : <span className="text-xs italic text-slate-400">Sorun görülmedi</span>}
                         </div>
@@ -945,7 +965,7 @@ export default function ServisDetaySayfasi() {
                         <p className="text-sm whitespace-pre-line leading-relaxed">{formData.notes || "İşlem detayları girilmedi."}</p>
                         
                         {/* Satılan Ekstra Ürünler Listesi (Upsells) */}
-                        {formData.sold_upsells && formData.sold_upsells.length > 0 && (
+                        {Array.isArray(formData.sold_upsells) && formData.sold_upsells.length > 0 && (
                             <div className="mt-4 pt-4 border-t border-slate-200">
                                 <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Eklenen Ürünler / Hizmetler:</h5>
                                 <ul className="text-sm list-disc pl-4 space-y-1">
@@ -962,11 +982,11 @@ export default function ServisDetaySayfasi() {
                 <div className="mb-8">
                     <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-200 pb-1">Son Kontroller (QC)</h4>
                     <div className="grid grid-cols-4 gap-2">
-                        {formData.finalCheck.map((chk:string, i:number) => (
+                        {Array.isArray(formData.finalCheck) ? formData.finalCheck.map((chk:string, i:number) => (
                             <div key={i} className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-700">
                                 <div className="w-3 h-3 bg-slate-800 text-white flex items-center justify-center text-[8px] rounded-[2px]">✓</div> {chk}
                             </div>
-                        ))}
+                        )) : null}
                     </div>
                 </div>
 
