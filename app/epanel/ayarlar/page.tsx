@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase"; 
-import DealerEditModal from "@/components/DealerEditModal"; 
 import { 
   Settings, Plus, Trash2, Building2, 
-  Users, Shield, CheckCircle, XCircle, X, PlusCircle,
-  Save, RefreshCw, Globe, Edit2, Lock, UserX, UserCheck,
-  Star, Database, Briefcase, Crown, FileText, Download, AlertTriangle,
-  Mail, Key
+  Users, Save, RefreshCw, Globe, 
+  Star, Database, FileText, Download, AlertTriangle,
+  PlusCircle
 } from "lucide-react";
 
 // Sabitler
@@ -22,29 +20,20 @@ const ROLLER = [
 const KATEGORILER = ['Telefon', 'Robot Süpürge', 'Bilgisayar', 'Tablet', 'Akıllı Saat', 'Diğer'];
 
 export default function GelismisYonetimPaneli() {
-  const [aktifSekme, setAktifSekme] = useState<'personel' | 'markalar' | 'sistem' | 'yorumlar' | 'bayiler'>('personel');
+  const [aktifSekme, setAktifSekme] = useState<'personel' | 'markalar' | 'sistem' | 'yorumlar'>('personel');
   const [yukleniyor, setYukleniyor] = useState(false);
   
   // Veri State'leri
   const [kaynaklar, setKaynaklar] = useState<any[]>([]);
   const [personelListesi, setPersonelListesi] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
-  const [bayiler, setBayiler] = useState<any[]>([]);
   
   // Form State'leri
   const [yeniKaynak, setYeniKaynak] = useState({ isim: "", kategori: "Telefon", web_site: "" });
   const [yeniPersonel, setYeniPersonel] = useState({ email: "", password: "", ad: "", rol: "teknisyen", yetkiler: [] as string[] });
   
-  // YENİ: BAYİ OLUŞTURMA STATE
-  const [yeniBayi, setYeniBayi] = useState({ company_name: "", email: "", password: "" });
-
-  const [yetkiPopupId, setYetkiPopupId] = useState<string | null>(null);
   const [legalText, setLegalText] = useState("");
   const [savingText, setSavingText] = useState(false);
-
-  // Modal
-  const [seciliBayi, setSeciliBayi] = useState<any>(null);
-  const [modalAcik, setModalAcik] = useState(false);
 
   useEffect(() => { veriGetir(); }, []);
 
@@ -59,75 +48,30 @@ export default function GelismisYonetimPaneli() {
     const { data: reviewData } = await supabase.from('aura_reviews').select('*').order('created_at', { ascending: false }).limit(20);
     if (reviewData) setReviews(reviewData);
 
-    // Bayileri (Profiles) Çek
-    const { data: bayiData } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-    if (bayiData) setBayiler(bayiData);
-
     const { data: settingData } = await supabase.from('aura_settings').select('setting_value').eq('setting_key', 'legal_text').single();
     if (settingData) setLegalText(settingData.setting_value);
     
     setYukleniyor(false);
   };
 
-  // --- BAYİ OLUŞTURMA FONKSİYONU (YENİ) ---
-  const bayiOlustur = async () => {
-    if (!yeniBayi.email || !yeniBayi.password || !yeniBayi.company_name) return alert("Tüm alanları doldurun!");
-    if (yeniBayi.password.length < 6) return alert("Şifre en az 6 karakter olmalı!");
-    
-    setYukleniyor(true);
-    try {
-        // 1. Auth Kullanıcısı Oluştur (Giriş yapabilmesi için)
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: yeniBayi.email,
-            password: yeniBayi.password,
-            options: { data: { full_name: yeniBayi.company_name } } // Şirket adını meta data olarak ekle
-        });
-
-        if (authError) throw authError;
-
-        // Not: SQL Trigger'ımız (handle_new_user) otomatik olarak profiles tablosuna ekleyecek.
-        // Ancak biz şirketin adını hemen güncellemek için manuel bir update atalım.
-        
-        // Biraz bekle (Trigger çalışsın)
-        setTimeout(async () => {
-             if (authData.user) {
-                 await supabase.from('profiles').update({
-                     company_name: yeniBayi.company_name,
-                     subscription_plan: 'standard', // Varsayılan paket
-                     account_status: 'active'
-                 }).eq('id', authData.user.id);
-             }
-             alert(`✅ ${yeniBayi.company_name} bayisi başarıyla oluşturuldu!`);
-             setYeniBayi({ company_name: "", email: "", password: "" });
-             veriGetir();
-             setYukleniyor(false);
-        }, 1500);
-
-    } catch (err: any) {
-        alert("Hata: " + err.message);
-        setYukleniyor(false);
-    }
-  };
-
-  // --- DİĞER FONKSİYONLAR (AYNI) ---
+  // --- FONKSİYONLAR ---
   const kaynakEkle = async () => {
     if (!yeniKaynak.isim) return alert("Marka adı boş olamaz!");
     const { error } = await supabase.from('ayarlar_kaynaklar').insert([{ isim: yeniKaynak.isim, kategori: yeniKaynak.kategori, web_site: yeniKaynak.web_site }]);
     if(error) alert("Hata: " + error.message); else { setYeniKaynak({ isim: "", kategori: "Telefon", web_site: "" }); veriGetir(); }
   };
+
   const kaynakSil = async (id: string) => {
     if(!confirm("Bu markayı silmek istediğine emin misin?")) return;
     await supabase.from('ayarlar_kaynaklar').delete().eq('id', id);
     veriGetir();
   };
+
   const rolDegis = (rolId: string) => {
       const secilenRol = ROLLER.find(r => r.id === rolId);
       if(secilenRol) setYeniPersonel({ ...yeniPersonel, rol: rolId, yetkiler: secilenRol.yetkiler });
   };
-  const yetkiToggle = (yetki: string) => {
-    if (yeniPersonel.yetkiler.includes(yetki)) setYeniPersonel({ ...yeniPersonel, yetkiler: yeniPersonel.yetkiler.filter(y => y !== yetki) });
-    else setYeniPersonel({ ...yeniPersonel, yetkiler: [...yeniPersonel.yetkiler, yetki] });
-  };
+
   const personelOlustur = async () => {
     if (!yeniPersonel.email || !yeniPersonel.password) return alert("Email ve Şifre zorunlu!");
     if (yeniPersonel.password.length < 6) return alert("Şifre en az 6 karakter olmalı!");
@@ -143,10 +87,11 @@ export default function GelismisYonetimPaneli() {
     } catch (err: any) { alert("Hata oluştu: " + err.message); }
     setYukleniyor(false);
   };
-  const yetkiGuncelle = async (personelId: string, yeniYetkiler: string[]) => { await supabase.from('personel_izinleri').update({ yetkiler: yeniYetkiler }).eq('id', personelId); veriGetir(); };
+
   const personelSil = async (id: string) => { if(!confirm("Personeli silmek istiyor musun?")) return; await supabase.from('personel_izinleri').delete().eq('id', id); veriGetir(); };
-  const durumDegistir = async (id: string, mevcutDurum: string) => { const yeniDurum = mevcutDurum === 'aktif' ? 'pasif' : 'aktif'; await supabase.from('personel_izinleri').update({ durum: yeniDurum }).eq('id', id); veriGetir(); };
+  
   const saveLegalText = async () => { setSavingText(true); const { error } = await supabase.from('aura_settings').upsert({ setting_key: 'legal_text', setting_value: legalText }, { onConflict: 'setting_key' }); setSavingText(false); if(!error) alert("Yasal metin güncellendi!"); };
+  
   const downloadBackup = async () => {
       if(!confirm("Yedek almak istiyor musunuz?")) return;
       const { data } = await supabase.from('aura_jobs').select('*');
@@ -155,6 +100,7 @@ export default function GelismisYonetimPaneli() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = `aura-yedek-${new Date().toISOString().slice(0,10)}.json`; a.click();
   };
+
   const ortalamaPuan = reviews.length > 0 ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length).toFixed(1) : "0.0";
 
   return (
@@ -168,17 +114,15 @@ export default function GelismisYonetimPaneli() {
           </h1>
           <div className="flex bg-[#1E293B] p-1 rounded-xl border border-slate-700 overflow-x-auto max-w-full">
               <button onClick={() => setAktifSekme('personel')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap ${aktifSekme === 'personel' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><Users size={16}/> Personel</button>
-              <button onClick={() => setAktifSekme('bayiler')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap ${aktifSekme === 'bayiler' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><Briefcase size={16}/> Bayiler</button>
               <button onClick={() => setAktifSekme('markalar')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap ${aktifSekme === 'markalar' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><Building2 size={16}/> Markalar</button>
               <button onClick={() => setAktifSekme('sistem')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap ${aktifSekme === 'sistem' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><Settings size={16}/> Sistem</button>
               <button onClick={() => setAktifSekme('yorumlar')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap ${aktifSekme === 'yorumlar' ? 'bg-yellow-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><Star size={16}/> Yorumlar</button>
           </div>
       </div>
 
-      {/* SEKME 1: PERSONEL YÖNETİMİ (Sadece Personel İçin) */}
+      {/* SEKME 1: PERSONEL YÖNETİMİ */}
       {aktifSekme === 'personel' && (
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-              {/* YENİ PERSONEL FORMU */}
               <div className="xl:col-span-1">
                   <div className="bg-[#1E293B]/80 backdrop-blur-xl p-6 rounded-3xl border border-white/5 shadow-2xl sticky top-6">
                       <h3 className="text-white font-bold mb-4 flex items-center gap-2 border-b border-white/5 pb-3">
@@ -199,7 +143,6 @@ export default function GelismisYonetimPaneli() {
                       </div>
                   </div>
               </div>
-              {/* PERSONEL LİSTESİ */}
               <div className="xl:col-span-2 space-y-4">
                   {personelListesi.map((p) => (
                       <div key={p.id} className="bg-[#1E293B]/60 p-5 rounded-2xl border border-white/5 flex justify-between items-center">
@@ -217,78 +160,7 @@ export default function GelismisYonetimPaneli() {
           </div>
       )}
 
-      {/* SEKME 2: BAYİLER (KURUMSAL MÜŞTERİLER) */}
-      {aktifSekme === 'bayiler' && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            
-            {/* YENİ: BAYİ EKLEME FORMU */}
-            <div className="xl:col-span-1">
-                <div className="bg-[#1E293B]/80 backdrop-blur-xl p-6 rounded-3xl border border-white/5 shadow-2xl sticky top-6">
-                    <h3 className="text-white font-bold mb-4 flex items-center gap-2 border-b border-white/5 pb-3">
-                        <Briefcase size={20} className="text-indigo-400" /> Yeni Kurumsal Bayi Hesabı
-                    </h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 flex items-center gap-1"><Building2 size={10}/> Şirket Adı / Bayi Ünvanı</label>
-                            <input type="text" value={yeniBayi.company_name} onChange={(e) => setYeniBayi({...yeniBayi, company_name: e.target.value})} className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-all text-sm" placeholder="Örn: Başar İletişim"/>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 flex items-center gap-1"><Mail size={10}/> Giriş E-Postası</label>
-                            <input type="email" value={yeniBayi.email} onChange={(e) => setYeniBayi({...yeniBayi, email: e.target.value})} className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-all text-sm" placeholder="bayi@mail.com"/>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 flex items-center gap-1"><Key size={10}/> Giriş Şifresi</label>
-                            <input type="text" value={yeniBayi.password} onChange={(e) => setYeniBayi({...yeniBayi, password: e.target.value})} className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-all text-sm font-mono" placeholder="******"/>
-                        </div>
-                        <div className="bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20 text-[10px] text-indigo-300">
-                           Bu hesap <strong>/kurumsal/login</strong> adresinden sisteme giriş yapabilecektir.
-                        </div>
-                        <button onClick={bayiOlustur} disabled={yukleniyor} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 rounded-xl shadow-lg mt-2">
-                           {yukleniyor ? <RefreshCw size={18} className="animate-spin mx-auto"/> : "BAYİ HESABI OLUŞTUR"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* BAYİ LİSTESİ */}
-            <div className="xl:col-span-2 space-y-4">
-                <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-xl font-bold text-white">Kayıtlı Bayiler</h2>
-                    <span className="text-sm text-slate-400">Toplam {bayiler.length}</span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {bayiler.length > 0 ? bayiler.map((bayi) => (
-                    <div key={bayi.id} className="bg-[#1E293B]/60 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/50 transition-all group">
-                        <div className="flex justify-between items-start mb-3">
-                            <div>
-                                <h3 className="font-bold text-white text-lg">{bayi.company_name || bayi.email}</h3>
-                                <p className="text-xs text-slate-500">{bayi.email}</p>
-                            </div>
-                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${bayi.subscription_plan === 'platinum' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : bayi.subscription_plan === 'gold' ? 'bg-amber-500/20 text-amber-400 border-amber-500/50' : 'bg-slate-700 text-slate-400 border-slate-600'}`}>
-                                {bayi.subscription_plan === 'platinum' && <Crown size={10} className="inline mr-1"/>}
-                                {bayi.subscription_plan || 'Standart'}
-                            </span>
-                        </div>
-                        <div className="text-xs text-slate-400 mb-4 bg-black/20 p-2 rounded-lg">
-                            <p>Durum: <span className={bayi.account_status === 'active' ? 'text-emerald-400' : 'text-red-400'}>{bayi.account_status || 'Bilinmiyor'}</span></p>
-                            <p>Bitiş: {bayi.subscription_expiry ? new Date(bayi.subscription_expiry).toLocaleDateString('tr-TR') : 'Yok'}</p>
-                        </div>
-                        <button onClick={() => { setSeciliBayi(bayi); setModalAcik(true); }} className="w-full py-2 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
-                            <Settings size={16} /> Yönet
-                        </button>
-                    </div>
-                )) : (
-                    <div className="col-span-2 text-center py-10 text-slate-500 bg-[#1E293B]/30 rounded-2xl border border-dashed border-slate-700">
-                        Henüz kayıtlı bayi yok. Soldaki formdan ekleyebilirsiniz.
-                    </div>
-                )}
-                </div>
-            </div>
-        </div>
-      )}
-
-      {/* DİĞER SEKMELER (Aynı Kaldı) */}
+      {/* SEKME: MARKALAR */}
       {aktifSekme === 'markalar' && (
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
               <div className="xl:col-span-1">
@@ -351,17 +223,6 @@ export default function GelismisYonetimPaneli() {
                   )) : <div className="col-span-3 text-center text-slate-500 py-10">Henüz yorum yok.</div>}
               </div>
           </div>
-      )}
-
-      {/* MODAL */}
-      {seciliBayi && (
-        <DealerEditModal 
-            dealer={seciliBayi}
-            technicians={personelListesi}
-            isOpen={modalAcik}
-            onClose={() => setModalAcik(false)}
-            onUpdate={veriGetir}
-        />
       )}
 
     </div>

@@ -1,200 +1,151 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabase'; // Yolunu kontrol et
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/app/lib/supabase";
 import { 
-  Activity, Clock, ShieldCheck, TrendingUp, 
-  AlertCircle, Crown, Lock, Phone, MessageCircle 
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
+  Briefcase, Search, Smartphone, Wrench, CheckCircle2, 
+  Clock, LogOut, Wallet, ChevronRight, AlertTriangle, ShoppingBag, ArrowRight
+} from "lucide-react";
 
 export default function BusinessDashboard() {
   const router = useRouter();
+  const [dealer, setDealer] = useState<any>(null);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]); // Fırsat Ürünleri
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<any>(null);
-  const [technician, setTechnician] = useState<any>(null);
-  const [jobs, setJobs] = useState<any[]>([]); // Aktif İşler Listesi
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    const init = async () => {
-      // 1. Giriş yapan kullanıcıyı bul
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        router.push('/kurumsal/login');
-        return;
-      }
-
-      // 2. Profil ve Paket Bilgisi Çek
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', user.email)
-        .single();
-
-      if (profileData) {
-        setProfile(profileData);
-
-        // 3. ATANAN TEKNİSYENİ ÇEK
-        if (profileData.dedicated_technician_id) {
-          const { data: techData } = await supabase
-            .from('personel_izinleri')
-            .select('ad_soyad, rol, email')
-            .eq('id', profileData.dedicated_technician_id)
-            .single();
-          if (techData) setTechnician(techData);
-        }
-
-        // 4. AKTİF İŞLERİ (CİHAZLARI) ÇEK
-        const { data: jobsData } = await supabase
-          .from('aura_jobs')
-          .select('*')
-          .eq('customer_email', user.email) // Sadece bu bayiye ait işler
-          .order('created_at', { ascending: false });
-        
-        if (jobsData) setJobs(jobsData);
-      }
-      setLoading(false);
+    const checkAuth = async () => {
+        const storedUser = localStorage.getItem('aura_dealer_user');
+        if (!storedUser) { router.push('/kurumsal/login'); return; }
+        const dealerData = JSON.parse(storedUser);
+        setDealer(dealerData);
+        fetchData(dealerData.sirket_adi);
     };
-
-    init();
+    checkAuth();
   }, []);
 
-  if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white">Yükleniyor...</div>;
+  const fetchData = async (companyName: string) => {
+      setLoading(true);
+      // 1. Cihazları Çek
+      const { data: jobData } = await supabase.from('aura_jobs').select('*').eq('customer', companyName).order('created_at', { ascending: false });
+      if (jobData) setJobs(jobData);
 
-  const isPlatinum = profile?.subscription_plan === 'platinum';
-  const isGold = profile?.subscription_plan === 'gold' || isPlatinum;
-  
-  // Hesaplamalar
-  const activeJobCount = jobs.filter(j => j.status !== 'Tamamlandı').length;
-  // (Örnek Mantık) Onarım tutarının %20'si kadar tasarruf ettiğini varsayalım
-  const totalSavings = jobs.reduce((acc, curr) => acc + (curr.cost || 0), 0) * 0.20;
+      // 2. Fırsat Ürünlerini Çek (Limitli Vitrin)
+      const { data: prodData } = await supabase.from('firsat_urunleri').select('*').eq('durum', 'Aktif').limit(3);
+      if (prodData) setProducts(prodData);
+      
+      setLoading(false);
+  };
+
+  const handleLogout = () => { localStorage.removeItem('aura_dealer_user'); router.push('/kurumsal/login'); };
+
+  // Metrikler
+  const pendingApprovals = jobs.filter(j => j.status === 'Onay Bekliyor'); // Kritik Onaylar
+  const activeJobs = jobs.filter(j => ['İşlemde', 'Parça Bekleniyor', 'Test Aşamasında', 'Bekliyor'].includes(j.status));
+  const totalBalance = jobs.reduce((sum, job) => sum + (Number(job.fiyat)||0) + (Number(job.parca_ucreti)||0), 0);
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 pb-24 md:pb-10">
+    <div className="min-h-screen bg-[#0b0e14] text-white font-sans p-4 md:p-8 pb-20">
       
-      {/* Üst Başlık */}
-      <div className="px-6 pt-8 pb-6 flex justify-between items-end">
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-8 border-b border-white/5 pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">
-            Hoşgeldin, <span className="text-amber-500">{profile?.company_name || "Değerli İş Ortağımız"}</span>
-          </h1>
-          <p className="text-slate-400 text-sm mt-1 flex items-center gap-2">
-            Paket Durumu: 
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
-              isPlatinum ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : 
-              isGold ? 'bg-amber-500/20 text-amber-400 border-amber-500/50' : 
-              'bg-slate-700 text-slate-400 border-slate-600'
-            }`}>
-              {isPlatinum && <Crown size={10} className="inline mr-1"/>}
-              {profile?.subscription_plan || 'Standart'}
-            </span>
-          </p>
+           <h1 className="text-2xl font-black flex items-center gap-2 text-white"><Briefcase className="text-amber-500"/> {dealer?.sirket_adi}</h1>
+           <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-wider">Kurumsal Servis Paneli</p>
         </div>
+        <button onClick={handleLogout} className="px-4 py-2 bg-[#161b22] hover:bg-red-500/10 hover:text-red-500 text-slate-300 rounded-xl text-xs font-bold border border-slate-800 transition-colors flex items-center gap-2"><LogOut size={14}/> Çıkış</button>
       </div>
 
-      <div className="px-4 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* SOL TARAF: KPI VE İŞ LİSTESİ */}
-        <div className="lg:col-span-2 space-y-6">
-           
-           {/* KPI KARTLARI */}
-           <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
-              <div className="bg-[#0f172a] border border-white/5 p-5 rounded-2xl relative overflow-hidden">
-                 <div className="absolute right-0 top-0 p-4 opacity-10"><Activity size={48} className="text-blue-500"/></div>
-                 <p className="text-slate-400 text-xs font-bold uppercase">Aktif Onarımlar</p>
-                 <h3 className="text-3xl font-black text-white mt-1">{activeJobCount} <span className="text-sm font-normal text-slate-500">Cihaz</span></h3>
+      {/* ⚠️ KRİTİK BİLDİRİMLER (FİYAT ONAYI) */}
+      {pendingApprovals.length > 0 && (
+          <div className="mb-8 animate-in slide-in-from-top-4">
+              <div className="bg-gradient-to-r from-red-500/10 to-red-900/5 border border-red-500/30 rounded-2xl p-5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10"><AlertTriangle size={80}/></div>
+                  <h3 className="text-red-400 font-bold flex items-center gap-2 mb-3"><AlertTriangle size={20}/> Onay Bekleyen İşlemler ({pendingApprovals.length})</h3>
+                  <div className="flex gap-4 overflow-x-auto pb-2">
+                      {pendingApprovals.map(job => (
+                          <div key={job.id} onClick={() => router.push(`/business/cihaz-takip/${job.id}`)} className="bg-[#0b0e14] border border-red-500/30 p-4 rounded-xl min-w-[280px] cursor-pointer hover:border-red-400 transition-colors group">
+                              <div className="flex justify-between items-start mb-2">
+                                  <span className="text-white font-bold text-sm">{job.device}</span>
+                                  <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded font-bold">ONAYLA</span>
+                              </div>
+                              <div className="text-xs text-slate-400 mb-2">{job.problem.substring(0, 40)}...</div>
+                              <div className="flex justify-between items-center border-t border-slate-800 pt-2">
+                                  <span className="text-xs text-slate-500 font-mono">{job.tracking_code}</span>
+                                  <span className="text-white font-bold">₺{((Number(job.fiyat)||0) + (Number(job.parca_ucreti)||0)).toLocaleString()}</span>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
               </div>
-              <div className="bg-[#0f172a] border border-amber-500/20 p-5 rounded-2xl relative overflow-hidden">
-                 <div className="absolute right-0 top-0 p-4 opacity-10"><TrendingUp size={48} className="text-amber-500"/></div>
-                 <p className="text-slate-400 text-xs font-bold uppercase">Tahmini Tasarruf</p>
-                 <h3 className="text-3xl font-black text-amber-500 mt-1">₺{totalSavings.toLocaleString('tr-TR')}</h3>
-                 <p className="text-[10px] text-slate-500">Yeni cihaz alımı yerine onarım tercih ederek.</p>
-              </div>
-           </div>
+          </div>
+      )}
 
-           {/* OPERASYON DURUMU (CANLI CİHAZ LİSTESİ) */}
-           <div>
-              <h3 className="text-white font-bold mb-4 border-l-4 border-amber-500 pl-3">Operasyon Durumu</h3>
+      {/* METRİKLER */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-[#161b22] p-5 rounded-2xl border border-slate-800"><div className="text-slate-500 text-[10px] font-bold uppercase mb-1">Toplam İşlem</div><div className="text-3xl font-black text-white">{jobs.length}</div></div>
+          <div className="bg-[#161b22] p-5 rounded-2xl border border-amber-500/20"><div className="text-amber-500 text-[10px] font-bold uppercase mb-1">Atölyedeki</div><div className="text-3xl font-black text-amber-500">{activeJobs.length}</div></div>
+          <div className="bg-[#161b22] p-5 rounded-2xl border border-green-500/20"><div className="text-green-500 text-[10px] font-bold uppercase mb-1">Teslim Edilen</div><div className="text-3xl font-black text-green-500">{jobs.filter(j => j.status === 'Teslim Edildi').length}</div></div>
+          <div className="bg-[#161b22] p-5 rounded-2xl border border-indigo-500/20"><div className="text-indigo-400 text-[10px] font-bold uppercase mb-1">Toplam Hacim</div><div className="text-3xl font-black text-indigo-400">₺{totalBalance.toLocaleString()}</div></div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* SOL: SERVİS LİSTESİ */}
+          <div className="lg:col-span-2">
+              <div className="bg-[#161b22] rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
+                  <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2"><Wrench size={18} className="text-slate-400"/> Servis Hareketleri</h2>
+                      <div className="relative w-48"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14}/><input type="text" placeholder="Ara..." className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg py-2 pl-9 pr-3 text-xs text-white outline-none focus:border-amber-500" value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)}/></div>
+                  </div>
+                  <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                          <tbody className="divide-y divide-slate-800/50">
+                              {loading ? <tr><td className="p-6 text-center text-slate-500 text-sm">Yükleniyor...</td></tr> : 
+                               jobs.filter(j => j.device.toLowerCase().includes(searchTerm.toLowerCase())).map(job => (
+                                  <tr key={job.id} onClick={() => router.push(`/business/cihaz-takip/${job.id}`)} className="hover:bg-white/[0.02] cursor-pointer group transition-colors">
+                                      <td className="p-5">
+                                          <div className="font-bold text-white text-sm group-hover:text-amber-500 transition-colors">{job.device}</div>
+                                          <div className="text-[10px] text-slate-500 mt-1">{job.tracking_code} • {new Date(job.created_at).toLocaleDateString('tr-TR')}</div>
+                                      </td>
+                                      <td className="p-5"><span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${job.status === 'Onay Bekliyor' ? 'bg-red-500 text-white animate-pulse' : job.status === 'Teslim Edildi' ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-slate-400'}`}>{job.status}</span></td>
+                                      <td className="p-5 text-right font-bold text-white text-sm">₺{((Number(job.fiyat)||0) + (Number(job.parca_ucreti)||0)).toLocaleString()}</td>
+                                      <td className="p-5 text-right"><ChevronRight size={16} className="text-slate-600"/></td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          </div>
+
+          {/* SAĞ: FIRSAT ÜRÜNLERİ VİTRİNİ */}
+          <div>
+              <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2"><ShoppingBag size={18} className="text-purple-400"/> Bayi Fırsatları</h2>
+                  <button onClick={() => router.push('/business/firsatlar')} className="text-xs text-purple-400 hover:text-white flex items-center gap-1 font-bold">Tümünü Gör <ArrowRight size={12}/></button>
+              </div>
               <div className="space-y-4">
-                {jobs.length > 0 ? jobs.map((job) => (
-                  <div key={job.id} className="bg-[#0f172a] border border-white/5 p-5 rounded-2xl hover:border-indigo-500/30 transition-all group">
-                      <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-white text-lg flex items-center gap-2">
-                             {job.device_name}
-                          </h4>
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                             job.status === 'Onarımda' ? 'bg-blue-500/20 text-blue-400' :
-                             job.status === 'Test Aşamasında' ? 'bg-purple-500/20 text-purple-400' :
-                             'bg-green-500/20 text-green-400'
-                          }`}>
-                             {job.status}
-                          </span>
+                  {products.map(product => (
+                      <div key={product.id} className="bg-[#161b22] border border-slate-800 rounded-2xl p-4 flex gap-4 hover:border-purple-500/40 transition-all cursor-pointer group">
+                          <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden shrink-0">
+                             {product.resim_url ? <img src={product.resim_url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" /> : <div className="w-full h-full flex items-center justify-center text-slate-600"><ShoppingBag size={20}/></div>}
+                          </div>
+                          <div>
+                              <h4 className="text-white font-bold text-sm leading-tight mb-1">{product.urun_adi}</h4>
+                              <div className="flex items-center gap-2">
+                                  <span className="text-purple-400 font-black text-lg">₺{product.indirimli_fiyat}</span>
+                                  <span className="text-slate-600 text-xs line-through">₺{product.normal_fiyat}</span>
+                              </div>
+                          </div>
                       </div>
-                      
-                      <div className="bg-black/20 p-3 rounded-xl mb-3 border border-white/5">
-                         <p className="text-xs text-slate-500 font-bold mb-1">TEKNİSYEN NOTU:</p>
-                         <p className="text-sm text-slate-300 italic">"{job.technician_note}"</p>
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs text-slate-500">
-                         <span className="flex items-center gap-1"><AlertCircle size={12}/> {job.problem_description}</span>
-                         <span className="flex items-center gap-1 text-amber-500"><Clock size={12}/> Tahmini: {job.estimated_date ? new Date(job.estimated_date).toLocaleDateString('tr-TR') : 'Belirsiz'}</span>
-                      </div>
-                  </div>
-                )) : (
-                  <div className="text-center py-10 bg-[#0f172a] rounded-2xl border border-dashed border-slate-700 text-slate-500">
-                     <Activity size={32} className="mx-auto mb-2 opacity-50"/>
-                     <p>Şu an işlemde olan cihazınız bulunmamaktadır.</p>
-                  </div>
-                )}
+                  ))}
+                  {products.length === 0 && <div className="text-center py-10 text-slate-500 bg-[#161b22] rounded-2xl border border-dashed border-slate-800 text-sm">Aktif fırsat bulunmuyor.</div>}
               </div>
-           </div>
-
-        </div>
-
-        {/* SAĞ TARAF: DANIŞMAN VE DESTEK */}
-        <div>
-           <h3 className="text-white font-bold mb-4 border-l-4 border-indigo-500 pl-3">Müşteri Temsilciniz</h3>
-           {technician ? (
-              <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] border border-indigo-500/30 p-6 rounded-2xl text-center relative shadow-2xl sticky top-6">
-                  {isPlatinum && <div className="absolute top-3 right-3 bg-indigo-500 text-white text-[10px] px-2 py-1 rounded font-bold">ÖZEL</div>}
-                  
-                  <div className="w-20 h-20 mx-auto bg-slate-700 rounded-full mb-4 border-2 border-indigo-500 p-1 relative">
-                    <div className="w-full h-full bg-slate-600 rounded-full flex items-center justify-center text-2xl font-bold text-white uppercase">
-                      {technician.ad_soyad.charAt(0)}
-                    </div>
-                    <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 rounded-full border-2 border-[#0f172a]"></div>
-                  </div>
-                  
-                  <h3 className="text-xl font-bold text-white">{technician.ad_soyad}</h3>
-                  <p className="text-indigo-400 text-sm font-medium mb-4 uppercase tracking-wide">{technician.rol}</p>
-                  
-                  <div className="space-y-3">
-                    <button className="w-full py-3 bg-white text-slate-900 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors">
-                      <Phone size={18} /> Hemen Ara
-                    </button>
-                    <button className="w-full py-3 bg-[#25D366] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-colors">
-                      <MessageCircle size={18} /> WhatsApp Destek
-                    </button>
-                    <p className="text-[10px] text-slate-500 mt-2">*Hafta içi 09:00 - 19:00 arası doğrudan ulaşabilirsiniz.</p>
-                  </div>
-              </div>
-           ) : (
-              <div className="bg-[#0f172a] p-6 rounded-2xl border border-white/5 text-center">
-                  <h3 className="text-white font-bold">Genel Destek Hattı</h3>
-                  <p className="text-slate-400 text-sm mt-2 mb-4">Henüz size özel atanmış bir danışman bulunmuyor.</p>
-                  <button className="w-full py-2 bg-slate-700 text-slate-300 rounded-lg text-sm font-bold">Destek Talebi Oluştur</button>
-              </div>
-           )}
-
-           {/* Yeni Kayıt Butonu */}
-           <div className="mt-6 border-t border-white/5 pt-6">
-              <button className="w-full py-4 border border-dashed border-slate-600 text-slate-400 rounded-2xl hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
-                 <span className="text-2xl font-thin">+</span> Yeni Arıza Kaydı Oluştur
-              </button>
-           </div>
-        </div>
+          </div>
 
       </div>
     </div>
