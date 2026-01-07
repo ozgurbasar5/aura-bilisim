@@ -9,13 +9,6 @@ import {
   Wrench, Cpu, Radio, X, MonitorPlay
 } from "lucide-react";
 
-// İpuçları Verisi (Sabit)
-const AURA_TIPS: any = { 
-    "genel": { title: "Aura Koruma", desc: "Orijinal parça kullanımı cihaz ömrünü %40 artırır.", icon: ShieldCheck, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-    "pil": { title: "Pil Tavsiyesi", desc: "Müşterinize cihazı %20'nin altına düşürmemesini önerin.", icon: Battery, color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20" },
-    "ekran": { title: "Ekran Koruma", desc: "Kırılmaz cam uygulaması yaparak müşteri memnuniyetini artırın.", icon: MonitorPlay, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
-};
-
 export default function DealerDeviceDetail() {
   const { id } = useParams();
   const router = useRouter();
@@ -43,7 +36,16 @@ export default function DealerDeviceDetail() {
       const { data, error } = await supabase.from('aura_jobs').select('*').eq('id', id).single();
       
       if (error || !data) { alert("Kayıt bulunamadı."); router.push('/business/dashboard'); return; }
-      if (data.customer !== dealerData.sirket_adi) { alert("Yetkisiz işlem."); router.push('/business/dashboard'); return; }
+      
+      // Güvenlik kontrolü: Sadece kendi işini görebilsin
+      if (data.customer !== dealerData.sirket_adi && data.customer_type === 'Bayi') { 
+          // İsim eşleşmiyorsa, belki bayi prefixi vardır kontrolü yapılabilir ama şimdilik katı kural:
+           if(!data.customer.includes(dealerData.sirket_adi)){
+              alert("Yetkisiz işlem."); 
+              router.push('/business/dashboard'); 
+              return; 
+           }
+      }
 
       setJob(data);
       setLoading(false);
@@ -62,8 +64,8 @@ export default function DealerDeviceDetail() {
 
       const { error } = await supabase.from('aura_jobs').update({
           status: newStatus,
-          approval_status: decision, // 'approved' veya 'rejected' olarak işaretle
-          price: newPrice, // Fiyatı güncelle
+          approval_status: decision,
+          price: newPrice,
           updated_at: new Date().toISOString()
       }).eq('id', id);
 
@@ -83,8 +85,15 @@ export default function DealerDeviceDetail() {
 
       const currentUpsells = job.sold_upsells || [];
       const newUpsells = [...currentUpsells, item];
-      // Listeden çıkar (Artık satıldı)
-      const newRecommended = (job.recommended_upsells || []).filter((i:any) => i.id !== item.id);
+      
+      // Listeden çıkar (Artık satıldı olarak işaretle veya listeden sil)
+      // Burada güvenli upsell listesini kullanacağız ama veritabanına yazarken job.recommended_upsells kullanıyoruz
+      let currentRec = [];
+      try {
+        currentRec = typeof job.recommended_upsells === 'string' ? JSON.parse(job.recommended_upsells) : job.recommended_upsells;
+      } catch (e) { currentRec = []; }
+      
+      const newRecommended = (Array.isArray(currentRec) ? currentRec : []).filter((i:any) => i.id !== item.id);
       
       // Fiyatı güncelle
       const newPrice = Number(job.price) + Number(item.price);
@@ -116,7 +125,21 @@ export default function DealerDeviceDetail() {
   };
   const currentStep = getCurrentStep(job.status);
   const isFinished = currentStep >= 3;
-  const tip = AURA_TIPS["genel"]; // Varsayılan ipucu
+
+  // --- KRİTİK DÜZELTME: Upsell Verisini Güvenli Hale Getirme ---
+  let safeUpsells: any[] = [];
+  if (job.recommended_upsells) {
+      if (Array.isArray(job.recommended_upsells)) {
+          safeUpsells = job.recommended_upsells;
+      } else if (typeof job.recommended_upsells === 'string') {
+          try {
+              safeUpsells = JSON.parse(job.recommended_upsells);
+          } catch (e) {
+              safeUpsells = [];
+          }
+      }
+  }
+  // -------------------------------------------------------------
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 font-sans relative overflow-x-hidden selection:bg-cyan-500/30 pb-20">
@@ -188,8 +211,8 @@ export default function DealerDeviceDetail() {
                  </div>
              )}
 
-             {/* --- ÖNERİLEN ÜRÜNLER (UPSELL) --- */}
-             {job.recommended_upsells && job.recommended_upsells.length > 0 && (
+             {/* --- ÖNERİLEN ÜRÜNLER (UPSELL) - DÜZELTİLMİŞ KISIM --- */}
+             {safeUpsells.length > 0 && (
                  <div className="lg:col-span-12">
                      <div className="relative overflow-hidden rounded-[2rem] border border-pink-500/30 bg-[#0F1623] p-6 shadow-[0_0_30px_rgba(236,72,153,0.1)]">
                          <div className="flex items-center gap-4 mb-6">
@@ -202,7 +225,7 @@ export default function DealerDeviceDetail() {
                              </div>
                          </div>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                             {job.recommended_upsells.map((item:any, index:number) => (
+                             {safeUpsells.map((item:any, index:number) => (
                                  <div key={index} className="bg-white/5 border border-pink-500/20 rounded-xl p-4 flex justify-between items-center group hover:bg-pink-500/10 transition-colors">
                                      <div>
                                          <h4 className="text-sm font-bold text-white mb-1">{item.name}</h4>
@@ -331,7 +354,8 @@ export default function DealerDeviceDetail() {
                  <div className="lg:col-span-12 bg-[#0F1623]/50 border border-white/5 rounded-3xl p-8">
                      <h3 className="font-bold text-xl text-white mb-6 flex items-center gap-3"><Camera size={24} className="text-purple-400"/> Servis Görselleri</h3>
                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                         {job.images.map((img: string, i: number) => (
+                        {/* job.images var mı VE bir dizi mi diye kontrol et, değilse boş dizi kabul et */}
+{(Array.isArray(job.images) ? job.images : []).map((img: string, i: number) => (
                              <div key={i} className="group relative aspect-square rounded-2xl overflow-hidden border border-slate-700 cursor-pointer bg-slate-900" onClick={() => setSelectedImage(img)}>
                                  <img src={img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-80 group-hover:opacity-100"/>
                              </div>

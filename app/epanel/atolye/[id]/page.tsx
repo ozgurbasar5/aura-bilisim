@@ -10,11 +10,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase"; 
 
-// --- UPSELL (FIRSAT) VERİLERİ (VERİTABANINDAN DOLACAK) ---
-const UPSELL_DATA: any = {
-  "Cep Telefonu": [], "Robot Süpürge": [], "Bilgisayar": [], "Diğer": []
-};
-
 // --- DİNAMİK AURA İPUÇLARI (KATEGORİ BAZLI) ---
 const CATEGORY_TIPS: any = {
   "Cep Telefonu": [
@@ -112,11 +107,12 @@ export default function ServisDetaySayfasi() {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [stockSearchTerm, setStockSearchTerm] = useState("");
   const [stockResults, setStockResults] = useState<any[]>([]);
-  const [usedParts, setUsedParts] = useState<any[]>([]); // Serviste kullanılan parçalar
+  const [usedParts, setUsedParts] = useState<any[]>([]); 
 
   // --- TIMELINE (ZAMAN TÜNELİ) STATE ---
   const [timelineLogs, setTimelineLogs] = useState<any[]>([]);
 
+  // FORM VERİSİ
   const [formData, setFormData] = useState<any>({
     id: 0, 
     customerType: "Son Kullanıcı", 
@@ -173,38 +169,46 @@ export default function ServisDetaySayfasi() {
                 const { data, error } = await supabase.from('aura_jobs').select('*').eq('id', params.id).single();
                 if (error) throw error;
                 if (data) {
+                    // --- KRİTİK NOKTA: Veritabanından Okuma ---
+                    // Veritabanında olabilecek TÜM sütun varyasyonlarını kontrol ediyoruz
                     setFormData({
                         id: data.id,
-                        tracking_code: data.tracking_code,
-                        customer: data.customer,
-                        phone: data.phone,
+                        tracking_code: data.tracking_code || "",
+                        // Müşteri
+                        customer: data.customer_email || data.customer || data.customer_name || "",
+                        phone: data.phone || "",
                         customerType: data.customer_type || "Son Kullanıcı",
                         address: data.address || "",
+                        // Cihaz
                         category: data.category || "Diğer", 
-                        device: data.device,
-                        serialNo: data.serial_no || "",
-                        password: data.password || "",
-                        issue: data.problem || "",
+                        device: data.device_name || data.device || data.model || "",
+                        serialNo: data.serial_no || data.serial_number || data.imei || "",
+                        password: data.password || data.screen_password || "",
+                        // Arıza & Notlar
+                        issue: data.problem_description || data.problem || data.issue || "",
                         privateNote: data.private_note || "",
-                        notes: data.process_details || "",
+                        notes: data.technician_note || data.process_details || "",
+                        
                         status: data.status,
-                        price: data.price || 0,
-                        cost: data.cost || 0,
-                        date: new Date(data.created_at).toLocaleDateString('tr-TR'),
-                        // DİZİ KONTROLLERİ BURADA DA ÖNEMLİ
-                        accessories: Array.isArray(data.accessories) ? data.accessories : [],
-                        preCheck: Array.isArray(data.pre_checks) ? data.pre_checks : [],
-                        finalCheck: Array.isArray(data.final_checks) ? data.final_checks : [],
+                        price: Number(data.price) || 0,
+                        cost: Number(data.cost) || 0,
+                        date: data.created_at ? new Date(data.created_at).toLocaleDateString('tr-TR') : new Date().toLocaleDateString('tr-TR'),
+                        
+                        // JSON/Dizi alanları için güvenli parse
+                        accessories: parseArray(data.accessories || data.accessory),
+                        preCheck: parseArray(data.pre_checks || data.pre_check),
+                        finalCheck: parseArray(data.final_checks || data.final_check),
+                        images: parseArray(data.images),
+                        recommended_upsells: parseArray(data.recommended_upsells),
+                        sold_upsells: parseArray(data.sold_upsells),
+                        
                         tip_id: data.tip_id || "genel",
-                        images: Array.isArray(data.images) ? data.images : [],
                         approval_status: data.approval_status || 'none',
                         approval_amount: data.approval_amount || 0,
-                        approval_desc: data.approval_desc || "",
-                        recommended_upsells: Array.isArray(data.recommended_upsells) ? data.recommended_upsells : [],
-                        sold_upsells: Array.isArray(data.sold_upsells) ? data.sold_upsells : []
+                        approval_desc: data.approval_desc || ""
                     });
-                    if (data.serial_no) checkExpertise(data.serial_no);
                     
+                    if (data.serial_no || data.serial_number) checkExpertise(data.serial_no || data.serial_number);
                     fetchTimeline(data.id);
                     fetchUsedParts(data.id);
                 }
@@ -214,14 +218,23 @@ export default function ServisDetaySayfasi() {
     fetchData();
   }, [params.id]);
 
+  // Yardımcı: JSON Parse (Text -> Array)
+  const parseArray = (val: any) => {
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+          try { return JSON.parse(val); } catch { return []; }
+      }
+      return [];
+  };
+
   // --- KATEGORİYE GÖRE FIRSAT ÜRÜNLERİNİ ÇEK ---
   useEffect(() => {
       const fetchUpsells = async () => {
           const { data } = await supabase
             .from('aura_upsell_products')
             .select('*')
-            .eq('category', formData.category)
-            .eq('is_active', true);
+            .eq('category', formData.category) 
+            .eq('is_active', true); 
           
           if(data) setAvailableUpsells(data);
           else setAvailableUpsells([]); 
@@ -245,14 +258,12 @@ export default function ServisDetaySayfasi() {
 
   const logToTimeline = async (action: string, desc: string) => {
       if (params.id === 'yeni') return; 
-      
       const newLog = {
           job_id: params.id,
           action_type: action,
           description: desc,
           created_by: currentUserEmail
       };
-      
       await supabase.from('aura_timeline').insert([newLog]);
       setTimelineLogs(prev => [newLog, ...prev]);
   };
@@ -289,8 +300,7 @@ export default function ServisDetaySayfasi() {
       const totalCost = Number(part.alis_fiyati) * qty;
       const totalPrice = Number(part.satis_fiyati) * qty;
 
-      const confirmMsg = `${part.urun_adi} (x${qty}) stoktan düşülecek.\n\nToplam Fiyat: ${totalPrice}₺\nToplam Maliyet: ${totalCost}₺\n\nOnaylıyor musunuz?`;
-      if(!confirm(confirmMsg)) return;
+      if(!confirm(`${part.urun_adi} (x${qty}) stoktan düşülecek. Onaylıyor musunuz?`)) return;
 
       const { error } = await supabase.from('aura_servis_parcalari').insert([{
           job_id: params.id,
@@ -306,11 +316,17 @@ export default function ServisDetaySayfasi() {
 
       const newCost = Number(formData.cost) + totalCost;
       const newPrice = Number(formData.price) + totalPrice;
+      const newNotes = formData.notes + `\n[PARÇA] ${part.urun_adi} (x${qty}) Eklendi.`;
 
-      await supabase.from('aura_jobs').update({ price: newPrice, cost: newCost }).eq('id', params.id);
+      // Anlık Kayıt (Technician Note ile)
+      await supabase.from('aura_jobs').update({ 
+          price: String(newPrice), 
+          cost: newCost,
+          technician_note: newNotes
+      }).eq('id', params.id);
 
-      setFormData({ ...formData, price: newPrice, cost: newCost });
-      logToTimeline("Parça Kullanıldı", `${part.urun_adi} (x${qty}) stoktan düşüldü. (Fiyat: +${totalPrice}₺)`);
+      setFormData({ ...formData, price: newPrice, cost: newCost, notes: newNotes });
+      logToTimeline("Parça Kullanıldı", `${part.urun_adi} (x${qty}) stoktan düşüldü.`);
       fetchUsedParts(Number(params.id));
       setIsStockModalOpen(false);
   };
@@ -329,9 +345,13 @@ export default function ServisDetaySayfasi() {
       const newCost = Number(formData.cost) - removedCost;
       const newPrice = Number(formData.price) - removedPrice;
       
-      await supabase.from('aura_jobs').update({ price: newPrice, cost: newCost }).eq('id', params.id);
+      // Anlık Güncelleme
+      await supabase.from('aura_jobs').update({ 
+          price: String(newPrice), 
+          cost: newCost 
+      }).eq('id', params.id);
+
       setFormData({ ...formData, price: newPrice, cost: newCost });
-      
       logToTimeline("Parça İptali", `Parça kullanımı iptal edildi, ${adet} adet stok iade alındı.`);
       fetchUsedParts(Number(params.id));
   };
@@ -347,7 +367,6 @@ export default function ServisDetaySayfasi() {
 
   const handleAddToWiki = async () => {
       if (!newWikiEntry.title || !newWikiEntry.solution) { alert("Başlık ve Çözüm alanları zorunludur."); return; }
-      
       const payload = {
           title: newWikiEntry.title,
           device_category: formData.category,
@@ -355,10 +374,9 @@ export default function ServisDetaySayfasi() {
           solution_steps: newWikiEntry.solution,
           author: currentUserEmail
       };
-
       const { error } = await supabase.from('aura_wiki').insert([payload]);
       if (!error) {
-          alert("Çözüm kütüphaneye eklendi! Teşekkürler.");
+          alert("Çözüm kütüphaneye eklendi!");
           setWikiViewMode('search');
           setWikiSearchTerm(newWikiEntry.title);
           handleWikiSearch(); 
@@ -386,16 +404,66 @@ export default function ServisDetaySayfasi() {
   const handleSave = async () => {
     if (!formData.customer) { alert("Müşteri adı zorunlu!"); return; }
     setLoading(true);
+    
+    // --- "FLOOD" STRATEJİSİ: GARANTİLİ KAYIT ---
+    // SQL tablosundaki TÜM benzer sütunlara veriyi basıyoruz.
     const payload = {
-        customer: formData.customer, phone: formData.phone, customer_type: formData.customerType, address: formData.address,
-        category: formData.category, device: formData.device, serial_no: formData.serialNo, password: formData.password,
-        problem: formData.issue, private_note: formData.privateNote, process_details: formData.notes,
-        status: formData.status, price: Number(formData.price), cost: Number(formData.cost),
-        accessories: formData.accessories, pre_checks: formData.preCheck, final_checks: formData.finalCheck,
+        // Müşteri (Hepsini doldur)
+        customer_email: formData.customer,
+        customer: formData.customer,
+        customer_name: formData.customer,
+        phone: formData.phone,
+        address: formData.address,
+        customer_type: formData.customerType,
+
+        // Cihaz (Hepsini doldur)
+        device_name: formData.device,
+        device: formData.device,
+        model: formData.device,
+        brand: formData.category,
+        category: formData.category,
+        
+        // Kimlik (Hepsini doldur)
+        serial_no: formData.serialNo,
+        serial_number: formData.serialNo,
+        imei: formData.serialNo,
+        
+        // Güvenlik (Hepsini doldur)
+        password: formData.password,
+        screen_password: formData.password,
+        pattern_password: formData.password,
+        passcode: formData.password,
+
+        // Arıza & Notlar (Hepsini doldur)
+        problem_description: formData.issue,
+        problem: formData.issue,
+        issue: formData.issue,
+        complaint: formData.issue,
+        technician_note: formData.notes,
+        process_details: formData.notes,
+        private_note: formData.privateNote,
+
+        // Durum & Finans
+        status: formData.status,
+        price: String(formData.price), // DB text olabilir
+        cost: Number(formData.cost),
         tracking_code: formData.tracking_code || `SRV-${Math.floor(10000 + Math.random() * 90000)}`,
-        tip_id: formData.tip_id, images: formData.images,
-        approval_status: formData.approval_status, approval_amount: formData.approval_amount, approval_desc: formData.approval_desc,
-        recommended_upsells: formData.recommended_upsells, sold_upsells: formData.sold_upsells
+        
+        // JSON Verileri (Stringify ile Text'e çevir)
+        accessories: JSON.stringify(formData.accessories),
+        accessory: JSON.stringify(formData.accessories), // Yedek
+        pre_checks: JSON.stringify(formData.preCheck),
+        final_checks: JSON.stringify(formData.finalCheck),
+        images: JSON.stringify(formData.images),
+        recommended_upsells: JSON.stringify(formData.recommended_upsells),
+        sold_upsells: JSON.stringify(formData.sold_upsells),
+
+        // Diğer
+        tip_id: formData.tip_id,
+        approval_status: formData.approval_status,
+        approval_amount: String(formData.approval_amount),
+        approval_desc: formData.approval_desc,
+        updated_at: new Date().toISOString()
     };
 
     let res;
@@ -403,7 +471,7 @@ export default function ServisDetaySayfasi() {
         res = await supabase.from('aura_jobs').insert([payload]).select();
     } else {
         res = await supabase.from('aura_jobs').update(payload).eq('id', params.id);
-        logToTimeline("Kayıt Güncellendi", `Durum: ${formData.status}, Tutar: ${formData.price}TL olarak güncellendi.`);
+        logToTimeline("Kayıt Güncellendi", `Durum: ${formData.status}, Tutar: ${formData.price}TL.`);
     }
 
     setLoading(false);
@@ -411,6 +479,7 @@ export default function ServisDetaySayfasi() {
         alert("Kayıt Başarılı!");
         if (params.id === 'yeni' && res.data) router.push(`/epanel/atolye/${res.data[0].id}`);
     } else {
+        console.error("Save Error:", res.error);
         alert("Hata: " + res.error.message);
     }
   };
@@ -418,7 +487,7 @@ export default function ServisDetaySayfasi() {
   const sendApprovalRequest = async () => {
     setLoading(true);
     const { error } = await supabase.from('aura_jobs').update({
-        approval_status: 'pending', approval_amount: approvalData.amount, approval_desc: approvalData.desc, status: 'Onay Bekliyor'
+        approval_status: 'pending', approval_amount: String(approvalData.amount), approval_desc: approvalData.desc, status: 'Onay Bekliyor'
     }).eq('id', params.id);
     if (!error) {
         alert("Onay isteği gönderildi!");

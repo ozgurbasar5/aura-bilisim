@@ -17,11 +17,11 @@ export default function YeniKayit() {
     cihaz_tipi: "cep telefonu", // Varsayılan
     sorun_aciklamasi: "",
     cihaz_kaynagi: "Son Kullanıcı",
-    durum: "onarim_isleminde" 
+    durum: "Bekliyor" 
   });
 
   useEffect(() => {
-    // Firma listesini çek
+    // Firma listesini çek (Bayi listesi)
     const kaynakGetir = async () => {
       const { data } = await supabase.from('ayarlar_kaynaklar').select('isim');
       if (data) setKaynaklar(data);
@@ -29,17 +29,47 @@ export default function YeniKayit() {
     kaynakGetir();
   }, []);
 
+  // Rastgele Takip Kodu Oluşturucu (Örn: TRK-92834)
+  const generateTrackingCode = () => {
+    const randomNum = Math.floor(10000 + Math.random() * 90000);
+    return `TRK-${randomNum}`;
+  };
+
   const kaydet = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // 1. Veri Hazırlığı
+    const trackingCode = generateTrackingCode();
     
-    const { error } = await supabase.from('onarim_talepleri').insert([form]);
+    // Eğer kaynak "Son Kullanıcı" değilse, bu bir Bayi işidir.
+    // Bayi işlerinde müşteri adı olarak Bayi ismini kullanıyoruz ki bayi panelinde gözüksün.
+    // Gerçek son kullanıcı adını açıklamaya ekliyoruz.
+    const isDealer = form.cihaz_kaynagi !== "Son Kullanıcı";
+    
+    const jobData = {
+        customer: isDealer ? form.cihaz_kaynagi : form.ad_soyad, // Bayi ise Bayi Adı, değilse Şahıs Adı
+        customer_type: isDealer ? 'Bayi' : 'Bireysel',
+        phone: form.telefon,
+        device: `${form.marka_model} (${form.cihaz_tipi})`, // Marka Model + Tip birleşimi
+        serial_no: form.imei_no,
+        problem_desc: form.sorun_aciklamasi + (isDealer ? `\n\n(Son Kullanıcı: ${form.ad_soyad})` : ""), // Bayi ise son kullanıcıyı nota ekle
+        status: 'Bekliyor', // Varsayılan başlangıç durumu
+        tracking_code: trackingCode,
+        price: 0, // İlk başta fiyat 0
+        approval_status: 'pending', // Onay durumu
+        created_at: new Date().toISOString()
+    };
+    
+    // 2. Aura Jobs Tablosuna Kayıt
+    const { error } = await supabase.from('aura_jobs').insert([jobData]);
     
     if (!error) {
-      alert("✅ Kayıt Başarıyla Açıldı!");
-      router.push("/epanel");
+      alert(`✅ Kayıt Başarıyla Açıldı!\nTakip Kodu: ${trackingCode}`);
+      router.push("/epanel/atolye"); // Kayıttan sonra direkt atölye listesine yönlendir
     } else {
-      alert("Hata: " + error.message);
+      console.error("Supabase Hatası:", error);
+      alert("Hata oluştu: " + error.message);
     }
     setLoading(false);
   };
@@ -80,7 +110,7 @@ export default function YeniKayit() {
           {/* 2. CİHAZ TÜRÜ VE KAYNAK */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              
-             {/* YENİ EKLENEN KISIM: KATEGORİ SEÇİMİ */}
+             {/* KATEGORİ SEÇİMİ */}
              <div className="space-y-2">
               <label className="text-[10px] text-green-400 font-black uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Layers size={12}/> Cihaz Türü (Kategori)

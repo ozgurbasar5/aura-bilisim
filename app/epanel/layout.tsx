@@ -6,20 +6,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 import AyarlarModal from "@/components/AyarlarModal";
 import AuraAI from "@/components/AuraAI"; 
-// ThemeProvider kaldırıldı, saf Dark Mode'a geçildi.
-// app/epanel/layout.tsx içindeki import bölümü
 
 import { 
   LayoutDashboard, LogOut, Search, Calculator, StickyNote, Users, 
   Activity, Signal, Menu, Bell, ChevronDown, MessageSquare, 
   Package, ShieldCheck, CreditCard, Wallet, User,
   Zap, Terminal, ClipboardList, ShoppingBag, X, Code2, ChevronRight,
-  Building2, Briefcase, 
-  Wrench // <--- BURAYA EKLEYİN
+  Building2, Briefcase, Wrench // <--- YENİ İKON EKLENDİ
 } from "lucide-react";
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
-// --- 1. MATRIX EFEKTİ (Sabit Dark Mode) ---
+// --- 1. MATRIX EFEKTİ ---
 const MatrixRain = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -64,7 +61,7 @@ const MatrixRain = () => {
   return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full -z-20 opacity-[0.06] pointer-events-none print:hidden" />;
 };
 
-// --- 2. YENİLİK: AURA TERMINAL (Komut Satırı Modülü) ---
+// --- 2. TERMINAL MODÜLÜ ---
 const AuraTerminal = ({ isOpen, onClose, user }: any) => {
     const [input, setInput] = useState("");
     const [logs, setLogs] = useState<string[]>([
@@ -116,7 +113,6 @@ const AuraTerminal = ({ isOpen, onClose, user }: any) => {
     return (
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-2xl bg-[#0c0c0c] border border-green-500/30 rounded-lg shadow-[0_0_50px_rgba(34,197,94,0.1)] overflow-hidden font-mono text-sm">
-                {/* Terminal Header */}
                 <div className="bg-[#1a1a1a] px-4 py-2 border-b border-white/10 flex justify-between items-center">
                     <div className="flex gap-2">
                         <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
@@ -126,14 +122,12 @@ const AuraTerminal = ({ isOpen, onClose, user }: any) => {
                     <span className="text-green-500 font-bold tracking-widest text-xs">AURA_TERMINAL_V7.exe</span>
                     <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={14}/></button>
                 </div>
-                {/* Terminal Body */}
                 <div className="h-80 p-4 overflow-y-auto text-green-400/90 space-y-1 custom-scrollbar">
                     {logs.map((log, i) => (
                         <div key={i} className="break-all">{log}</div>
                     ))}
                     <div ref={bottomRef}></div>
                 </div>
-                {/* Terminal Input */}
                 <div className="p-3 border-t border-white/10 bg-[#111] flex items-center gap-2">
                     <span className="text-green-500 font-bold">{`admin@aura:~$`}</span>
                     <input 
@@ -150,7 +144,7 @@ const AuraTerminal = ({ isOpen, onClose, user }: any) => {
     )
 }
 
-// --- YARDIMCI MENÜ BİLEŞENLERİ ---
+// --- YARDIMCI BİLEŞENLER ---
 function NavGroup({ title, isOpen }: { title: string, isOpen: boolean }) {
     if (!isOpen) return <div className="h-4"></div>;
     return <div className="px-3 pb-2 pt-4 text-[9px] font-black text-slate-500 tracking-[0.15em] uppercase border-b border-transparent">{title}</div>
@@ -177,7 +171,7 @@ function NavItem({ icon, label, href, isOpen, active, badge, badgeColor = "bg-re
     )
 }
 
-// --- ANA LAYOUT FONKSİYONU ---
+// --- ANA LAYOUT ---
 export default function EPanelLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -202,11 +196,10 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null); 
   
-  // Widget State'leri
   const [showCalc, setShowCalc] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showTerminal, setShowTerminal] = useState(false); // YENİ
+  const [showTerminal, setShowTerminal] = useState(false);
   const [myNote, setMyNote] = useState("");
   const [calcDisplay, setCalcDisplay] = useState("");
 
@@ -238,7 +231,6 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
     return () => clearInterval(pingInterval);
   }, [router]);
 
-  // Kısayol Tuşları (CTRL+J Terminal açar)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); searchInputRef.current?.focus(); }
@@ -313,25 +305,23 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
       <aside className={`${isSidebarOpen ? 'w-72' : 'w-20'} bg-[#0b0e14]/80 backdrop-blur-xl border-r border-white/5 flex flex-col z-50 transition-all duration-300 shadow-[10px_0_40px_rgba(0,0,0,0.5)] print:hidden relative`}>
         <div className="h-24 flex items-center justify-center border-b border-white/5 relative shrink-0">
           <Link href="/epanel" className={`flex items-center gap-3 transition-all duration-300 ${isSidebarOpen ? 'scale-100' : 'scale-90'}`}>
-             <div className="relative w-11 h-11 group cursor-pointer">
+              <div className="relative w-11 h-11 group cursor-pointer">
                 <div className="absolute inset-0 bg-cyan-500/10 rounded-xl rotate-45 group-hover:rotate-90 transition-transform duration-700 blur-md"></div>
                 <div className="absolute inset-0 border border-cyan-500/30 rounded-xl rotate-45 bg-[#0b0e14] flex items-center justify-center z-10 shadow-lg group-hover:border-cyan-400/60 transition-colors">
                     <Activity className="text-cyan-400"/>
                 </div>
-             </div>
-             {isSidebarOpen && (
-                 <div className="flex flex-col animate-in fade-in slide-in-from-left-2">
+              </div>
+              {isSidebarOpen && (
+                  <div className="flex flex-col animate-in fade-in slide-in-from-left-2">
                     <h1 className="text-2xl font-black text-white tracking-tighter leading-none flex items-center">
                         AURA<span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">PRO</span>
                     </h1>
                     <p className="text-[9px] text-slate-500 font-bold tracking-[0.2em] uppercase">V7.0 OS</p>
-                 </div>
-             )}
+                  </div>
+              )}
           </Link>
         </div>
         
-        
-
         <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
             <NavGroup title="ANA KOMUTA" isOpen={isSidebarOpen} />
             <NavItem icon={<LayoutDashboard size={20}/>} label="Komuta Merkezi" href="/epanel" isOpen={isSidebarOpen} active={pathname === '/epanel'} />
@@ -362,14 +352,22 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <NavGroup title="KURUMSAL / B2B" isOpen={isSidebarOpen} />
             <NavItem icon={<Building2 size={20}/>} label="Bayi Başvuruları" href="/epanel/bayi-basvurulari" isOpen={isSidebarOpen} active={pathname.includes('/bayi-basvurulari')} />
             <NavItem icon={<Briefcase size={20}/>} label="Bayi Yönetimi" href="/epanel/bayiler" isOpen={isSidebarOpen} active={pathname.includes('/bayiler')} />
-           
-  <NavItem 
-  icon={<Wrench size={20}/>} 
-  label="Bayi Atölyesi" 
-  href="/epanel/bayi-atolye" 
-  isOpen={isSidebarOpen} 
-  active={pathname.includes('/bayi-atolye')} 
-/>
+            
+            <NavItem 
+              icon={<Wrench size={20}/>} 
+              label="Bayi Atölyesi" 
+              href="/epanel/bayi-atolye" 
+              isOpen={isSidebarOpen} 
+              active={pathname.includes('/bayi-atolye')} 
+            />
+
+            <NavItem 
+              icon={<ShoppingBag size={20}/>} 
+              label="Fırsat Ürünleri" 
+              href="/epanel/firsat-urunleri" 
+              isOpen={isSidebarOpen} 
+              active={pathname.includes('/firsat-urunleri')} 
+            />
 
             {isAdmin && (
               <>
@@ -378,8 +376,6 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
               </>
             )}
         </nav>
-
-        
 
         {/* ALT USER KARTI */}
         <div className="p-4 border-t border-white/5 bg-[#050810] relative shrink-0">

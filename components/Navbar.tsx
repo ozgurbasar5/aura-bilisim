@@ -22,7 +22,8 @@ export default function Navbar() {
 
   // --- DÜZELTME: KONTROLÜ BURAYA (HOOKLARDAN SONRAYA) ALDIK ---
   // Tüm hooklar (useState, useEffect) çalıştıktan sonra karar veriyoruz.
-  if (pathname?.startsWith("/epanel") || pathname === "/login") {
+  // DÜZELTME BURADA: "/business" ve "/kurumsal" yollarını da engellenenlere ekle
+  if (pathname?.startsWith("/epanel") || pathname?.startsWith("/business") || pathname?.startsWith("/kurumsal") || pathname === "/login") {
     return null;
   }
   // -----------------------------------------------------------

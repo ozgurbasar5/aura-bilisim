@@ -1,20 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/app/lib/supabase";
+import { supabase } from "@/app/lib/supabase"; 
 import { 
-  Briefcase, Search, Plus, Building2, TrendingUp, Save, 
-  X, CheckCircle2, Shield, Settings, Laptop, User, Phone, Mail, Box
+  Briefcase, Search, Plus, Settings, User, Phone, Save, X, 
+  Upload, Smartphone, CheckCircle, DollarSign, Loader2, Package
 } from "lucide-react";
+
 import DealerEditModal from "@/components/DealerEditModal";
 
 export default function BayilerPage() {
   const [dealers, setDealers] = useState<any[]>([]);
-  const [technicians, setTechnicians] = useState<any[]>([]); 
+  const [technicians, setTechnicians] = useState<any[]>([
+     { id: 'tech1', ad_soyad: 'Servis Yöneticisi', rol: 'Admin' }
+  ]); 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
-  // Genel İstatistikler
+  // İstatistikler
   const [stats, setStats] = useState({
     totalDealers: 0,
     activeDevices: 0,
@@ -26,76 +29,93 @@ export default function BayilerPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedDealer, setSelectedDealer] = useState<any>(null);
 
-  // Cihaz Kayıt Formu
+  // --- GELİŞMİŞ CİHAZ KAYIT STATE'LERİ ---
+  const [uploading, setUploading] = useState(false);
   const [newDevice, setNewDevice] = useState({
-    device: "", model: "", serial_no: "", problem: "", password: ""
+    brand: "", model: "", serial_no: "", password: "", pattern: "",
+    problem: "", physical_condition: "", accessories: "", technician_note: ""
   });
+  
+  // Görsel State
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
-  // VERİLERİ ÇEKME
+  // Upsell State (aura_upsell_products tablosundan)
+  const [upsellOptions, setUpsellOptions] = useState<any[]>([]); 
+  const [selectedUpsells, setSelectedUpsells] = useState<any[]>([]); // Seçilen obje listesi
+
+  // --- VERİ ÇEKME ---
   const fetchData = async () => {
     setLoading(true);
-    
-    // 1. Onaylı Bayileri Çek
-    const { data: dealerData } = await supabase
-        .from('bayi_basvurulari')
-        .select('*')
-        .eq('durum', 'Onaylandı')
-        .order('sirket_adi', { ascending: true });
+    try {
+        // 1. Bayileri Çek
+        const { data: dealerData, error: dealerError } = await supabase
+            .from('bayi_basvurulari')
+            .select('*')
+            .eq('durum', 'Onaylandı')
+            .order('sirket_adi', { ascending: true });
 
-    // 2. İşleri Çek (İstatistik hesaplamak için)
-    const { data: jobData } = await supabase.from('aura_jobs').select('*');
+        if (dealerError) throw dealerError;
 
-    // 3. Teknisyen Listesi (Atama yapmak için opsiyonel)
-    // Eğer personel tablonuz varsa oradan çekebilirsiniz, şimdilik mock data:
-    setTechnicians([
-        { id: 'tech1', ad_soyad: 'Baş Teknisyen', rol: 'Usta' },
-        { id: 'tech2', ad_soyad: 'Yazılım Uzmanı', rol: 'Yazılımcı' }
-    ]);
+        // 2. İşleri Çek
+        const { data: jobData, error: jobError } = await supabase.from('aura_jobs').select('*');
+        if (jobError) throw jobError;
 
-    if (dealerData && jobData) {
-        // Bayi verilerini zenginleştir
-        const enrichedDealers = dealerData.map(dealer => {
-            // Bu bayiye ait işleri bul (İsim eşleşmesi veya customer_type='Bayi' kontrolü)
-            const dealerJobs = jobData.filter(job => 
-                job.customer === dealer.sirket_adi || 
-                (job.customer_type === 'Bayi' && job.customer.includes(dealer.sirket_adi))
-            );
-
-            const active = dealerJobs.filter(j => !['Teslim Edildi', 'İade'].includes(j.status)).length;
-            const completed = dealerJobs.filter(j => j.status === 'Teslim Edildi').length;
-            const revenue = dealerJobs.reduce((sum, job) => sum + (Number(job.price) || 0), 0);
-
-            return {
-                ...dealer,
-                stats: {
-                    totalJobs: dealerJobs.length,
-                    activeJobs: active,
-                    completedJobs: completed,
-                    revenue: revenue
-                }
-            };
-        });
-
-        setDealers(enrichedDealers);
+        // 3. UPSELL ÜRÜNLERİNİ ÇEK (SADECE AKSESUARLAR)
+        // Tablo: aura_upsell_products
+        const { data: upsellData, error: upsellError } = await supabase
+            .from('aura_upsell_products')
+            .select('*');
+            // Eğer aktiflik durumu varsa .eq('is_active', true) eklenebilir.
         
-        // Genel Toplam İstatistikler
-        setStats({
-            totalDealers: enrichedDealers.length,
-            activeDevices: enrichedDealers.reduce((sum, d) => sum + d.stats.activeJobs, 0),
-            totalRevenue: enrichedDealers.reduce((sum, d) => sum + d.stats.revenue, 0)
-        });
+        if (upsellData) {
+            setUpsellOptions(upsellData);
+        } else if (upsellError) {
+            console.error("Upsell verisi çekilemedi:", upsellError);
+        }
+
+        // Verileri Birleştir
+        if (dealerData) {
+            const enrichedDealers = dealerData.map(dealer => {
+                const jobs = jobData || [];
+                const dealerJobs = jobs.filter(job => 
+                    job.customer === dealer.sirket_adi || 
+                    (job.customer_type === 'Bayi' && job.customer?.includes(dealer.sirket_adi))
+                );
+
+                const active = dealerJobs.filter(j => !['Teslim Edildi', 'İade'].includes(j.status)).length;
+                const completed = dealerJobs.filter(j => j.status === 'Teslim Edildi').length;
+                const revenue = dealerJobs.reduce((sum, job) => sum + (Number(job.price) || 0), 0);
+
+                return {
+                    ...dealer,
+                    stats: { totalJobs: dealerJobs.length, activeJobs: active, completedJobs: completed, revenue: revenue }
+                };
+            });
+
+            setDealers(enrichedDealers);
+            setStats({
+                totalDealers: enrichedDealers.length,
+                activeDevices: enrichedDealers.reduce((sum, d) => sum + d.stats.activeJobs, 0),
+                totalRevenue: enrichedDealers.reduce((sum, d) => sum + d.stats.revenue, 0)
+            });
+        }
+    } catch (error: any) {
+        console.error("Veri hatası:", error.message);
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  // Modal Açma Fonksiyonları
+  // --- MODAL İŞLEMLERİ ---
   const openDeviceModal = (dealer: any) => {
       setSelectedDealer(dealer);
-      setNewDevice({ device: "", model: "", serial_no: "", problem: "", password: "" }); // Formu sıfırla
+      setNewDevice({ brand: "", model: "", serial_no: "", password: "", pattern: "", problem: "", physical_condition: "", accessories: "", technician_note: "" });
+      setSelectedFiles([]);
+      setPreviewUrls([]);
+      setSelectedUpsells([]);
       setIsDeviceModalOpen(true);
   };
 
@@ -104,53 +124,125 @@ export default function BayilerPage() {
       setIsEditModalOpen(true);
   };
 
-  // --- KRİTİK FONKSİYON: CİHAZ KAYDI ---
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setSelectedFiles(prev => [...prev, ...files]);
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setPreviewUrls(prev => [...prev, ...newPreviews]);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Upsell Seçimi (Tüm Obje Olarak Ekle/Çıkar)
+  const toggleUpsell = (product: any) => {
+    // Ürün ID'sine veya adına göre kontrol et
+    const exists = selectedUpsells.find(p => p.id === product.id);
+    if (exists) {
+        setSelectedUpsells(prev => prev.filter(p => p.id !== product.id));
+    } else {
+        setSelectedUpsells(prev => [...prev, product]);
+    }
+  };
+
+  // --- KAYIT İŞLEMİ ---
   const handleRegisterDevice = async () => {
-    if (!newDevice.device || !newDevice.problem) return alert("Lütfen cihaz ve arıza bilgisini girin.");
+    if (!newDevice.brand || !newDevice.model || !newDevice.problem) return alert("Marka, Model ve Arıza bilgisi zorunludur.");
     
+    setUploading(true);
     try {
+        // 1. Görselleri Yükle
+        let uploadedImageUrls: string[] = [];
+        if (selectedFiles.length > 0) {
+            for (const file of selectedFiles) {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `admin-upload-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                const filePath = `dealer-uploads/${fileName}`; 
+                
+                const { error: uploadError } = await supabase.storage.from('job-images').upload(filePath, file);
+                if (!uploadError) {
+                    const { data } = supabase.storage.from('job-images').getPublicUrl(filePath);
+                    uploadedImageUrls.push(data.publicUrl);
+                }
+            }
+        }
+
+        // 2. Log Kaydı
+        const initialLog = [{
+            date: new Date().toISOString(),
+            action: "Cihaz Kaydı Oluşturuldu",
+            user: "Yönetici (Admin)",
+            details: `${selectedDealer.sirket_adi} adına kayıt açıldı.`
+        }];
+
+        // 3. Upsell Maliyeti Hesapla (Opsiyonel)
+        // Eğer upsell ürünlerin fiyatını baştan eklemek istersen burada toplayabilirsin.
+        // const upsellTotal = selectedUpsells.reduce((sum, p) => sum + (Number(p.price)||0), 0);
+
+        // 4. Veritabanına Kaydet
+        const trackingCode = `SRV-${Math.floor(100000 + Math.random() * 900000)}`;
+
         const { error } = await supabase.from('aura_jobs').insert([{
-                customer: selectedDealer.sirket_adi, // Bayi ismi
-                phone: selectedDealer.telefon,
-                
-                // --- BURASI ÇOK ÖNEMLİ ---
-                customer_type: "Bayi",  // Otomatik olarak 'Bayi' olarak işaretliyoruz
-                category: "Bayi Cihazı",
-                // -------------------------
-                
-                device: `${newDevice.device} ${newDevice.model}`,
-                serial_no: newDevice.serial_no,
-                problem: newDevice.problem,
-                password: newDevice.password,
-                
-                status: "Bekliyor",
-                approval_status: 'none', // Onay durumu henüz yok
-                
-                tracking_code: `SRV-${Math.floor(10000 + Math.random() * 90000)}`,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+            customer: selectedDealer.sirket_adi,
+            phone: selectedDealer.telefon,
+            customer_type: "Bayi",
+            category: "Bayi Cihazı",
+            device: `${newDevice.brand} ${newDevice.model}`,
+            brand: newDevice.brand,
+            model: newDevice.model,
+            serial_no: newDevice.serial_no,
+            password: newDevice.password,
+            pattern: newDevice.pattern,
+            accessories: newDevice.accessories,
+            physical_condition: newDevice.physical_condition,
+            problem: newDevice.problem,
+            technician_note: newDevice.technician_note,
+            status: "Bekliyor",
+            approval_status: 'none',
+            tracking_code: trackingCode,
+            
+            // Kritik JSON Alanlar
+            images: JSON.stringify(uploadedImageUrls),
+            
+            // Seçilen Upsell Ürünlerini Obje Listesi Olarak Kaydet
+            // (name, price vb. içerir)
+            sold_upsells: JSON.stringify(selectedUpsells), 
+            
+            process_details: JSON.stringify(initialLog),
+            cost: 0,
+            price: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         }]);
 
         if (error) throw error;
 
-        alert(`✅ Cihaz başarıyla ${selectedDealer.sirket_adi} hesabına eklendi! Bayi Atölye sayfasında görebilirsiniz.`);
+        alert(`✅ Cihaz ve Upsell kayıtları başarıyla oluşturuldu!\nTakip Kodu: ${trackingCode}`);
         setIsDeviceModalOpen(false);
-        fetchData(); // İstatistikleri güncellemek için yeniden çek
+        fetchData();
+
     } catch (error: any) {
+        console.error("Kayıt hatası:", error);
         alert("Hata: " + error.message);
+    } finally {
+        setUploading(false);
     }
   };
 
   return (
     <div className="p-8 min-h-screen bg-[#0b0e14] text-white font-sans">
       
-      {/* ÜST BAŞLIK & GENEL İSTATİSTİK */}
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-black flex items-center gap-3">
             <Briefcase className="text-indigo-500" size={32}/> Bayi Yönetimi
           </h1>
-          <p className="text-slate-400 mt-1 font-medium">İş ortaklarınızı yönetin ve onlar adına servis kaydı oluşturun.</p>
+          <p className="text-slate-400 mt-1 font-medium">Bayi kayıtları ve servis işlemleri</p>
         </div>
         
         <div className="flex gap-4">
@@ -169,25 +261,23 @@ export default function BayilerPage() {
       <div className="mb-6 relative max-w-md">
          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
          <input 
-           type="text" 
-           placeholder="Bayi adı veya yetkili ara..." 
+           type="text" placeholder="Bayi ara..." 
            className="w-full bg-[#161b22] border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:border-indigo-500 outline-none transition-all"
-           value={searchTerm}
-           onChange={(e) => setSearchTerm(e.target.value)}
+           value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
          />
       </div>
 
-      {/* BAYİ LİSTESİ */}
+      {/* LİSTE */}
       <div className="grid grid-cols-1 gap-4">
           {loading ? (
-              <div className="text-center py-10 text-slate-500 animate-pulse">Veriler yükleniyor...</div>
+              <div className="text-center py-10 text-slate-500 animate-pulse">Yükleniyor...</div>
           ) : dealers.filter(d => 
                 d.sirket_adi?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                 d.yetkili_kisi?.toLowerCase().includes(searchTerm.toLowerCase())
             ).map((dealer) => (
               <div key={dealer.id} className="bg-[#161b22] border border-slate-800 rounded-2xl p-6 flex flex-col lg:flex-row items-center justify-between gap-6 hover:border-indigo-500/30 transition-all group shadow-lg">
                   
-                  {/* Sol: Bayi Kartı */}
+                  {/* Bayi Bilgisi */}
                   <div className="flex items-center gap-4 flex-1 w-full lg:w-auto">
                       <div className="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-slate-700 flex items-center justify-center text-indigo-500 font-black text-2xl shadow-inner uppercase">
                           {dealer.sirket_adi.substring(0, 2)}
@@ -195,14 +285,8 @@ export default function BayilerPage() {
                       <div>
                           <div className="flex items-center gap-2">
                             <h3 className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors">{dealer.sirket_adi}</h3>
-                            {/* Paket Rozeti */}
-                            {dealer.subscription_plan && (
-                                <span className="px-2 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold uppercase tracking-wider">
-                                    {dealer.subscription_plan}
-                                </span>
-                            )}
+                            {dealer.subscription_plan && <span className="px-2 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold uppercase tracking-wider">{dealer.subscription_plan}</span>}
                           </div>
-                          
                           <div className="text-xs text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 font-medium">
                               <span className="flex items-center gap-1"><User size={12} className="text-slate-500"/> {dealer.yetkili_kisi}</span>
                               <span className="flex items-center gap-1"><Phone size={12} className="text-slate-500"/> {dealer.telefon}</span>
@@ -210,7 +294,7 @@ export default function BayilerPage() {
                       </div>
                   </div>
 
-                  {/* Orta: Bayi Özel Metrikleri */}
+                  {/* Özet Veriler */}
                   <div className="flex items-center gap-8 w-full lg:w-auto justify-center lg:justify-start bg-[#0d1117]/50 p-3 rounded-xl border border-white/5">
                       <div className="text-center">
                           <div className="text-[9px] text-slate-500 uppercase font-bold mb-0.5">Teslim</div>
@@ -226,81 +310,131 @@ export default function BayilerPage() {
                       </div>
                   </div>
 
-                  {/* Sağ: Butonlar */}
+                  {/* Butonlar */}
                   <div className="flex items-center gap-2 w-full lg:w-auto">
-                      <button 
-                        onClick={() => openDeviceModal(dealer)} 
-                        className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-transform hover:scale-105 shadow-lg shadow-indigo-500/20"
-                      >
+                      <button onClick={() => openDeviceModal(dealer)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-transform hover:scale-105 shadow-lg shadow-indigo-500/20">
                           <Plus size={16}/> Cihaz Ekle
                       </button>
-                      
-                      <button 
-                        onClick={() => openEditModal(dealer)} 
-                        className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-colors" 
-                        title="Bayi Ayarları ve Şifre"
-                      >
+                      <button onClick={() => openEditModal(dealer)} className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-colors">
                           <Settings size={18}/>
                       </button>
                   </div>
               </div>
           ))}
-          
-          {dealers.length === 0 && !loading && (
-              <div className="text-center py-10 text-slate-500">Kayıtlı onaylı bayi bulunamadı.</div>
-          )}
       </div>
 
-      {/* MODALLAR */}
-      
-      {/* 1. Cihaz Ekleme Modalı */}
+      {/* --- CİHAZ KAYIT MODALI --- */}
       {isDeviceModalOpen && selectedDealer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-              <div className="bg-[#161b22] border border-indigo-500/30 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden">
-                  <div className="bg-[#0d1117] px-6 py-4 border-b border-white/5 flex justify-between items-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 overflow-y-auto">
+              <div className="bg-[#161b22] border border-indigo-500/30 w-full max-w-2xl rounded-3xl shadow-2xl relative my-8">
+                  
+                  {/* Modal Header */}
+                  <div className="bg-[#0d1117] px-6 py-4 border-b border-white/5 flex justify-between items-center rounded-t-3xl sticky top-0 z-10">
                       <div>
-                          <h3 className="text-lg font-bold text-white">Servis Kaydı Oluştur</h3>
-                          <p className="text-xs text-indigo-400 font-bold uppercase tracking-wider">{selectedDealer.sirket_adi} ADINA</p>
+                          <h3 className="text-lg font-bold text-white flex items-center gap-2"><Smartphone size={20} className="text-indigo-500"/> Servis Kaydı Oluştur</h3>
+                          <p className="text-xs text-indigo-400 font-bold uppercase tracking-wider">Bayi: {selectedDealer.sirket_adi}</p>
                       </div>
-                      <button onClick={() => setIsDeviceModalOpen(false)} className="text-slate-400 hover:text-white"><X size={24}/></button>
+                      <button onClick={() => setIsDeviceModalOpen(false)} className="text-slate-400 hover:text-white bg-white/5 p-2 rounded-full"><X size={20}/></button>
                   </div>
-                  <div className="p-6 space-y-4">
-                      {/* Form Alanları */}
-                      <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                              <label className="text-xs font-bold text-slate-500">Cihaz</label>
-                              <input type="text" placeholder="Örn: iPhone 13" className="w-full bg-[#0d1117] border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:border-indigo-500 outline-none" value={newDevice.device} onChange={(e) => setNewDevice({...newDevice, device: e.target.value})} />
-                          </div>
-                          <div className="space-y-1">
-                              <label className="text-xs font-bold text-slate-500">Model</label>
-                              <input type="text" placeholder="Pro Max" className="w-full bg-[#0d1117] border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:border-indigo-500 outline-none" value={newDevice.model} onChange={(e) => setNewDevice({...newDevice, model: e.target.value})} />
-                          </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                              <label className="text-xs font-bold text-slate-500">Seri No / IMEI</label>
-                              <input type="text" placeholder="İsteğe bağlı" className="w-full bg-[#0d1117] border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:border-indigo-500 outline-none" value={newDevice.serial_no} onChange={(e) => setNewDevice({...newDevice, serial_no: e.target.value})} />
-                          </div>
-                          <div className="space-y-1">
-                              <label className="text-xs font-bold text-slate-500">Ekran Şifresi</label>
-                              <input type="text" placeholder="123456" className="w-full bg-[#0d1117] border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:border-indigo-500 outline-none" value={newDevice.password} onChange={(e) => setNewDevice({...newDevice, password: e.target.value})} />
+
+                  {/* Modal Body */}
+                  <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                      
+                      {/* 1. Cihaz Bilgileri */}
+                      <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase border-b border-white/5 pb-2">Cihaz Bilgileri</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                              <div><label className="text-xs font-bold text-slate-400 mb-1 block">Marka *</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.brand} onChange={e => setNewDevice({...newDevice, brand: e.target.value})} placeholder="Apple, Samsung..." /></div>
+                              <div><label className="text-xs font-bold text-slate-400 mb-1 block">Model *</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.model} onChange={e => setNewDevice({...newDevice, model: e.target.value})} placeholder="iPhone 11..." /></div>
+                              <div><label className="text-xs font-bold text-slate-400 mb-1 block">Seri No / IMEI</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.serial_no} onChange={e => setNewDevice({...newDevice, serial_no: e.target.value})} /></div>
+                              <div><label className="text-xs font-bold text-slate-400 mb-1 block">Aksesuarlar</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.accessories} onChange={e => setNewDevice({...newDevice, accessories: e.target.value})} placeholder="Kılıf, sim tepsisi..." /></div>
                           </div>
                       </div>
-                      <div className="space-y-1">
-                           <label className="text-xs font-bold text-slate-500">Arıza / Şikayet</label>
-                           <textarea className="w-full bg-[#0d1117] border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:border-indigo-500 outline-none h-20 resize-none" placeholder="Sorun nedir?" value={newDevice.problem} onChange={(e) => setNewDevice({...newDevice, problem: e.target.value})}></textarea>
+
+                      {/* 2. Güvenlik & Durum */}
+                      <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase border-b border-white/5 pb-2">Güvenlik ve Durum</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                              <div><label className="text-xs font-bold text-slate-400 mb-1 block">Ekran Şifresi</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.password} onChange={e => setNewDevice({...newDevice, password: e.target.value})} /></div>
+                              <div><label className="text-xs font-bold text-slate-400 mb-1 block">Desen Kilidi</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.pattern} onChange={e => setNewDevice({...newDevice, pattern: e.target.value})} placeholder="Z şeklinde..." /></div>
+                              <div className="col-span-2"><label className="text-xs font-bold text-slate-400 mb-1 block">Fiziksel Durum</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.physical_condition} onChange={e => setNewDevice({...newDevice, physical_condition: e.target.value})} placeholder="Çizik, kırık var mı?" /></div>
+                          </div>
                       </div>
+
+                      {/* 3. Arıza ve Notlar */}
+                      <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-red-400 uppercase border-b border-red-500/20 pb-2">Arıza Bilgisi</h4>
+                          <div>
+                              <label className="text-xs font-bold text-slate-400 mb-1 block">Şikayet / Arıza *</label>
+                              <textarea className="w-full bg-[#0d1117] border border-red-900/50 rounded-lg p-3 text-sm focus:border-red-500 outline-none text-white h-20 resize-none" value={newDevice.problem} onChange={e => setNewDevice({...newDevice, problem: e.target.value})} placeholder="Cihazın sorunu nedir?"></textarea>
+                          </div>
+                          <div>
+                              <label className="text-xs font-bold text-slate-400 mb-1 block">Teknisyen Notu (Opsiyonel)</label>
+                              <textarea className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none text-white h-16 resize-none" value={newDevice.technician_note} onChange={e => setNewDevice({...newDevice, technician_note: e.target.value})}></textarea>
+                          </div>
+                      </div>
+
+                      {/* 4. Görsel Yükleme */}
+                      <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-green-400 uppercase border-b border-green-500/20 pb-2">Fotoğraflar</h4>
+                          <div className="grid grid-cols-4 gap-2">
+                              {previewUrls.map((url, idx) => (
+                                  <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group">
+                                      <img src={url} className="w-full h-full object-cover"/>
+                                      <button onClick={() => removeImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
+                                  </div>
+                              ))}
+                              <label className="aspect-square border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-indigo-500 hover:bg-indigo-500/5 transition-colors">
+                                  <Upload size={20} className="text-slate-500"/>
+                                  <span className="text-[10px] font-bold text-slate-500">Ekle</span>
+                                  <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileSelect} />
+                              </label>
+                          </div>
+                      </div>
+
+                       {/* 5. Upsell (Aksesuar & Ek Hizmet) */}
+                       <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-yellow-400 uppercase border-b border-yellow-500/20 pb-2 flex items-center gap-2">
+                             <Package size={14}/> Upsell / Aksesuar Ekle
+                          </h4>
+                          
+                          {upsellOptions.length === 0 ? (
+                              <div className="text-center p-4 border border-dashed border-white/10 rounded-lg text-xs text-slate-500">
+                                  Ek ürün/aksesuar bulunamadı.
+                              </div>
+                          ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                  {upsellOptions.map((prod) => {
+                                      const isSelected = selectedUpsells.some(p => p.id === prod.id);
+                                      return (
+                                        <div key={prod.id} onClick={() => toggleUpsell(prod)} 
+                                            className={`p-2 rounded-lg border text-xs font-bold cursor-pointer flex items-center justify-between transition-all ${isSelected ? 'bg-yellow-500/10 border-yellow-500 text-white' : 'bg-[#0d1117] border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                                            <div className="flex flex-col truncate">
+                                                <span className="truncate" title={prod.name || prod.urun_adi}>{prod.name || prod.urun_adi}</span>
+                                                <span className="text-[10px] text-slate-500">₺{prod.price || prod.satis_fiyati || 0}</span>
+                                            </div>
+                                            {isSelected && <CheckCircle size={14} className="text-yellow-400 shrink-0"/>}
+                                        </div>
+                                      );
+                                  })}
+                              </div>
+                          )}
+                      </div>
+
                   </div>
-                  <div className="p-6 border-t border-white/5 bg-[#0d1117]">
-                      <button onClick={handleRegisterDevice} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
-                          <Save size={18}/> KAYDET VE ATÖLYEYE GÖNDER
+
+                  {/* Modal Footer */}
+                  <div className="p-6 border-t border-white/5 bg-[#0d1117] rounded-b-3xl">
+                      <button onClick={handleRegisterDevice} disabled={uploading} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:cursor-wait text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 text-base">
+                          {uploading ? <Loader2 className="animate-spin"/> : <Save size={20}/>}
+                          {uploading ? "Kaydediliyor..." : "KAYDI TAMAMLA"}
                       </button>
                   </div>
               </div>
           </div>
       )}
 
-      {/* 2. Bayi Düzenleme Modalı */}
+      {/* Bayi Düzenleme Modalı */}
       <DealerEditModal 
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
