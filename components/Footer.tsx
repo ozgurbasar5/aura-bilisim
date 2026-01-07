@@ -4,17 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   MapPin, Phone, Info, Instagram, Twitter, Facebook, ArrowRight,
-  ShieldCheck, Lock
+  ShieldCheck, Lock, Briefcase 
 } from "lucide-react";
 
 export default function Footer() {
   const pathname = usePathname();
 
-  // --- DÜZELTME: KONTROL BURADA (Eğer ileride hook eklerseniz sorun olmaz) ---
-  if (pathname?.startsWith("/epanel") || pathname === "/login") {
+  // Panel veya Login sayfalarında Footer'ı gizle
+  if (pathname?.startsWith("/epanel") || pathname?.startsWith("/business") || pathname === "/login" || pathname === "/kurumsal/login") {
     return null;
   }
-  // -------------------------------------------------------------------------
 
   return (
     <footer className="bg-[#020617] border-t border-white/5 pt-20 pb-10 mt-20 relative z-10">
@@ -110,8 +109,15 @@ export default function Footer() {
                 <Link href="/kvkk" className="flex items-center gap-1 hover:text-white transition-colors">
                     <ShieldCheck size={12}/> KVKK Aydınlatma Metni
                 </Link>
+                
+                {/* Personel Girişi */}
                 <Link href="/login" className="flex items-center gap-2 text-cyan-500 hover:text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-full transition-all hover:bg-cyan-500/20 ml-2">
                     <Lock size={12}/> Personel Girişi
+                </Link>
+
+                {/* YENİ EKLENEN BAYİ PORTAL */}
+                <Link href="/kurumsal/login" className="flex items-center gap-2 text-orange-400 hover:text-orange-300 bg-orange-500/10 px-3 py-1.5 rounded-full transition-all hover:bg-orange-500/20">
+                    <Briefcase size={12}/> Bayi Portal
                 </Link>
             </div>
         </div>
