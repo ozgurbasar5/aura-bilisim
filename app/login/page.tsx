@@ -3,30 +3,50 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/app/lib/supabase"; 
 import { useRouter } from "next/navigation";
-import { Lock, Mail, Key, LogIn, Loader2 } from "lucide-react";
+import { Lock, Mail, Key, LogIn, Loader2, ShieldAlert } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true); // Sayfa yükleniyor kontrolü
+  const [pageLoading, setPageLoading] = useState(true); 
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Zaten giriş yapmış mı kontrol et
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Zaten giriş yapmışsa direkt panele yolla
-        router.replace("/epanel");
+        // Eğer oturum varsa, bu kişinin bayi olup olmadığını kontrol et
+        const isDealer = await checkIsDealer(session.user.email);
+        if (isDealer) {
+            // Bayi ise oturumu kapat ve uyar
+            await supabase.auth.signOut();
+            setPageLoading(false);
+        } else {
+            // Personelse panele al
+            router.replace("/epanel");
+        }
       } else {
-        // Giriş yapmamışsa formu göster
         setPageLoading(false);
       }
     };
     checkSession();
   }, [router]);
+
+  // Yardımcı Fonksiyon: Email bir bayiye mi ait?
+  const checkIsDealer = async (userEmail: string | undefined) => {
+    if (!userEmail) return false;
+    
+    // 'bayi_basvurulari' tablosunda bu email var mı diye bakıyoruz
+    const { data } = await supabase
+        .from('bayi_basvurulari')
+        .select('id')
+        .eq('email', userEmail)
+        .maybeSingle(); // single() yerine maybeSingle() hata fırlatmaz, null döner
+    
+    return !!data; // Varsa true, yoksa false döner
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +54,7 @@ export default function LoginPage() {
     setErrorMsg("");
 
     try {
+      // 1. Önce Giriş Yapmayı Dene
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -41,17 +62,30 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      // Giriş başarılıysa Panele fırlat
+      // 2. GÜVENLİK KONTROLÜ: Giren kişi Bayi mi?
+      // Eğer bayiyse, sistemden atacağız.
+      const isDealer = await checkIsDealer(email);
+
+      if (isDealer) {
+        // Oturumu hemen sonlandır
+        await supabase.auth.signOut();
+        throw new Error("DEALER_DETECTED");
+      }
+
+      // 3. Personelse İçeri Al
       router.replace("/epanel");
 
     } catch (error: any) {
-      setErrorMsg("Giriş başarısız! Bilgileri kontrol et usta.");
+      if (error.message === "DEALER_DETECTED") {
+        setErrorMsg("Bayi hesapları buradan giremez! Lütfen 'Bayi Portal' girişini kullanın.");
+      } else {
+        setErrorMsg("Giriş başarısız! E-posta veya şifre hatalı.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Eğer kontrol devam ediyorsa boş ekran göster (Panel anlık görünüp kaybolmasın)
   if (pageLoading) {
     return (
         <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
@@ -64,7 +98,6 @@ export default function LoginPage() {
     <main className="min-h-screen bg-[#0F172A] flex items-center justify-center px-4">
       <div className="bg-[#1E293B] p-8 rounded-3xl border border-slate-700 shadow-2xl w-full max-w-md relative overflow-hidden animate-in zoom-in-95 duration-300">
         
-        {/* Arka Plan Efekti */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-500 to-purple-500"></div>
 
         <div className="text-center mb-8">
@@ -102,7 +135,10 @@ export default function LoginPage() {
           </div>
 
           {errorMsg && (
-            <div className="text-red-400 text-sm text-center bg-red-500/10 p-2 rounded-lg border border-red-500/20">
+            <div className="text-red-400 text-sm text-center bg-red-500/10 p-3 rounded-lg border border-red-500/20 flex flex-col items-center gap-1 animate-in slide-in-from-top-2">
+              <div className="flex items-center gap-2 font-bold">
+                 <ShieldAlert size={16}/> ERIŞIM ENGELLENDI
+              </div>
               {errorMsg}
             </div>
           )}
