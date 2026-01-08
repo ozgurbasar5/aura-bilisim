@@ -24,10 +24,12 @@ export default function FirsatUrunleriYonetimi() {
   const handleAdd = async () => {
     if (!newProduct.name || !newProduct.price) return alert("İsim ve Fiyat giriniz.");
     
+    // DÜZELTME: is_active: true eklendi
     const { error } = await supabase.from('aura_upsell_products').insert([{
       name: newProduct.name,
       price: Number(newProduct.price),
-      category: newProduct.category
+      category: newProduct.category,
+      is_active: true
     }]);
 
     if (!error) {

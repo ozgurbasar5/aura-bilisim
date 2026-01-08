@@ -6,11 +6,11 @@ import {
   ArrowLeft, Save, Printer, User, Smartphone, Zap, Laptop, Watch, Box, 
   CheckSquare, ClipboardCheck, History, CreditCard, AlertTriangle, Send, Phone, Globe, MapPin, MessageCircle, Lock,
   Lightbulb, Battery, Fan, Eye, ShieldCheck, Database, Wrench, HardDrive, Wifi, Trash2, Camera, Upload, X, Image as ImageIcon,
-  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight
+  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight, CheckCircle
 } from "lucide-react";
-import { supabase } from "@/app/lib/supabase"; 
+import { supabase } from "@/app/lib/supabase";
 
-// --- DİNAMİK AURA İPUÇLARI (KATEGORİ BAZLI) ---
+// --- KATEGORİ VE İPUCU VERİLERİ (ORİJİNAL) ---
 const CATEGORY_TIPS: any = {
   "Cep Telefonu": [
     { id: "pil", title: "Pil Sağlığı & Şarj", desc: "Batarya kimyasını korumak için cihazı %20-%80 arasında şarj edin.", icon: Battery, color: "text-green-400" },
@@ -46,7 +46,6 @@ const CATEGORY_TIPS: any = {
   ]
 };
 
-// --- KATEGORİ TANIMLARI ---
 const CATEGORY_DATA: any = {
   "Cep Telefonu": {
     accessories: ["Kutu", "Şarj Aleti", "USB Kablo", "Kılıf", "Sim Tepsisi"],
@@ -140,11 +139,27 @@ export default function ServisDetaySayfasi() {
     approval_amount: 0,
     approval_desc: '',
     recommended_upsells: [], 
-    sold_upsells: []         
+    sold_upsells: []          
   });
 
   const getCategoryInfo = (catName: string) => CATEGORY_DATA[catName] || CATEGORY_DATA["Diğer"];
   const getCurrentTips = () => CATEGORY_TIPS[formData.category] || CATEGORY_TIPS["Diğer"];
+
+  // --- EVRENSEL VERİ ÇÖZÜCÜ (String, Array, Null Hepsini Çözer) ---
+  const parseArray = (val: any): any[] => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+        if (val === "null" || val.trim() === "") return [];
+        try {
+            const parsed = JSON.parse(val);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch { 
+            return []; 
+        }
+    }
+    return [];
+  };
 
   // --- KULLANICIYI VE VERİLERİ ÇEK ---
   useEffect(() => {
@@ -170,31 +185,28 @@ export default function ServisDetaySayfasi() {
                 if (error) throw error;
                 if (data) {
                     // --- KRİTİK NOKTA: Veritabanından Okuma ---
-                    // Veritabanında olabilecek TÜM sütun varyasyonlarını kontrol ediyoruz
                     setFormData({
                         id: data.id,
                         tracking_code: data.tracking_code || "",
-                        // Müşteri
                         customer: data.customer_email || data.customer || data.customer_name || "",
                         phone: data.phone || "",
                         customerType: data.customer_type || "Son Kullanıcı",
                         address: data.address || "",
-                        // Cihaz
-                        category: data.category || "Diğer", 
+                        category: data.category || "Cep Telefonu", 
                         device: data.device_name || data.device || data.model || "",
                         serialNo: data.serial_no || data.serial_number || data.imei || "",
                         password: data.password || data.screen_password || "",
-                        // Arıza & Notlar
                         issue: data.problem_description || data.problem || data.issue || "",
                         privateNote: data.private_note || "",
-                        notes: data.technician_note || data.process_details || "",
+                        // --- DÜZELTME: BURADA process_details'i NOTLARA ATAMIYORUZ ---
+                        // Artık JSON kodları not alanında görünmeyecek
+                        notes: data.technician_note || "", 
                         
                         status: data.status,
                         price: Number(data.price) || 0,
                         cost: Number(data.cost) || 0,
                         date: data.created_at ? new Date(data.created_at).toLocaleDateString('tr-TR') : new Date().toLocaleDateString('tr-TR'),
                         
-                        // JSON/Dizi alanları için güvenli parse
                         accessories: parseArray(data.accessories || data.accessory),
                         preCheck: parseArray(data.pre_checks || data.pre_check),
                         finalCheck: parseArray(data.final_checks || data.final_check),
@@ -218,18 +230,10 @@ export default function ServisDetaySayfasi() {
     fetchData();
   }, [params.id]);
 
-  // Yardımcı: JSON Parse (Text -> Array)
-  const parseArray = (val: any) => {
-      if (Array.isArray(val)) return val;
-      if (typeof val === 'string') {
-          try { return JSON.parse(val); } catch { return []; }
-      }
-      return [];
-  };
-
   // --- KATEGORİYE GÖRE FIRSAT ÜRÜNLERİNİ ÇEK ---
   useEffect(() => {
       const fetchUpsells = async () => {
+          if (!formData.category) return;
           const { data } = await supabase
             .from('aura_upsell_products')
             .select('*')
@@ -440,7 +444,7 @@ export default function ServisDetaySayfasi() {
         issue: formData.issue,
         complaint: formData.issue,
         technician_note: formData.notes,
-        process_details: formData.notes,
+        // process_details: formData.notes, // BU SATIRI KALDIRDIM, JSON BOZMASIN
         private_note: formData.privateNote,
 
         // Durum & Finans
@@ -636,7 +640,8 @@ export default function ServisDetaySayfasi() {
                             const sldUpsells = Array.isArray(formData.sold_upsells) ? formData.sold_upsells : [];
                             
                             const isSelected = recUpsells.some((i:any) => i.id === item.id);
-                            const isSold = sldUpsells.some((i:any) => i.id === item.id);
+                            // Hibrit Kontrol: Hem ID hem isim kontrolü yap (Eski kayıtlar için)
+                            const isSold = sldUpsells.some((i:any) => i.id === item.id || i.name === item.name || i === item.name);
                             
                             if(isSold) return <div key={item.id} className="p-2 bg-green-500/10 border border-green-500/30 rounded text-xs text-green-400 flex justify-between"><span>{item.name}</span><span className="font-bold">SATILDI</span></div>;
 
@@ -672,11 +677,11 @@ export default function ServisDetaySayfasi() {
                                 {/* OTOMATİK EKSPERTİZ BUTONU */}
                                 {formData.serialNo.length > 5 && (
                                     <div className="absolute right-1 top-1 bottom-1">
-                                        {expertiseId ? (
-                                            <button onClick={() => router.push(`/epanel/ekspertiz/detay/${expertiseId}`)} className="h-full px-3 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><FileText size={12}/> RAPOR VAR</button>
-                                        ) : (
-                                            <button onClick={() => router.push(`/epanel/ekspertiz?yeni=${formData.serialNo}`)} className="h-full px-3 bg-slate-700 hover:bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><PlusCircle size={12}/> RAPOR EKLE</button>
-                                        )}
+                                            {expertiseId ? (
+                                                <button onClick={() => router.push(`/epanel/ekspertiz/detay/${expertiseId}`)} className="h-full px-3 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><FileText size={12}/> RAPOR VAR</button>
+                                            ) : (
+                                                <button onClick={() => router.push(`/epanel/ekspertiz?yeni=${formData.serialNo}`)} className="h-full px-3 bg-slate-700 hover:bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><PlusCircle size={12}/> RAPOR EKLE</button>
+                                            )}
                                     </div>
                                 )}
                             </div>
@@ -777,27 +782,38 @@ export default function ServisDetaySayfasi() {
                     </div>
                 )}
 
+                {/* --- İŞLEMLER (DÜZELTİLDİ: RENGİ KOYU OLDU) --- */}
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><History size={14} className="text-purple-500"/> İşlemler</h3>
-                    <textarea value={formData.notes} onChange={e => setFormData((p:any)=>({...p, notes: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm h-32 outline-none focus:border-purple-500 resize-none" placeholder="Yapılan işlemler..."></textarea>
+                    {/* Header: Dark Mode */}
+                    <div className="bg-[#0b0e14] border border-slate-800 border-b-0 rounded-t-lg px-4 py-2 flex justify-between items-center">
+                        <span className="font-bold text-sm uppercase text-slate-300">Servis İşlemleri & Değişen Parçalar</span>
+                        <span className="text-xs font-bold border border-slate-700 bg-[#151921] px-2 py-0.5 rounded uppercase text-slate-400">DURUM: {formData.status}</span>
+                    </div>
+                    {/* Body: Dark Mode */}
+                    <div className="border border-slate-800 rounded-b-lg p-4 min-h-[120px] bg-[#0b0e14]">
+                        <textarea value={formData.notes} onChange={e => setFormData((p:any)=>({...p, notes: e.target.value}))} className="w-full bg-transparent border-none text-slate-300 text-sm h-full outline-none resize-none" placeholder="Yapılan işlemler..."></textarea>
+                        
+                        {/* DÜZELTİLMİŞ UPSELL GÖSTERİMİ */}
+                        {Array.isArray(formData.sold_upsells) && formData.sold_upsells.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-slate-800">
+                                <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Eklenen Ürünler / Hizmetler:</h5>
+                                <ul className="text-sm list-disc pl-4 space-y-1 text-slate-400">
+                                    {formData.sold_upsells.map((item:any, idx:number) => (
+                                        <li key={idx}>
+                                            {/* Hibrit Gösterim: Hem Nesne Hem String Desteği */}
+                                            {typeof item === 'object' ? (item.name || item.urun_adi || "İsimsiz Ürün") : item}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                     <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><AlertTriangle size={14} className="text-orange-500"/> Ön Kontrol</h3>
                     <div className="grid grid-cols-2 gap-2">
-                        {catInfo.preChecks.map((item: string) => {
-                            // GÜVENLİ ARRAY KONTROLÜ
-                            const preArray = Array.isArray(formData.preCheck) ? formData.preCheck : [];
-                            const isSelected = preArray.includes(item);
-                            return (
-                                <button key={item} onClick={() => { 
-                                    const curr = isSelected ? preArray.filter((i:any)=>i!==item) : [...preArray, item]; 
-                                    setFormData({...formData, preCheck: curr}); 
-                                }} className={`flex items-center gap-2 p-2 rounded border text-left text-[10px] transition-all ${isSelected ? 'bg-red-500/10 border-red-500/50 text-red-400 font-bold' : 'bg-[#0b0e14] border-slate-800 text-slate-600 hover:border-slate-700'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${isSelected?'bg-red-500':'bg-slate-700'}`}></div>{item}
-                                </button>
-                            );
-                        })}
+                        {catInfo.preChecks.map((item: string) => { const preArray = Array.isArray(formData.preCheck) ? formData.preCheck : []; const isSelected = preArray.includes(item); return (<button key={item} onClick={() => { const curr = isSelected ? preArray.filter((i:any)=>i!==item) : [...preArray, item]; setFormData({...formData, preCheck: curr}); }} className={`flex items-center gap-2 p-2 rounded border text-left text-[10px] transition-all ${isSelected ? 'bg-red-500/10 border-red-500/50 text-red-400 font-bold' : 'bg-[#0b0e14] border-slate-800 text-slate-600 hover:border-slate-700'}`}><div className={`w-2 h-2 rounded-full ${isSelected?'bg-red-500':'bg-slate-700'}`}></div>{item}</button>); })}
                     </div>
                 </div>
                 
@@ -1039,7 +1055,10 @@ export default function ServisDetaySayfasi() {
                                 <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Eklenen Ürünler / Hizmetler:</h5>
                                 <ul className="text-sm list-disc pl-4 space-y-1">
                                     {formData.sold_upsells.map((item:any, idx:number) => (
-                                        <li key={idx}>{item.name}</li>
+                                        <li key={idx}>
+                                            {/* Hibrit Gösterim: Hem Nesne Hem String Desteği */}
+                                            {typeof item === 'object' ? (item.name || item.urun_adi || "İsimsiz Ürün") : item}
+                                        </li>
                                     ))}
                                 </ul>
                             </div>
