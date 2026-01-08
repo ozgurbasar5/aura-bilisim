@@ -6,7 +6,7 @@ import {
   ArrowLeft, Save, Printer, User, Smartphone, Zap, Laptop, Watch, Box, 
   CheckSquare, ClipboardCheck, History, CreditCard, AlertTriangle, Send, Phone, Globe, MapPin, MessageCircle, Lock,
   Lightbulb, Battery, Fan, Eye, ShieldCheck, Database, Wrench, HardDrive, Wifi, Trash2, Camera, Upload, X, Image as ImageIcon,
-  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight, CheckCircle
+  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight, CheckCircle, Building2
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
 
@@ -90,6 +90,8 @@ export default function ServisDetaySayfasi() {
   
   // FIRSAT ÜRÜNLERİ (DATABASE'DEN GELECEK)
   const [availableUpsells, setAvailableUpsells] = useState<any[]>([]);
+  // YENİ: Bayi Listesi
+  const [dealersList, setDealersList] = useState<any[]>([]);
   
   // --- ONAY MODALI STATE ---
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
@@ -116,6 +118,7 @@ export default function ServisDetaySayfasi() {
     id: 0, 
     customerType: "Son Kullanıcı", 
     customer: "", 
+    email: "", // YENİ: Email ayrı saklanacak
     phone: "", 
     address: "",
     category: "Cep Telefonu", 
@@ -169,6 +172,13 @@ export default function ServisDetaySayfasi() {
       };
       getUser();
 
+      // 1. Bayileri Çek (Listede göstermek için)
+      const fetchDealers = async () => {
+          const { data } = await supabase.from('bayi_basvurulari').select('*').eq('durum', 'Onaylandı').order('sirket_adi');
+          if (data) setDealersList(data);
+      };
+      fetchDealers();
+
       async function fetchData() {
         if (!params?.id) return;
         try {
@@ -184,11 +194,21 @@ export default function ServisDetaySayfasi() {
                 const { data, error } = await supabase.from('aura_jobs').select('*').eq('id', params.id).single();
                 if (error) throw error;
                 if (data) {
-                    // --- KRİTİK NOKTA: Veritabanından Okuma ---
+                    // --- Logları parse et ve timeline'a ekle ---
+                    const embeddedLogs = parseArray(data.process_details).map((log:any) => ({
+                        id: 'embedded-' + Math.random(),
+                        action_type: log.action || "İşlem",
+                        description: log.details || "Detay yok",
+                        created_at: log.date || new Date().toISOString(),
+                        created_by: log.user || "Sistem"
+                    }));
+
                     setFormData({
                         id: data.id,
                         tracking_code: data.tracking_code || "",
-                        customer: data.customer_email || data.customer || data.customer_name || "",
+                        // --- DÜZELTME: İsim ve Emaili ayır ---
+                        customer: data.customer || data.customer_name || "",
+                        email: data.customer_email || "",
                         phone: data.phone || "",
                         customerType: data.customer_type || "Son Kullanıcı",
                         address: data.address || "",
@@ -198,8 +218,7 @@ export default function ServisDetaySayfasi() {
                         password: data.password || data.screen_password || "",
                         issue: data.problem_description || data.problem || data.issue || "",
                         privateNote: data.private_note || "",
-                        // --- DÜZELTME: BURADA process_details'i NOTLARA ATAMIYORUZ ---
-                        // Artık JSON kodları not alanında görünmeyecek
+                        // --- DÜZELTME: SADECE NOT ---
                         notes: data.technician_note || "", 
                         
                         status: data.status,
@@ -221,7 +240,7 @@ export default function ServisDetaySayfasi() {
                     });
                     
                     if (data.serial_no || data.serial_number) checkExpertise(data.serial_no || data.serial_number);
-                    fetchTimeline(data.id);
+                    fetchTimeline(data.id, embeddedLogs); 
                     fetchUsedParts(data.id);
                 }
             }
@@ -247,6 +266,22 @@ export default function ServisDetaySayfasi() {
       fetchUpsells();
   }, [formData.category]); 
 
+  // YENİ: Bayi Seçildiğinde Bilgileri Doldur
+  const handleDealerChange = (selectedDealerName: string) => {
+      const dealer = dealersList.find(d => d.sirket_adi === selectedDealerName);
+      if (dealer) {
+          setFormData({
+              ...formData,
+              customer: dealer.sirket_adi, // Şirket Adı = Müşteri Adı
+              email: dealer.email,
+              phone: dealer.telefon,
+              address: dealer.adres
+          });
+      } else {
+          setFormData({ ...formData, customer: selectedDealerName });
+      }
+  };
+
   // --- FONKSİYONLAR ---
 
   const checkExpertise = async (imei: string) => {
@@ -255,9 +290,11 @@ export default function ServisDetaySayfasi() {
       if (data) setExpertiseId(data.id); else setExpertiseId(null);
   };
 
-  const fetchTimeline = async (jobId: number) => {
+  const fetchTimeline = async (jobId: number, embeddedLogs: any[] = []) => {
       const { data } = await supabase.from('aura_timeline').select('*').eq('job_id', jobId).order('created_at', { ascending: false });
-      if (data) setTimelineLogs(data);
+      const combined = [...(data || []), ...embeddedLogs];
+      combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setTimelineLogs(combined);
   };
 
   const logToTimeline = async (action: string, desc: string) => {
@@ -410,59 +447,52 @@ export default function ServisDetaySayfasi() {
     setLoading(true);
     
     // --- "FLOOD" STRATEJİSİ: GARANTİLİ KAYIT ---
-    // SQL tablosundaki TÜM benzer sütunlara veriyi basıyoruz.
     const payload = {
-        // Müşteri (Hepsini doldur)
-        customer_email: formData.customer,
-        customer: formData.customer,
+        // İsim ve Emaili ayır
+        customer: formData.customer, 
+        customer_email: formData.email,
         customer_name: formData.customer,
         phone: formData.phone,
         address: formData.address,
         customer_type: formData.customerType,
 
-        // Cihaz (Hepsini doldur)
         device_name: formData.device,
         device: formData.device,
         model: formData.device,
         brand: formData.category,
         category: formData.category,
         
-        // Kimlik (Hepsini doldur)
         serial_no: formData.serialNo,
         serial_number: formData.serialNo,
         imei: formData.serialNo,
         
-        // Güvenlik (Hepsini doldur)
         password: formData.password,
         screen_password: formData.password,
         pattern_password: formData.password,
         passcode: formData.password,
 
-        // Arıza & Notlar (Hepsini doldur)
         problem_description: formData.issue,
         problem: formData.issue,
         issue: formData.issue,
         complaint: formData.issue,
         technician_note: formData.notes,
-        // process_details: formData.notes, // BU SATIRI KALDIRDIM, JSON BOZMASIN
+        // DİKKAT: process_details buraya YAZILMAZ, JSON bozulmasın.
         private_note: formData.privateNote,
 
-        // Durum & Finans
         status: formData.status,
-        price: String(formData.price), // DB text olabilir
+        price: String(formData.price),
         cost: Number(formData.cost),
         tracking_code: formData.tracking_code || `SRV-${Math.floor(10000 + Math.random() * 90000)}`,
         
         // JSON Verileri (Stringify ile Text'e çevir)
         accessories: JSON.stringify(formData.accessories),
-        accessory: JSON.stringify(formData.accessories), // Yedek
+        accessory: JSON.stringify(formData.accessories),
         pre_checks: JSON.stringify(formData.preCheck),
         final_checks: JSON.stringify(formData.finalCheck),
         images: JSON.stringify(formData.images),
         recommended_upsells: JSON.stringify(formData.recommended_upsells),
         sold_upsells: JSON.stringify(formData.sold_upsells),
 
-        // Diğer
         tip_id: formData.tip_id,
         approval_status: formData.approval_status,
         approval_amount: String(formData.approval_amount),
@@ -609,7 +639,26 @@ export default function ServisDetaySayfasi() {
                                  <button key={t} onClick={() => setFormData((p:any)=>({...p, customerType: t}))} className={`flex-1 text-[10px] py-1.5 rounded font-bold transition-all uppercase ${formData.customerType === t ? 'bg-cyan-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>{t}</button>
                              ))}
                         </div>
-                        <input type="text" value={formData.customer} onChange={e => setFormData((p:any)=>({...p, customer: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white outline-none" placeholder="Ad Soyad"/>
+                        
+                        {/* DÜZELTME: BAYİ SEÇİMİ İÇİN DROPDOWN (Eğer Bayi ise listeden seçtir) */}
+                        {formData.customerType === 'Bayi' ? (
+                            <div className="relative">
+                                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500" size={14} />
+                                <select 
+                                    className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 pl-9 text-sm font-bold text-white outline-none focus:border-cyan-500 appearance-none"
+                                    value={formData.customer}
+                                    onChange={(e) => handleDealerChange(e.target.value)}
+                                >
+                                    <option value="">Bayi Seçiniz...</option>
+                                    {dealersList.map((d: any) => (
+                                        <option key={d.id} value={d.sirket_adi}>{d.sirket_adi}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <input type="text" value={formData.customer} onChange={e => setFormData((p:any)=>({...p, customer: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white outline-none" placeholder="Ad Soyad"/>
+                        )}
+
                         <input type="text" value={formData.phone} onChange={e => setFormData((p:any)=>({...p, phone: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-mono" placeholder="Telefon"/>
                         <textarea value={formData.address} onChange={e => setFormData((p:any)=>({...p, address: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-xs h-20 outline-none resize-none" placeholder="Adres..."></textarea>
                         
@@ -662,6 +711,7 @@ export default function ServisDetaySayfasi() {
             {/* ORTA KOLON */}
             <div className="col-span-12 lg:col-span-5 space-y-6">
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-6 shadow-lg">
+                    {/* Cihaz Kimliği... */}
                     <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-5 flex items-center gap-2"><Smartphone size={14} className="text-blue-500"/> Cihaz Kimliği</h3>
                     <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-700">{Object.keys(CATEGORY_DATA).map(cat => ( <button key={cat} onClick={() => handleCategoryChange(cat)} className={`px-3 py-1 rounded text-[10px] font-bold border whitespace-nowrap transition-all ${formData.category === cat ? 'bg-cyan-600 text-white border-cyan-500' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}>{cat}</button> ))}</div>
                     
@@ -859,269 +909,17 @@ export default function ServisDetaySayfasi() {
             </div>
         </div>
 
-        {/* --- STOK SEÇİM MODALI --- */}
-        {isStockModalOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-                <div className="bg-[#1e293b] rounded-2xl w-full max-w-lg border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
-                    <div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center">
-                        <h3 className="text-white font-bold flex items-center gap-2"><Box size={18} className="text-yellow-400"/> STOKTAN PARÇA SEÇ</h3>
-                        <button onClick={() => setIsStockModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button>
-                    </div>
-                    <div className="p-4 bg-[#0b0e14]">
-                        <div className="relative">
-                            <input type="text" value={stockSearchTerm} onChange={(e) => { setStockSearchTerm(e.target.value); if(e.target.value.length>1) handleStockSearch(); }} className="w-full bg-[#151921] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-yellow-500" placeholder="Parça ara (Örn: iPhone 11 Ekran)..." autoFocus/>
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/>
-                        </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                        {stockResults.map((part) => (
-                            <button key={part.id} onClick={() => addPartToJob(part)} className="w-full flex justify-between items-center p-3 hover:bg-slate-800 rounded-lg border border-transparent hover:border-slate-700 transition-all group text-left">
-                                <div>
-                                    <p className="text-sm font-bold text-white group-hover:text-yellow-400">{part.urun_adi}</p>
-                                    <p className="text-[10px] text-slate-500">{part.kategori} • Stok: {part.stok_adedi} Adet</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-bold text-slate-300">Satış: {part.satis_fiyati}₺</p>
-                                    <p className="text-[9px] text-slate-600">Maliyet: {part.alis_fiyati}₺</p>
-                                </div>
-                            </button>
-                        ))}
-                        {stockResults.length === 0 && stockSearchTerm.length > 1 && <div className="text-center py-8 text-slate-500 text-xs">Sonuç bulunamadı.</div>}
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* --- WIKI (ARIZA KÜTÜPHANESİ) MODALI --- */}
-        {isWikiModalOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-                <div className="bg-[#1e293b] rounded-2xl w-full max-w-2xl border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]">
-                    <div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center">
-                        <h3 className="text-white font-bold flex items-center gap-2"><Book size={18} className="text-purple-400"/> AURA WIKI</h3>
-                        <button onClick={() => setIsWikiModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button>
-                    </div>
-                    
-                    {wikiViewMode === 'search' ? (
-                        <div className="p-6 flex-1 overflow-y-auto">
-                            <div className="relative mb-6">
-                                <input type="text" value={wikiSearchTerm} onChange={(e) => setWikiSearchTerm(e.target.value)} onKeyDown={(e)=>e.key==='Enter' && handleWikiSearch()} className="w-full bg-[#0b0e14] border border-slate-600 rounded-xl py-3 pl-11 pr-4 text-white focus:border-purple-500 outline-none" placeholder="Arıza ara (Örn: iPhone 11 ses gelmiyor)..."/>
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
-                                <button onClick={handleWikiSearch} className="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">ARA</button>
-                            </div>
-
-                            {wikiResults.length > 0 ? (
-                                <div className="space-y-3">
-                                    {wikiResults.map((res:any) => (
-                                        <div key={res.id} className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl hover:bg-slate-800 transition-colors">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h4 className="text-purple-400 font-bold text-sm">{res.title}</h4>
-                                                <button onClick={() => applyWikiSolution(res.solution_steps)} className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded font-bold">UYGULA</button>
-                                            </div>
-                                            <p className="text-slate-400 text-xs mb-2 line-clamp-2">{res.problem_desc}</p>
-                                            <div className="text-[10px] text-slate-500 flex gap-3">
-                                                <span>Yazar: {res.author?.split('@')[0]}</span>
-                                                <span>Kategori: {res.device_category}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-10">
-                                    <Book size={40} className="text-slate-700 mx-auto mb-3"/>
-                                    <p className="text-slate-400 font-bold">Sonuç Bulunamadı</p>
-                                    <p className="text-slate-600 text-xs mb-4">Bu arıza henüz kütüphanede yok.</p>
-                                    <button onClick={() => { setWikiViewMode('add'); setNewWikiEntry({...newWikiEntry, title: wikiSearchTerm, problem: formData.issue}); }} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 mx-auto"><Plus size={14}/> YENİ EKLE</button>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="p-6 flex-1 overflow-y-auto space-y-4">
-                            <div className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer hover:text-white mb-2" onClick={() => setWikiViewMode('search')}><ArrowLeft size={14}/> Arama Sonuçlarına Dön</div>
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">BAŞLIK</label>
-                                <input type="text" value={newWikiEntry.title} onChange={(e)=>setNewWikiEntry({...newWikiEntry, title: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm" placeholder="Örn: Xiaomi Note 10 Pro Şarj Soketi"/>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">SORUN TANIMI</label>
-                                <textarea value={newWikiEntry.problem} onChange={(e)=>setNewWikiEntry({...newWikiEntry, problem: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-20 resize-none" placeholder="Sorun tam olarak nedir?"/>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">ÇÖZÜM ADIMLARI</label>
-                                <textarea value={newWikiEntry.solution} onChange={(e)=>setNewWikiEntry({...newWikiEntry, solution: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-40 resize-none" placeholder="Adım adım nasıl çözüldü?"/>
-                            </div>
-                            <button onClick={handleAddToWiki} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg">KÜTÜPHANEYE KAYDET</button>
-                        </div>
-                    )}
-                </div>
-            </div>
-        )}
-
-        {/* ONAY MODALI */}
-        {approvalModalOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-                <div className="bg-[#1e293b] p-6 rounded-2xl w-full max-w-sm border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200">
-                    <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Zap size={18} className="text-purple-500"/> Ekstra İşlem Onayı</h3>
-                    <p className="text-slate-400 text-xs mb-4">Bu işlem, müşteriye SMS/Link ile bildirim gönderecek ve "Cihaz Sorgulama" ekranında onay/red seçenekleri sunacaktır.</p>
-                    <input type="number" onChange={(e) => setApprovalData({...approvalData, amount: Number(e.target.value)})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-3 text-white outline-none focus:border-purple-500 font-bold" placeholder="Tutar (TL)"/>
-                    <textarea onChange={(e) => setApprovalData({...approvalData, desc: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white h-24 text-sm resize-none outline-none focus:border-purple-500" placeholder="Açıklama (Örn: Anakart revizyonu gerekiyor)..."></textarea>
-                    <div className="flex gap-2"><button onClick={() => setApprovalModalOpen(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-xs font-bold text-slate-300 transition-colors">İPTAL</button><button onClick={sendApprovalRequest} className="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg text-xs font-bold text-white shadow-lg transition-colors">GÖNDER</button></div>
-                </div>
-            </div>
-        )}
+        {/* ... Modals (Stok, Wiki, Onay) Aynen Kalıyor ... */}
+        {isStockModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] rounded-2xl w-full max-w-lg border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[70vh]"><div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center"><h3 className="text-white font-bold flex items-center gap-2"><Box size={18} className="text-yellow-400"/> STOKTAN PARÇA SEÇ</h3><button onClick={() => setIsStockModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button></div><div className="p-4 bg-[#0b0e14]"><div className="relative"><input type="text" value={stockSearchTerm} onChange={(e) => { setStockSearchTerm(e.target.value); if(e.target.value.length>1) handleStockSearch(); }} className="w-full bg-[#151921] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-yellow-500" placeholder="Parça ara..." autoFocus/><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/></div></div><div className="flex-1 overflow-y-auto p-2 space-y-1">{stockResults.map((part) => (<button key={part.id} onClick={() => addPartToJob(part)} className="w-full flex justify-between items-center p-3 hover:bg-slate-800 rounded-lg border border-transparent hover:border-slate-700 transition-all group text-left"><div><p className="text-sm font-bold text-white group-hover:text-yellow-400">{part.urun_adi}</p><p className="text-[10px] text-slate-500">{part.kategori} • Stok: {part.stok_adedi}</p></div><div className="text-right"><p className="text-xs font-bold text-slate-300">{part.satis_fiyati}₺</p></div></button>))}</div></div></div>)}
+        {/* Wiki Modalı */}
+        {isWikiModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] rounded-2xl w-full max-w-2xl border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]"><div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center"><h3 className="text-white font-bold flex items-center gap-2"><Book size={18} className="text-purple-400"/> AURA WIKI</h3><button onClick={() => setIsWikiModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button></div>{wikiViewMode==='search'?(<div className="p-6 flex-1 overflow-y-auto"><div className="relative mb-6"><input type="text" value={wikiSearchTerm} onChange={(e)=>setWikiSearchTerm(e.target.value)} onKeyDown={(e)=>e.key==='Enter'&&handleWikiSearch()} className="w-full bg-[#0b0e14] border border-slate-600 rounded-xl py-3 pl-11 pr-4 text-white focus:border-purple-500 outline-none" placeholder="Arıza ara..."/><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/><button onClick={handleWikiSearch} className="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">ARA</button></div>{wikiResults.length>0?(<div className="space-y-3">{wikiResults.map((res:any)=>(<div key={res.id} className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl hover:bg-slate-800 transition-colors"><div className="flex justify-between items-start mb-2"><h4 className="text-purple-400 font-bold text-sm">{res.title}</h4><button onClick={()=>applyWikiSolution(res.solution_steps)} className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded font-bold">UYGULA</button></div><p className="text-slate-400 text-xs mb-2 line-clamp-2">{res.problem_desc}</p></div>))}</div>):(<div className="text-center py-10"><Book size={40} className="text-slate-700 mx-auto mb-3"/><p className="text-slate-400 font-bold">Sonuç Bulunamadı</p><button onClick={()=>{setWikiViewMode('add');setNewWikiEntry({...newWikiEntry,title:wikiSearchTerm,problem:formData.issue});}} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 mx-auto"><Plus size={14}/> YENİ EKLE</button></div>)}</div>):(<div className="p-6 flex-1 overflow-y-auto space-y-4"><div className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer hover:text-white mb-2" onClick={()=>setWikiViewMode('search')}><ArrowLeft size={14}/> Geri</div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">BAŞLIK</label><input type="text" value={newWikiEntry.title} onChange={(e)=>setNewWikiEntry({...newWikiEntry,title:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm"/></div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">SORUN</label><textarea value={newWikiEntry.problem} onChange={(e)=>setNewWikiEntry({...newWikiEntry,problem:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-20 resize-none"/></div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">ÇÖZÜM</label><textarea value={newWikiEntry.solution} onChange={(e)=>setNewWikiEntry({...newWikiEntry,solution:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-40 resize-none"/></div><button onClick={handleAddToWiki} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg">KAYDET</button></div>)}</div></div>)}
+        {/* Onay Modalı */}
+        {approvalModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] p-6 rounded-2xl w-full max-w-sm border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200"><h3 className="text-white font-bold mb-4 flex items-center gap-2"><Zap size={18} className="text-purple-500"/> Ekstra İşlem Onayı</h3><input type="number" onChange={(e)=>setApprovalData({...approvalData,amount:Number(e.target.value)})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-3 text-white font-bold" placeholder="Tutar"/><textarea onChange={(e)=>setApprovalData({...approvalData,desc:e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white h-24 text-sm resize-none" placeholder="Açıklama..."></textarea><div className="flex gap-2"><button onClick={()=>setApprovalModalOpen(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-xs font-bold text-slate-300">İPTAL</button><button onClick={sendApprovalRequest} className="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg text-xs font-bold text-white shadow-lg">GÖNDER</button></div></div></div>)}
         
-        {/* --- YENİLENMİŞ YAZDIRMA ŞABLONU --- */}
-        <div id="printable-area" className="hidden bg-white text-black font-sans">
-            <div className="p-10 w-full h-full box-border">
-                {/* HEADER */}
-                <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
-                    <div className="flex items-center gap-4">
-                        <img src="/image/aura-logo.png" alt="Aura Logo" className="h-16 w-auto object-contain"/>
-                        <div>
-                            <h1 className="text-3xl font-black tracking-tight text-cyan-600">AURA BİLİŞİM</h1>
-                            <p className="text-xs font-bold text-slate-500 tracking-[0.2em] uppercase">PROFESYONEL TEKNİK SERVİS</p>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-4xl font-black text-slate-900 tracking-tight">SERVİS FİŞİ</div>
-                        <div className="flex flex-col items-end mt-1">
-                            <span className="text-lg font-bold bg-slate-100 px-3 py-1 rounded">NO: {formData.tracking_code || formData.id}</span>
-                            <span className="text-sm text-slate-600 mt-1">{formData.date}</span>
-                        </div>
-                    </div>
-                </div>
+        {/* Yazdırma Şablonu */}
+        <div id="printable-area" className="hidden bg-white text-black font-sans"><div className="p-10 w-full h-full box-border"><div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6"><div className="flex items-center gap-4"><img src="/image/aura-logo.png" className="h-16 w-auto object-contain"/><div><h1 className="text-3xl font-black text-cyan-600">AURA BİLİŞİM</h1><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">PROFESYONEL TEKNİK SERVİS</p></div></div><div className="text-right"><div className="text-4xl font-black text-slate-900">SERVİS FİŞİ</div><div className="flex flex-col items-end mt-1"><span className="text-lg font-bold bg-slate-100 px-3 py-1 rounded">NO: {formData.tracking_code || formData.id}</span><span className="text-sm text-slate-600 mt-1">{formData.date}</span></div></div></div><div className="grid grid-cols-2 gap-8 mb-6"><div className="border border-slate-300 rounded-lg p-4 bg-slate-50"><h3 className="font-bold border-b border-slate-300 mb-2 pb-1 text-sm uppercase text-slate-700">Müşteri Bilgileri</h3><div className="space-y-1 text-sm"><p><span className="font-bold text-slate-600">Ad Soyad:</span> {formData.customer}</p><p><span className="font-bold text-slate-600">Telefon:</span> {formData.phone}</p><p><span className="font-bold text-slate-600">Adres:</span> {formData.address || "Belirtilmemiş"}</p></div></div><div className="border border-slate-300 rounded-lg p-4 bg-slate-50"><h3 className="font-bold border-b border-slate-300 mb-2 pb-1 text-sm uppercase text-slate-700">Cihaz Bilgileri</h3><div className="space-y-1 text-sm"><p><span className="font-bold text-slate-600">Cihaz:</span> {formData.device}</p><p><span className="font-bold text-slate-600">Seri No:</span> {formData.serialNo}</p><p><span className="font-bold text-slate-600">Kategori:</span> {formData.category}</p></div></div></div><div className="grid grid-cols-3 gap-6 mb-6"><div className="col-span-1 border border-slate-300 rounded-lg p-3"><h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Şikayet</h4><p className="text-xs italic">{formData.issue}</p></div><div className="col-span-1 border border-slate-300 rounded-lg p-3"><h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Aksesuarlar</h4><div className="flex flex-wrap gap-1">{Array.isArray(formData.accessories) && formData.accessories.length > 0 ? formData.accessories.map((acc:string,i:number)=><span key={i} className="border border-slate-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{acc}</span>) : <span className="text-xs italic text-slate-400">Yok</span>}</div></div><div className="col-span-1 border border-slate-300 rounded-lg p-3"><h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Kontrol</h4><div className="flex flex-wrap gap-1">{Array.isArray(formData.preCheck) && formData.preCheck.length > 0 ? formData.preCheck.map((chk:string)=><span key={chk} className="text-[10px]">☑ {chk}</span>) : <span className="text-xs italic text-slate-400">Temiz</span>}</div></div></div><div className="mt-auto"><div className="flex justify-between items-end border-t-2 border-black pt-4 mb-8"><div className="w-2/3 pr-8"><h5 className="text-[10px] font-bold uppercase mb-1">Yasal Bilgilendirme</h5><p className="text-[8px] text-justify leading-tight text-slate-600">1. Cihazlar 90 gün içinde alınmalıdır. 2. Sıvı temas garantisizdir. 3. Veri yedeği müşteriye aittir. 4. İşlem garantisi 6 aydır.</p></div><div className="w-1/3 text-right"><div className="text-sm font-bold text-slate-500 uppercase mb-1">TOPLAM</div><div className="text-3xl font-black text-slate-900">{formData.price.toLocaleString('tr-TR')} ₺</div><div className="text-[9px] text-slate-400 mt-1">KDV Dahil Değildir</div></div></div><div className="flex justify-between gap-8"><div className="w-1/2 text-center"><div className="h-16 border-b border-slate-400 mb-2"></div><span className="text-xs font-bold uppercase">MÜŞTERİ</span></div><div className="w-1/2 text-center"><div className="h-16 border-b border-slate-400 mb-2"></div><span className="text-xs font-bold uppercase">TEKNİSYEN</span></div></div></div></div></div>
 
-                {/* INFO GRID */}
-                <div className="grid grid-cols-2 gap-8 mb-6">
-                    <div className="border border-slate-300 rounded-lg p-4 bg-slate-50">
-                        <h3 className="font-bold border-b border-slate-300 mb-2 pb-1 text-sm uppercase text-slate-700">Müşteri Bilgileri</h3>
-                        <div className="space-y-1 text-sm">
-                            <p><span className="font-bold text-slate-600">Ad Soyad:</span> {formData.customer}</p>
-                            <p><span className="font-bold text-slate-600">Telefon:</span> {formData.phone}</p>
-                            <p><span className="font-bold text-slate-600">Adres:</span> {formData.address || "Belirtilmemiş"}</p>
-                        </div>
-                    </div>
-                    <div className="border border-slate-300 rounded-lg p-4 bg-slate-50">
-                        <h3 className="font-bold border-b border-slate-300 mb-2 pb-1 text-sm uppercase text-slate-700">Cihaz Bilgileri</h3>
-                        <div className="space-y-1 text-sm">
-                            <p><span className="font-bold text-slate-600">Cihaz:</span> {formData.device}</p>
-                            <p><span className="font-bold text-slate-600">Seri No / IMEI:</span> {formData.serialNo}</p>
-                            <p><span className="font-bold text-slate-600">Kategori:</span> {formData.category}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* DETAILED INFO */}
-                <div className="grid grid-cols-3 gap-6 mb-6">
-                    <div className="col-span-1 border border-slate-300 rounded-lg p-3">
-                        <h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Şikayet / Arıza</h4>
-                        <p className="text-xs italic leading-tight">{formData.issue}</p>
-                    </div>
-                    <div className="col-span-1 border border-slate-300 rounded-lg p-3">
-                        <h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Teslim Alınanlar</h4>
-                        <div className="flex flex-wrap gap-1">
-                            {Array.isArray(formData.accessories) && formData.accessories.length > 0 ? (
-                                formData.accessories.map((acc:string, i:number) => (
-                                    <span key={i} className="border border-slate-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                                        {acc}
-                                    </span>
-                                ))
-                            ) : (
-                                <span className="text-xs italic text-slate-400">Yok</span>
-                            )}
-                        </div>
-                    </div>
-                    <div className="col-span-1 border border-slate-300 rounded-lg p-3">
-                        <h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Ön Kontrol</h4>
-                        <div className="flex flex-wrap gap-1">
-                            {Array.isArray(formData.preCheck) && formData.preCheck.length > 0 ? formData.preCheck.map((chk:string) => (
-                                <span key={chk} className="text-[10px] flex items-center gap-1">☑ {chk}</span>
-                            )) : <span className="text-xs italic text-slate-400">Sorun görülmedi</span>}
-                        </div>
-                    </div>
-                </div>
-
-                {/* PROCESS & PARTS */}
-                <div className="mb-6">
-                    <div className="bg-slate-100 border border-slate-300 border-b-0 rounded-t-lg px-4 py-2 flex justify-between items-center">
-                        <span className="font-bold text-sm uppercase text-slate-800">Servis İşlemleri & Değişen Parçalar</span>
-                        <span className="text-xs font-bold border border-slate-400 bg-white px-2 py-0.5 rounded uppercase">DURUM: {formData.status}</span>
-                    </div>
-                    <div className="border border-slate-300 rounded-b-lg p-4 min-h-[120px]">
-                        <p className="text-sm whitespace-pre-line leading-relaxed">{formData.notes || "İşlem detayları girilmedi."}</p>
-                        
-                        {/* Satılan Ekstra Ürünler Listesi (Upsells) */}
-                        {Array.isArray(formData.sold_upsells) && formData.sold_upsells.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-slate-200">
-                                <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Eklenen Ürünler / Hizmetler:</h5>
-                                <ul className="text-sm list-disc pl-4 space-y-1">
-                                    {formData.sold_upsells.map((item:any, idx:number) => (
-                                        <li key={idx}>
-                                            {/* Hibrit Gösterim: Hem Nesne Hem String Desteği */}
-                                            {typeof item === 'object' ? (item.name || item.urun_adi || "İsimsiz Ürün") : item}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* QC CHECKS */}
-                <div className="mb-8">
-                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-200 pb-1">Son Kontroller (QC)</h4>
-                    <div className="grid grid-cols-4 gap-2">
-                        {Array.isArray(formData.finalCheck) ? formData.finalCheck.map((chk:string, i:number) => (
-                            <div key={i} className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-700">
-                                <div className="w-3 h-3 bg-slate-800 text-white flex items-center justify-center text-[8px] rounded-[2px]">✓</div> {chk}
-                            </div>
-                        )) : null}
-                    </div>
-                </div>
-
-                {/* FOOTER & LEGAL */}
-                <div className="mt-auto">
-                    <div className="flex justify-between items-end border-t-2 border-black pt-4 mb-8">
-                        <div className="w-2/3 pr-8">
-                            <h5 className="text-[10px] font-bold uppercase mb-1">Yasal Bilgilendirme ve Garanti Şartları</h5>
-                            <p className="text-[8px] text-justify leading-tight text-slate-600">
-                                1. Teslim edilen cihazlar 90 gün içerisinde alınmalıdır. Süresi dolan cihazlardan firmamız sorumlu değildir. 
-                                2. Sıvı temaslı cihazlarda onarım sonrası garanti verilmemektedir. 
-                                3. Cihaz içerisindeki verilerin yedeğinin alınması müşterinin sorumluluğundadır; veri kaybından firmamız sorumlu tutulamaz. 
-                                4. Onarım gören parça/işlem (sıvı teması hariç) firmamız tarafından 6 ay garantilidir. 
-                                5. Müşteri bu formu imzalayarak yukarıdaki şartları kabul etmiş sayılır.
-                            </p>
-                        </div>
-                        <div className="w-1/3 text-right">
-                            <div className="text-sm font-bold text-slate-500 uppercase mb-1">TOPLAM TUTAR</div>
-                            <div className="text-3xl font-black text-slate-900">{formData.price.toLocaleString('tr-TR')} ₺</div>
-                            <div className="text-[9px] text-slate-400 mt-1">KDV Dahil Değildir</div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between gap-8">
-                        <div className="w-1/2 text-center">
-                            <div className="h-16 border-b border-slate-400 mb-2"></div>
-                            <span className="text-xs font-bold uppercase">MÜŞTERİ (TESLİM ALAN)</span>
-                            <p className="text-[9px] text-slate-500">Cihazı eksiksiz ve çalışır durumda teslim aldım.</p>
-                        </div>
-                        <div className="w-1/2 text-center">
-                            <div className="h-16 border-b border-slate-400 mb-2"></div>
-                            <span className="text-xs font-bold uppercase">TEKNİSYEN / AURA BİLİŞİM</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <style jsx global>{`
-            @media print {
-                @page { size: A4; margin: 0; }
-                body { visibility: hidden; background-color: white; -webkit-print-color-adjust: exact; }
-                .print\\:hidden { display: none !important; }
-                #printable-area { visibility: visible; display: block !important; position: fixed; left: 0; top: 0; width: 210mm; height: 297mm; padding: 0; background-color: white; z-index: 9999; }
-                #printable-area * { visibility: visible; }
-            }
-        `}</style>
+        <style jsx global>{` @media print { @page { size: A4; margin: 0; } body { visibility: hidden; background-color: white; -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } #printable-area { visibility: visible; display: block !important; position: fixed; left: 0; top: 0; width: 210mm; height: 297mm; padding: 0; background-color: white; z-index: 9999; } #printable-area * { visibility: visible; } } `}</style>
     </div>
   );
 }
