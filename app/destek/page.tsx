@@ -4,7 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/app/lib/supabase"; 
 import { 
   Phone, Mail, MessageCircle, 
-  LifeBuoy, Send, CheckCircle, AlertCircle, MapPin
+  LifeBuoy, Send, CheckCircle, AlertCircle, MapPin, Loader2
 } from "lucide-react";
 
 export default function DestekSayfasi() {
@@ -24,21 +24,20 @@ export default function DestekSayfasi() {
     e.preventDefault();
     setLoading(true);
     
-    const { error } = await supabase.from('aura_jobs').insert({
-        customer: formData.adSoyad,
-        phone: formData.telefon,
+    // YENİ TABLOYA KAYIT
+    const { error } = await supabase.from('destek_talepleri').insert({
+        ad_soyad: formData.adSoyad,
+        telefon: formData.telefon,
         email: formData.email, 
-        device: formData.konu, 
-        problem: formData.mesaj,
-        status: 'Bekliyor', 
-        category: 'Destek Talebi', 
-        price: 0 
+        konu: formData.konu, 
+        mesaj: formData.mesaj,
+        durum: 'Bekliyor'
     });
 
     setLoading(false);
 
     if (error) {
-        console.error(error);
+        console.error("Hata:", error);
         setDurum('hata');
     } else {
         setDurum('basarili');
@@ -115,7 +114,7 @@ export default function DestekSayfasi() {
               </div>
             </div>
 
-             {/* Adres (Opsiyonel - Görsellik İçin) */}
+             {/* Adres */}
              <div className="bg-[#0f172a]/50 backdrop-blur-md border border-white/5 p-6 rounded-2xl hover:border-orange-500/30 transition-all group shadow-lg hover:shadow-orange-500/10 hover:-translate-y-1">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-orange-500/10 rounded-xl text-orange-400 group-hover:bg-orange-500 group-hover:text-white transition-colors shadow-inner">
@@ -237,7 +236,7 @@ export default function DestekSayfasi() {
                     className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
                   >
                     {loading ? (
-                      <>Gönderiliyor...</>
+                      <><Loader2 className="animate-spin" size={20}/> Gönderiliyor...</>
                     ) : (
                       <>TALEBİ GÖNDER <Send size={20}/></>
                     )}

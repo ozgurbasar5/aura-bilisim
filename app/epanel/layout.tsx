@@ -12,7 +12,7 @@ import {
   Activity, Signal, Menu, Bell, ChevronDown, MessageSquare, 
   Package, ShieldCheck, CreditCard, Wallet, User,
   Zap, Terminal, ClipboardList, ShoppingBag, X, Code2, ChevronRight,
-  Building2, Briefcase, Wrench // <--- YENİ İKON EKLENDİ
+  Building2, Briefcase, Wrench, LifeBuoy, AlertTriangle, Clock, Check
 } from "lucide-react";
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
@@ -184,10 +184,20 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  
   const [dolarKuru, setDolarKuru] = useState<number | null>(null);
   const [bekleyenSayisi, setBekleyenSayisi] = useState(0);
   const [basvuruSayisi, setBasvuruSayisi] = useState(0);
-  const [mesajSayisi, setMesajSayisi] = useState(0);
+  
+  // Bildirim ve Mesaj Sayaçları
+  const [webMesajSayisi, setWebMesajSayisi] = useState(0); 
+  const [bayiMesajSayisi, setBayiMesajSayisi] = useState(0); 
+  
+  // %100 ENTEGRE BİLDİRİM SİSTEMİ STATE'LERİ
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const notifRef = useRef<HTMLDivElement>(null);
+
   const [ping, setPing] = useState(24);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -198,7 +208,6 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   
   const [showCalc, setShowCalc] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
   const [myNote, setMyNote] = useState("");
   const [calcDisplay, setCalcDisplay] = useState("");
@@ -218,7 +227,8 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
         setIsAdmin(profile?.rol === 'admin' || ADMIN_EMAILS.includes(session.user.email || ""));
 
         setAuthorized(true); 
-        checkCounts();
+        checkCounts(); // Global Sayaçlar
+        checkNotifications(); // %100 Entegre Bildirimler
         fetchDolar();
         const savedNote = localStorage.getItem("teknisyen_notu");
         if (savedNote) setMyNote(savedNote);
@@ -237,12 +247,13 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') { e.preventDefault(); setShowTerminal(prev => !prev); }
       if (e.key === 'Escape') { 
           setShowResultBox(false); setShowCalc(false); setShowNotes(false); 
-          setShowNotifications(false); setShowUserMenu(false); setIsSettingsOpen(false); 
+          setIsNotifOpen(false); setShowUserMenu(false); setIsSettingsOpen(false); 
           setShowTerminal(false);
       }
     };
     const handleClickOutside = (event: MouseEvent) => {
         if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) { setShowResultBox(false); }
+        if (notifRef.current && !notifRef.current.contains(event.target as Node)) { setIsNotifOpen(false); }
     };
     window.addEventListener('keydown', handleKeyDown);
     document.addEventListener('mousedown', handleClickOutside);
@@ -253,6 +264,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
     try { const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=TRY'); const data = await res.json(); setDolarKuru(data.rates.TRY); } catch { setDolarKuru(35.95); }
   };
 
+  // --- GLOBAL SAYAÇLAR ---
   const checkCounts = async () => {
       const localData = getWorkshopFromStorage();
       const localWaiting = localData.filter((x:any) => x.status === 'Bekliyor').length;
@@ -262,8 +274,62 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
       const { count: formCount } = await supabase.from('aura_online_forms').select('*', { count: 'exact', head: true }).eq('status', 'Okunmadı');
       setBasvuruSayisi(formCount || 0);
 
-      const { count: msgCount } = await supabase.from('aura_jobs').select('*', { count: 'exact', head: true }).eq('category', 'Destek Talebi').neq('status', 'Tamamlandı');
-      setMesajSayisi(msgCount || 0);
+      const { count: webCount } = await supabase.from('destek_talepleri').select('*', { count: 'exact', head: true }).eq('durum', 'Bekliyor');
+      setWebMesajSayisi(webCount || 0);
+
+      const { count: bayiCount } = await supabase.from('bayi_destek').select('*', { count: 'exact', head: true }).eq('durum', 'İnceleniyor');
+      setBayiMesajSayisi(bayiCount || 0);
+  };
+
+  // --- %100 ENTEGRE BİLDİRİM SİSTEMİ ---
+  const checkNotifications = async () => {
+      const newNotifs: any[] = [];
+
+      // 1. Web Destek Talepleri
+      const { data: webReqs } = await supabase.from('destek_talepleri').select('*').eq('durum', 'Bekliyor').order('created_at', {ascending:false}).limit(3);
+      if(webReqs) webReqs.forEach(w => newNotifs.push({
+          id: `web-${w.id}`,
+          type: 'support',
+          title: 'Yeni Destek Talebi',
+          desc: `${w.ad_soyad}: ${w.konu}`,
+          time: new Date(w.created_at),
+          link: '/epanel/destek'
+      }));
+
+      // 2. Bayi Destek Talepleri
+      const { data: dealerReqs } = await supabase.from('bayi_destek').select('*').eq('durum', 'İnceleniyor').order('created_at', {ascending:false}).limit(3);
+      if(dealerReqs) dealerReqs.forEach(d => newNotifs.push({
+          id: `dealer-${d.id}`,
+          type: 'support_dealer',
+          title: 'Bayi Destek Mesajı',
+          desc: `${d.bayi_adi}: ${d.konu}`,
+          time: new Date(d.created_at),
+          link: '/epanel/bayi-destek'
+      }));
+
+      // 3. GECİKEN CİHAZLAR (KRİTİK UYARI) - 3 Günden Eski "Teslim Edilmemiş" İşler
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const { data: lateJobs } = await supabase.from('aura_jobs')
+          .select('id, device, customer, created_at')
+          .lt('created_at', threeDaysAgo.toISOString())
+          .neq('status', 'Teslim Edildi')
+          .neq('status', 'İptal')
+          .neq('status', 'İade')
+          .limit(5);
+      
+      if(lateJobs) lateJobs.forEach(j => newNotifs.push({
+          id: `late-${j.id}`,
+          type: 'alert',
+          title: 'Geciken Cihaz Uyarısı',
+          desc: `${j.device} (${j.customer}) 3 gündür serviste!`,
+          time: new Date(j.created_at),
+          link: `/epanel/atolye/${j.id}`
+      }));
+
+      // Tarihe göre sırala (En yeni en üstte)
+      newNotifs.sort((a, b) => b.time.getTime() - a.time.getTime());
+      setNotifications(newNotifs);
   };
 
   const handleGlobalSearch = async (e: any) => {
@@ -343,12 +409,12 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <div className="my-3 border-t border-white/5 mx-2"></div>
 
             <NavGroup title="İLETİŞİM AĞI" isOpen={isSidebarOpen} />
-            <NavItem icon={<MessageSquare size={20}/>} label="Destek Talepleri" href="/epanel/destek" isOpen={isSidebarOpen} active={pathname.includes('/destek')} badge={mesajSayisi} badgeColor="bg-pink-500 text-white animate-pulse"/>
+            <NavItem icon={<LifeBuoy size={20}/>} label="Destek Talepleri" href="/epanel/destek" isOpen={isSidebarOpen} active={pathname === '/epanel/destek'} badge={webMesajSayisi} badgeColor="bg-blue-600 text-white"/>
+            <NavItem icon={<MessageSquare size={20}/>} label="Bayi Destek" href="/epanel/bayi-destek" isOpen={isSidebarOpen} active={pathname.includes('/bayi-destek')} badge={bayiMesajSayisi} badgeColor="bg-pink-500 text-white animate-pulse"/>
             <NavItem icon={<Users size={20}/>} label="Online Başvurular" href="/epanel/basvurular" isOpen={isSidebarOpen} active={pathname.includes('/basvurular')} badge={basvuruSayisi} badgeColor="bg-red-600 text-white" />
             
             <div className="my-3 border-t border-white/5 mx-2"></div>
 
-            {/* YENİ EKLENEN KISIM: KURUMSAL / B2B */}
             <NavGroup title="KURUMSAL / B2B" isOpen={isSidebarOpen} />
             <NavItem icon={<Building2 size={20}/>} label="Bayi Başvuruları" href="/epanel/bayi-basvurulari" isOpen={isSidebarOpen} active={pathname.includes('/bayi-basvurulari')} />
             <NavItem icon={<Briefcase size={20}/>} label="Bayi Yönetimi" href="/epanel/bayiler" isOpen={isSidebarOpen} active={pathname.includes('/bayiler')} />
@@ -436,9 +502,51 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
               <button onClick={() => setShowTerminal(true)} className="p-2.5 rounded-xl border border-white/10 bg-[#0f172a] text-slate-400 hover:text-green-400 hover:border-green-500/50 transition-all" title="Terminal (CTRL+J)"><Code2 size={18}/></button>
               <button onClick={() => setShowCalc(!showCalc)} className={`p-2.5 rounded-xl border transition-all ${showCalc ? 'bg-cyan-600 border-cyan-400 text-white shadow-lg' : 'bg-[#0f172a] border-white/10 text-slate-400 hover:text-white'}`}><Calculator size={18}/></button>
               <button onClick={() => setShowNotes(!showNotes)} className={`p-2.5 rounded-xl border transition-all ${showNotes ? 'bg-yellow-600 border-yellow-400 text-white shadow-lg' : 'bg-[#0f172a] border-white/10 text-slate-400 hover:text-white'}`}><StickyNote size={18}/></button>
-              <button onClick={() => setShowNotifications(!showNotifications)} className="p-2.5 rounded-xl bg-[#0f172a] border border-white/10 text-slate-400 hover:text-white relative"><Bell size={18}/>
-                  {(bekleyenSayisi > 0 || mesajSayisi > 0) && <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>}
-              </button>
+              
+              {/* --- %100 ENTEGRE BİLDİRİM MERKEZİ --- */}
+              <div className="relative" ref={notifRef}>
+                  <button 
+                    onClick={() => setIsNotifOpen(!isNotifOpen)} 
+                    className={`p-2.5 rounded-xl border transition-all relative ${isNotifOpen ? 'bg-[#1e293b] text-white border-white/20' : 'bg-[#0f172a] border-white/10 text-slate-400 hover:text-white'}`}
+                  >
+                      <Bell size={18}/>
+                      {notifications.length > 0 && <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>}
+                      {notifications.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full text-[9px] flex items-center justify-center text-white border border-[#0b0e14]">{notifications.length}</span>}
+                  </button>
+
+                  {isNotifOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-80 bg-[#1e293b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                          <div className="p-3 border-b border-white/5 flex justify-between items-center bg-[#151921]">
+                              <h4 className="text-xs font-bold text-white uppercase tracking-widest">BİLDİRİMLER</h4>
+                              <button onClick={() => setNotifications([])} className="text-[10px] text-slate-400 hover:text-white transition-colors">Tümünü Okundu Say</button>
+                          </div>
+                          <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                              {notifications.length === 0 ? (
+                                  <div className="p-8 text-center text-slate-500 text-xs italic flex flex-col items-center gap-2">
+                                      <Check className="text-emerald-500" size={24}/>
+                                      Tüm bildirimler okundu.
+                                  </div>
+                              ) : (
+                                  notifications.map((notif:any) => (
+                                      <Link key={notif.id} href={notif.link} onClick={() => setIsNotifOpen(false)} className="block p-3 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors group">
+                                          <div className="flex gap-3">
+                                              <div className={`mt-1 min-w-[24px] h-6 rounded-full flex items-center justify-center ${notif.type === 'alert' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                                  {notif.type === 'alert' ? <AlertTriangle size={12}/> : <MessageSquare size={12}/>}
+                                              </div>
+                                              <div>
+                                                  <h5 className={`text-xs font-bold ${notif.type === 'alert' ? 'text-red-400' : 'text-slate-200 group-hover:text-white'}`}>{notif.title}</h5>
+                                                  <p className="text-[10px] text-slate-400 leading-tight mt-0.5 line-clamp-2">{notif.desc}</p>
+                                                  <span className="text-[9px] text-slate-600 mt-1 block flex items-center gap-1"><Clock size={9}/> {new Date(notif.time).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</span>
+                                              </div>
+                                          </div>
+                                      </Link>
+                                  ))
+                              )}
+                          </div>
+                      </div>
+                  )}
+              </div>
+
            </div>
         </header>
 

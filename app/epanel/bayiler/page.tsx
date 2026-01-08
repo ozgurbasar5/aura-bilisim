@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/app/lib/supabase"; 
 import { 
   Briefcase, Search, Plus, Settings, User, Phone, Save, X, 
-  Upload, Smartphone, CheckCircle, Package, Loader2, AlertCircle, Trash2
+  Upload, Smartphone, CheckCircle, Package, Loader2, AlertCircle, Trash2, Filter
 } from "lucide-react";
 
 import DealerEditModal from "@/components/DealerEditModal";
@@ -14,9 +14,7 @@ const CATEGORIES = ["Cep Telefonu", "Robot Süpürge", "Bilgisayar", "Tablet", "
 
 export default function BayilerPage() {
   const [dealers, setDealers] = useState<any[]>([]);
-  const [technicians, setTechnicians] = useState<any[]>([
-     { id: 'tech1', ad_soyad: 'Servis Yöneticisi', rol: 'Admin' }
-  ]); 
+  const [technicians, setTechnicians] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [stats, setStats] = useState({ totalDealers: 0, activeDevices: 0, totalRevenue: 0 });
@@ -27,7 +25,6 @@ export default function BayilerPage() {
 
   const [uploading, setUploading] = useState(false);
   
-  // YENİ: category alanı eklendi
   const [newDevice, setNewDevice] = useState({
     brand: "", model: "", serial_no: "", password: "", pattern: "",
     problem: "", physical_condition: "", accessories: "", technician_note: "",
@@ -42,18 +39,20 @@ export default function BayilerPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-        const { data: dealerData, error: dealerError } = await supabase.from('bayi_basvurulari').select('*').eq('durum', 'Onaylandı').order('sirket_adi', { ascending: true });
-        if (dealerError) throw dealerError;
+        const { data: dealerData } = await supabase.from('bayi_basvurulari').select('*').order('sirket_adi', { ascending: true });
+        
+        // Teknisyenleri Çek
+        const { data: techData } = await supabase.from('teknisyenler').select('*');
+        if (techData) setTechnicians(techData);
 
         const { data: jobData } = await supabase.from('aura_jobs').select('*');
-        // Aktif ürünleri çek
         const { data: upsellData } = await supabase.from('aura_upsell_products').select('*').eq('is_active', true);
         if (upsellData) setUpsellOptions(upsellData);
 
         if (dealerData) {
             const enrichedDealers = dealerData.map(dealer => {
                 const jobs = jobData || [];
-                const dealerJobs = jobs.filter(job => job.customer === dealer.sirket_adi || (job.customer_type === 'Bayi' && job.customer?.includes(dealer.sirket_adi)));
+                const dealerJobs = jobs.filter(job => job.customer === dealer.sirket_adi || (job.customer_type === 'Bayi' && job.customer_email === dealer.email));
                 const active = dealerJobs.filter(j => !['Teslim Edildi', 'İade', 'İptal'].includes(j.status)).length;
                 const completed = dealerJobs.filter(j => j.status === 'Teslim Edildi').length;
                 const revenue = dealerJobs.reduce((sum, job) => sum + (Number(job.fiyat) || 0) + (Number(job.parca_ucreti) || 0), 0);
@@ -66,14 +65,17 @@ export default function BayilerPage() {
                 totalRevenue: enrichedDealers.reduce((sum, d) => sum + d.stats.revenue, 0)
             });
         }
-    } catch (error: any) { console.error("Veri hatası:", error.message); } finally { setLoading(false); }
+    } catch (error: any) { 
+        console.error("Veri hatası:", error.message); 
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
 
   const openDeviceModal = (dealer: any) => {
       setSelectedDealer(dealer);
-      // Formu sıfırla (varsayılan kategori Cep Telefonu)
       setNewDevice({ 
           brand: "", model: "", serial_no: "", password: "", pattern: "", 
           problem: "", physical_condition: "", accessories: "", technician_note: "", 
@@ -83,7 +85,10 @@ export default function BayilerPage() {
       setIsDeviceModalOpen(true);
   };
 
-  const openEditModal = (dealer: any) => { setSelectedDealer(dealer); setIsEditModalOpen(true); };
+  const openEditModal = (dealer: any) => { 
+      setSelectedDealer(dealer); 
+      setIsEditModalOpen(true); 
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -110,14 +115,13 @@ export default function BayilerPage() {
         alert("Lütfen Marka, Model ve Arıza bilgisini eksiksiz girin.");
         return;
     }
-    
     setUploading(true);
     try {
         let uploadedImageUrls: string[] = [];
         if (selectedFiles.length > 0) {
             for (const file of selectedFiles) {
                 const fileExt = file.name.split('.').pop();
-                const fileName = `admin-upload-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                const fileName = `admin-device-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
                 const { error: uploadError } = await supabase.storage.from('service-images').upload(fileName, file);
                 if (!uploadError) {
                     const { data } = supabase.storage.from('service-images').getPublicUrl(fileName);
@@ -146,47 +150,34 @@ export default function BayilerPage() {
             phone: selectedDealer.telefon,
             customer_type: "Bayi",
             customer_email: selectedDealer.email,
-            
-            // DÜZELTME: Seçilen kategoriyi kullan
             category: newDevice.category, 
             device: `${newDevice.brand} ${newDevice.model}`,
             brand: newDevice.brand,
             model: newDevice.model,
             serial_no: newDevice.serial_no || "",
-            
             problem: newDevice.problem,
             physical_condition: newDevice.physical_condition || "",
             accessories: newDevice.accessories || "", 
             technician_note: newDevice.technician_note || "",
-            
             password: newDevice.password || "",
             pattern: newDevice.pattern || "",
-            
             status: "Bekliyor",
             approval_status: 'none',
             tracking_code: trackingCode,
             priority: "Normal",
-            
-            images: uploadedImageUrls, // Saf dizi
-            sold_upsells: standardizedUpsells, // Saf dizi
+            images: uploadedImageUrls,
+            sold_upsells: standardizedUpsells,
             process_details: initialLog, 
-            
-            cost: 0,
-            price: 0,
-            parca_ucreti: 0,
-            
+            cost: 0, price: 0, parca_ucreti: 0,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         }]);
 
         if (error) throw error;
-
         alert(`✅ Cihaz kaydı başarılı! \nTakip Kodu: ${trackingCode}`);
         setIsDeviceModalOpen(false);
         fetchData(); 
-
     } catch (error: any) {
-        console.error("Kayıt hatası:", error);
         alert("Kayıt sırasında bir hata oluştu: " + error.message);
     } finally {
         setUploading(false);
@@ -198,23 +189,50 @@ export default function BayilerPage() {
       
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div><h1 className="text-3xl font-black flex items-center gap-3"><Briefcase className="text-indigo-500" size={32}/> Bayi Yönetimi</h1><p className="text-slate-400 mt-1 font-medium">Bayi kayıtları ve servis işlemleri</p></div>
+        <div>
+            <h1 className="text-3xl font-black flex items-center gap-3">
+                <Briefcase className="text-indigo-500" size={32}/> Bayi Yönetimi
+            </h1>
+            <p className="text-slate-400 mt-1 font-medium">Bayi kayıtları ve servis işlemleri</p>
+        </div>
         <div className="flex gap-4">
-            <div className="bg-[#161b22] px-6 py-3 rounded-2xl border border-white/5 flex flex-col items-center min-w-[140px] shadow-xl"><span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Toplam Ciro</span><div className="text-2xl font-black text-green-400">₺{stats.totalRevenue.toLocaleString()}</div></div>
-            <div className="bg-[#161b22] px-6 py-3 rounded-2xl border border-white/5 flex flex-col items-center min-w-[140px] shadow-xl"><span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Aktif İşler</span><div className="text-2xl font-black text-amber-500">{stats.activeDevices}</div></div>
+            <div className="bg-[#161b22] px-6 py-3 rounded-2xl border border-white/5 flex flex-col items-center min-w-[140px] shadow-xl">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Toplam Ciro</span>
+                <div className="text-2xl font-black text-green-400">₺{stats.totalRevenue.toLocaleString()}</div>
+            </div>
+            <div className="bg-[#161b22] px-6 py-3 rounded-2xl border border-white/5 flex flex-col items-center min-w-[140px] shadow-xl">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Aktif İşler</span>
+                <div className="text-2xl font-black text-amber-500">{stats.activeDevices}</div>
+            </div>
         </div>
       </div>
 
-      <div className="mb-6 relative max-w-md"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/><input type="text" placeholder="Bayi ara..." className="w-full bg-[#161b22] border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:border-indigo-500 outline-none transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+      {/* Arama */}
+      <div className="mb-6 relative max-w-md group">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/30 to-purple-500/30 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500"></div>
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 text-slate-500" size={18}/>
+            <input type="text" placeholder="Bayi veya yetkili ara..." className="w-full bg-[#161b22] border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:border-indigo-500 outline-none transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          </div>
+      </div>
 
+      {/* Bayi Listesi */}
       <div className="grid grid-cols-1 gap-4">
-          {loading ? <div className="text-center py-10 text-slate-500 animate-pulse">Yükleniyor...</div> : dealers.filter(d => d.sirket_adi?.toLowerCase().includes(searchTerm.toLowerCase())).map((dealer) => (
+          {loading ? (
+              <div className="text-center py-10 text-slate-500 flex flex-col items-center gap-2"><Loader2 className="animate-spin text-indigo-500"/> Yükleniyor...</div>
+          ) : dealers.filter(d => d.sirket_adi?.toLowerCase().includes(searchTerm.toLowerCase())).map((dealer) => (
               <div key={dealer.id} className="bg-[#161b22] border border-slate-800 rounded-2xl p-6 flex flex-col lg:flex-row items-center justify-between gap-6 hover:border-indigo-500/30 transition-all group shadow-lg">
                   <div className="flex items-center gap-4 flex-1 w-full lg:w-auto">
                       <div className="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-slate-700 flex items-center justify-center text-indigo-500 font-black text-2xl shadow-inner uppercase">{dealer.sirket_adi.substring(0, 2)}</div>
                       <div>
-                          <div className="flex items-center gap-2"><h3 className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors">{dealer.sirket_adi}</h3>{dealer.subscription_plan && <span className="px-2 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold uppercase tracking-wider">{dealer.subscription_plan}</span>}</div>
-                          <div className="text-xs text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 font-medium"><span className="flex items-center gap-1"><User size={12} className="text-slate-500"/> {dealer.yetkili_kisi}</span><span className="flex items-center gap-1"><Phone size={12} className="text-slate-500"/> {dealer.telefon}</span></div>
+                          <div className="flex items-center gap-2">
+                              <h3 className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors">{dealer.sirket_adi}</h3>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${dealer.subscription_plan === 'Platinum' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : dealer.subscription_plan === 'Gold' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>{dealer.subscription_plan || 'Standart'}</span>
+                          </div>
+                          <div className="text-xs text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 font-medium">
+                              <span className="flex items-center gap-1"><User size={12} className="text-slate-500"/> {dealer.yetkili_kisi}</span>
+                              <span className="flex items-center gap-1"><Phone size={12} className="text-slate-500"/> {dealer.telefon}</span>
+                          </div>
                       </div>
                   </div>
                   <div className="flex items-center gap-8 w-full lg:w-auto justify-center lg:justify-start bg-[#0d1117]/50 p-3 rounded-xl border border-white/5">
@@ -230,6 +248,7 @@ export default function BayilerPage() {
           ))}
       </div>
 
+      {/* --- CİHAZ EKLEME MODALI --- */}
       {isDeviceModalOpen && selectedDealer && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 overflow-y-auto">
               <div className="bg-[#161b22] border border-indigo-500/30 w-full max-w-2xl rounded-3xl shadow-2xl relative my-8 flex flex-col max-h-[90vh]">
@@ -241,22 +260,14 @@ export default function BayilerPage() {
                   </div>
 
                   <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
-                      {/* Cihaz Bilgileri & Kategori Seçimi */}
+                      {/* Cihaz Bilgileri */}
                       <div className="space-y-4">
                           <h4 className="text-xs font-bold text-slate-500 uppercase border-b border-white/5 pb-2">Cihaz Bilgileri</h4>
                           <div className="grid grid-cols-2 gap-4">
-                              {/* DÜZELTME: KATEGORİ SEÇİMİ EKLENDİ */}
                               <div className="col-span-2">
                                   <label className="text-xs font-bold text-slate-400 mb-1 block">Cihaz Türü (Kategori)</label>
-                                  <select 
-                                      className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white"
-                                      value={newDevice.category}
-                                      onChange={e => setNewDevice({...newDevice, category: e.target.value})}
-                                  >
-                                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                  </select>
+                                  <select className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.category} onChange={e => setNewDevice({...newDevice, category: e.target.value})}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
                               </div>
-
                               <div><label className="text-xs font-bold text-slate-400 mb-1 block">Marka *</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.brand} onChange={e => setNewDevice({...newDevice, brand: e.target.value})} placeholder="Apple, Samsung..." /></div>
                               <div><label className="text-xs font-bold text-slate-400 mb-1 block">Model *</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.model} onChange={e => setNewDevice({...newDevice, model: e.target.value})} placeholder="iPhone 11..." /></div>
                               <div><label className="text-xs font-bold text-slate-400 mb-1 block">Seri No / IMEI</label><input type="text" className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none text-white" value={newDevice.serial_no} onChange={e => setNewDevice({...newDevice, serial_no: e.target.value})} /></div>
@@ -290,8 +301,8 @@ export default function BayilerPage() {
                           </div>
                       </div>
 
-                       {/* Upsell */}
-                       <div className="space-y-4">
+                        {/* Upsell */}
+                        <div className="space-y-4">
                           <h4 className="text-xs font-bold text-yellow-400 uppercase border-b border-yellow-500/20 pb-2 flex items-center gap-2"><Package size={14}/> Upsell / Aksesuar Ekle</h4>
                           {upsellOptions.length === 0 ? <div className="text-center p-4 border border-dashed border-white/10 rounded-lg text-xs text-slate-500 flex items-center justify-center gap-2"><AlertCircle size={14}/> Ek ürün/aksesuar bulunamadı.</div> : (
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -307,13 +318,24 @@ export default function BayilerPage() {
                           )}
                       </div>
                   </div>
-                  <div className="p-6 border-t border-white/5 bg-[#0d1117] rounded-b-3xl shrink-0"><button onClick={handleRegisterDevice} disabled={uploading} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:cursor-wait text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 text-base">{uploading ? <Loader2 className="animate-spin"/> : <Save size={20}/>}{uploading ? "Kaydediliyor..." : "KAYDI TAMAMLA"}</button></div>
+                  <div className="p-6 border-t border-white/5 bg-[#0d1117] rounded-b-3xl shrink-0">
+                      <button onClick={handleRegisterDevice} disabled={uploading} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:cursor-wait text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 text-base">
+                          {uploading ? <Loader2 className="animate-spin"/> : <Save size={20}/>}
+                          {uploading ? "Kaydediliyor..." : "KAYDI TAMAMLA"}
+                      </button>
+                  </div>
               </div>
           </div>
       )}
 
       {/* Bayi Düzenleme Modalı */}
-      <DealerEditModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} dealer={selectedDealer} technicians={technicians} onUpdate={fetchData} />
+      <DealerEditModal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        dealer={selectedDealer} 
+        technicians={technicians} // Teknisyen verisi artık dolu gidiyor
+        onUpdate={fetchData} 
+      />
     </div>
   );
 }

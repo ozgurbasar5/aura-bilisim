@@ -6,7 +6,7 @@ import {
   Settings, Plus, Trash2, Building2, 
   Users, Save, RefreshCw, Globe, 
   Star, Database, FileText, Download, AlertTriangle,
-  PlusCircle
+  PlusCircle, Archive, DollarSign, Calendar
 } from "lucide-react";
 
 // Sabitler
@@ -34,6 +34,7 @@ export default function GelismisYonetimPaneli() {
   
   const [legalText, setLegalText] = useState("");
   const [savingText, setSavingText] = useState(false);
+  const [closingMonth, setClosingMonth] = useState(false);
 
   useEffect(() => { veriGetir(); }, []);
 
@@ -99,6 +100,56 @@ export default function GelismisYonetimPaneli() {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = `aura-yedek-${new Date().toISOString().slice(0,10)}.json`; a.click();
+  };
+
+  // --- AY KAPANIŞI FONKSİYONU ---
+  const handleAyKapanisi = async () => {
+    if(!confirm("DİKKAT: Geçen ayın verilerini arşivleyip finansal rapor oluşturmak istiyor musunuz?")) return;
+    
+    setClosingMonth(true);
+    try {
+        const date = new Date();
+        // Geçen ayı bul (Eğer Ocak ise, geçen ay Aralık ve yıl bir önceki yıldır)
+        const gecenAy = date.getMonth() === 0 ? 12 : date.getMonth(); 
+        const yil = date.getMonth() === 0 ? date.getFullYear() - 1 : date.getFullYear();
+
+        // Tarih aralığını belirle
+        const startDate = new Date(yil, gecenAy - 1, 1).toISOString();
+        const endDate = new Date(yil, gecenAy, 0, 23, 59, 59).toISOString();
+
+        // Verileri Çek
+        const { data: jobs } = await supabase
+            .from('aura_jobs')
+            .select('price, cost, parca_ucreti')
+            .gte('created_at', startDate)
+            .lte('created_at', endDate)
+            .neq('status', 'İptal');
+
+        if(jobs && jobs.length > 0) {
+            const ciro = jobs.reduce((acc, job) => acc + (Number(job.price) || 0), 0);
+            const maliyet = jobs.reduce((acc, job) => acc + (Number(job.cost) || 0) + (Number(job.parca_ucreti) || 0), 0);
+            const kar = ciro - maliyet;
+
+            // Arşiv Tablosuna Kaydet (Mükerrer kaydı önlemek için önce kontrol edebilirsin ama şimdilik direkt ekliyoruz)
+            const { error } = await supabase.from('finans_gecmisi').insert([{
+                yil: yil,
+                ay: gecenAy,
+                toplam_ciro: ciro,
+                toplam_kar: kar,
+                toplam_islem: jobs.length
+            }]);
+
+            if(error) throw error;
+            alert(`✅ ${gecenAy}/${yil} dönemi başarıyla arşivlendi. Komuta merkezinden geçmiş verileri inceleyebilirsiniz.`);
+        } else {
+            alert("Geçen aya ait veri bulunamadı.");
+        }
+
+    } catch (error:any) {
+        alert("Hata: " + error.message);
+    } finally {
+        setClosingMonth(false);
+    }
   };
 
   const ortalamaPuan = reviews.length > 0 ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length).toFixed(1) : "0.0";
@@ -187,16 +238,37 @@ export default function GelismisYonetimPaneli() {
 
       {/* SİSTEM AYARLARI */}
       {aktifSekme === 'sistem' && (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              <div className="bg-[#1E293B]/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              {/* Yasal Metinler */}
+              <div className="xl:col-span-2 bg-[#1E293B]/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl">
                  <h3 className="text-white font-bold mb-4 flex items-center gap-2"><FileText size={20} className="text-orange-400" /> Servis Formu Yasal Metni</h3>
                  <textarea value={legalText} onChange={(e) => setLegalText(e.target.value)} className="w-full h-40 bg-[#0F172A] border border-slate-700 rounded-xl p-4 text-sm text-slate-300 outline-none focus:border-orange-500 resize-none font-mono" placeholder="Yasal metinleri buraya giriniz..."></textarea>
                  <button onClick={saveLegalText} className="mt-4 w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">{savingText ? "Kaydediliyor..." : <><Save size={18}/> METNİ GÜNCELLE</>}</button>
               </div>
-              <div className="bg-[#1E293B]/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl">
-                 <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Database size={20} className="text-blue-400" /> Veri Güvenliği & Yedekleme</h3>
-                 <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl mb-6 flex items-start gap-3"><AlertTriangle className="text-blue-400 shrink-0" size={20} /><div><h4 className="text-sm font-bold text-blue-300">Neden Yedek Almalıyım?</h4><p className="text-xs text-slate-400 mt-1">Sistemdeki tüm servis kayıtlarını...</p></div></div>
-                 <button onClick={downloadBackup} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20"><Download size={20}/> TÜM VERİLERİ YEDEKLE (JSON)</button>
+
+              {/* Finansal & Veri İşlemleri */}
+              <div className="space-y-6">
+                  {/* Finansal Kapanış */}
+                  <div className="bg-[#1E293B]/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+                     <div className="absolute top-0 right-0 p-4 opacity-10"><DollarSign size={64}/></div>
+                     <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Calendar size={20} className="text-emerald-400" /> Finansal Dönem</h3>
+                     <p className="text-xs text-slate-400 mb-6">Geçen ayın tüm verilerini hesaplar, kilitler ve finans geçmişine kaydeder. Komuta merkezi sıfırlanır.</p>
+                     <button 
+                        onClick={handleAyKapanisi} 
+                        disabled={closingMonth}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/20"
+                     >
+                        {closingMonth ? <RefreshCw className="animate-spin"/> : <Archive size={20}/>} 
+                        GEÇEN AYI KAPAT
+                     </button>
+                  </div>
+
+                  {/* Yedekleme */}
+                  <div className="bg-[#1E293B]/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl">
+                     <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Database size={20} className="text-blue-400" /> Veri Yedekleme</h3>
+                     <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl mb-6 flex items-start gap-3"><AlertTriangle className="text-blue-400 shrink-0" size={20} /><div><h4 className="text-sm font-bold text-blue-300">Güvenlik Uyarısı</h4><p className="text-xs text-slate-400 mt-1">Haftalık yedek almanız önerilir.</p></div></div>
+                     <button onClick={downloadBackup} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20"><Download size={20}/> YEDEĞİ İNDİR (JSON)</button>
+                  </div>
               </div>
           </div>
       )}

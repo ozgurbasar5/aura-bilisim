@@ -6,47 +6,21 @@ import {
   ArrowLeft, Save, Trash2, 
   ShoppingBag, Clock, CheckCircle2, Truck, 
   DollarSign, FileText, Image as ImageIcon, Upload, X, Loader2,
-  Globe, Instagram, ExternalLink, Wand2 // Sihirbaz ikonu eklendi
+  Globe, Instagram, ExternalLink
 } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
-// --- SUPABASE BAĞLANTISI ---
+// --- SUPABASE BAĞLANTISI (Senin verdiğin bilgiler) ---
 const SUPABASE_URL = "https://cmkjewcpqohkhnfpvoqw.supabase.co"; 
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta2pld2NwcW9oa2huZnB2b3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDQ2MDIsImV4cCI6MjA4MTkyMDYwMn0.HwgnX8tn9ObFCLgStWWSSHMM7kqc9KqSZI96gpGJ6lw";       
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// --- HAZIR TEKNİSYEN ŞABLONLARI ---
-const TEMPLATES: any = {
-    "Cep Telefonu": [
-        "FaceID, TrueTone aktif. Kasa 10/9 temizlikte. Pil sağlığı iyi durumda. Tüm fonksiyonlar test edildi.",
-        "Cihazın kasasında kılcal çizikler mevcut ancak kullanıma engel değil. Ekran orijinal. Parmak izi okuyucu çalışıyor.",
-        "Sıfır ayarında, nokta hatasız. Pil döngüsü çok düşük. Kutu ve fatura mevcut.",
-        "Ekran değişimi yapıldı (A kalite). Diğer tüm aksamlar orijinal ve sorunsuz çalışıyor."
-    ],
-    "Robot Süpürge": [
-        "Tüm sensör bakımları yapıldı. Haritalama ve mop özelliği sorunsuz. Batarya performansı %90 üzeri.",
-        "Fırça ve filtreleri yenilendi. Lidar sensör hatasız. İstasyon şarj sorunu yok.",
-        "Az kullanılmış, fan motoru ve tekerlekler ilk günkü performansında."
-    ],
-    "Bilgisayar": [
-        "Termal macun bakımları yeni yapıldı (MX-4). Fan temizliği tamam. Stres testlerinden başarıyla geçti.",
-        "SSD sağlığı %100. Ekran menteşeleri sağlam. Klavye ve touchpad sorunsuz.",
-        "Oyun ve render testleri yapıldı, ısınma sorunu yok. Kozmetik olarak temiz."
-    ],
-    "Genel": [
-        "Ürün tüm testlerden geçti, sorunsuz çalışıyor.",
-        "Kutu içeriği tam, garantisi devam ediyor.",
-        "Fiyat/Performans ürünü, kaçırılmayacak fırsat."
-    ]
-};
 
 export default function UrunDetayPage() {
   const router = useRouter();
   const params = useParams();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false); // Şablon menüsü kontrolü
 
   // --- ANA STATE ---
   const [product, setProduct] = useState({
@@ -71,6 +45,7 @@ export default function UrunDetayPage() {
   // --- 1. VERİYİ ÇEK VE AYRIŞTIR (DECODER) ---
   useEffect(() => {
     async function fetchProduct() {
+      // ID kontrolü (Next.js sürümüne göre array veya string gelebilir)
       const productId = Array.isArray(params?.id) ? params.id[0] : params?.id;
       if (!productId) return;
       
@@ -81,6 +56,7 @@ export default function UrunDetayPage() {
         .single();
 
       if (data) {
+        // Resim formatı kontrolü (Dizi mi string mi?)
         let imageList: string[] = [];
         if (data.images && Array.isArray(data.images)) {
             imageList = data.images;
@@ -90,10 +66,14 @@ export default function UrunDetayPage() {
 
         // --- REGEX İLE LİNKLERİ AYIKLA ---
         const fullDesc = data.aciklama || "";
+        
+        // Linkleri buluyoruz
         const sLink = fullDesc.match(/Sahibinden:\s*(https?:\/\/[^\s]+)/)?.[1] || "";
         const dLink = fullDesc.match(/Dolap:\s*(https?:\/\/[^\s]+)/)?.[1] || "";
         const lLink = fullDesc.match(/Letgo:\s*(https?:\/\/[^\s]+)/)?.[1] || "";
         const iLink = fullDesc.match(/Instagram:\s*(https?:\/\/[^\s]+)/)?.[1] || "";
+
+        // Ekranda karmaşa olmasın diye "Platform Linkleri:" yazısından öncesini alıyoruz.
         const cleanDesc = fullDesc.split("Platform Linkleri:")[0].trim();
 
         setProduct({
@@ -120,15 +100,6 @@ export default function UrunDetayPage() {
     }
     fetchProduct();
   }, [params]);
-
-  // --- ŞABLON EKLEME FONKSİYONU ---
-  const insertTemplate = (text: string) => {
-      setProduct(prev => ({
-          ...prev,
-          description: text + "\n\n" + prev.description
-      }));
-      setShowTemplates(false);
-  };
 
   // --- RESİM YÜKLEME ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,6 +132,7 @@ export default function UrunDetayPage() {
   const handleSave = async () => {
     setLoading(true);
 
+    // Açıklama ve Linkleri "Yeni Ürün" sayfasındaki formatla birleştiriyoruz
     const combinedDescription = `
 ${product.description}
 
@@ -181,8 +153,9 @@ ${product.instagramLink ? 'Instagram: ' + product.instagramLink : ''}
         maliyet: Number(product.cost),
         kategori: product.category,
         stok_durumu: product.status,
-        aciklama: combinedDescription,
+        aciklama: combinedDescription, // Paketlenmiş veri
         images: product.images,
+        // Eski sistem uyumluluğu için ilk resmi ayrıca kaydediyoruz
         resim_url: product.images.length > 0 ? product.images[0] : ""
       })
       .eq('id', productId);
@@ -190,7 +163,7 @@ ${product.instagramLink ? 'Instagram: ' + product.instagramLink : ''}
     setLoading(false);
 
     if (!error) {
-        alert("Ürün Bilgileri ve Şablonlar Başarıyla Güncellendi!");
+        alert("Kayıt Başarılı!");
     } else {
         alert("Hata: " + error.message);
     }
@@ -246,17 +219,32 @@ ${product.instagramLink ? 'Instagram: ' + product.instagramLink : ''}
               <h3 className="text-[10px] font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><ExternalLink size={12}/> AKTİF İLAN LİNKLERİ</h3>
               
               <div className="grid grid-cols-4 gap-2">
-                  <a href={product.sahibindenLink || "#"} target={product.sahibindenLink ? "_blank" : "_self"} className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.sahibindenLink ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black hover:scale-105 shadow-lg shadow-yellow-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
-                      <span className="text-2xl font-black">S</span><span className="text-[8px] font-bold uppercase mt-1">Sahibinden</span>
+                  {/* Sahibinden */}
+                  <a href={product.sahibindenLink || "#"} target={product.sahibindenLink ? "_blank" : "_self"}
+                     className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.sahibindenLink ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black hover:scale-105 shadow-lg shadow-yellow-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
+                     <span className="text-2xl font-black">S</span>
+                     <span className="text-[8px] font-bold uppercase mt-1">Sahibinden</span>
                   </a>
-                  <a href={product.dolapLink || "#"} target={product.dolapLink ? "_blank" : "_self"} className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.dolapLink ? 'bg-gradient-to-br from-green-400 to-green-600 text-white hover:scale-105 shadow-lg shadow-green-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
-                      <span className="text-2xl font-black">D</span><span className="text-[8px] font-bold uppercase mt-1">Dolap</span>
+
+                  {/* Dolap */}
+                  <a href={product.dolapLink || "#"} target={product.dolapLink ? "_blank" : "_self"}
+                     className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.dolapLink ? 'bg-gradient-to-br from-green-400 to-green-600 text-white hover:scale-105 shadow-lg shadow-green-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
+                     <span className="text-2xl font-black">D</span>
+                     <span className="text-[8px] font-bold uppercase mt-1">Dolap</span>
                   </a>
-                  <a href={product.letgoLink || "#"} target={product.letgoLink ? "_blank" : "_self"} className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.letgoLink ? 'bg-gradient-to-br from-red-400 to-red-600 text-white hover:scale-105 shadow-lg shadow-red-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
-                      <span className="text-2xl font-black">L</span><span className="text-[8px] font-bold uppercase mt-1">Letgo</span>
+
+                  {/* Letgo */}
+                  <a href={product.letgoLink || "#"} target={product.letgoLink ? "_blank" : "_self"}
+                     className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.letgoLink ? 'bg-gradient-to-br from-red-400 to-red-600 text-white hover:scale-105 shadow-lg shadow-red-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
+                     <span className="text-2xl font-black">L</span>
+                     <span className="text-[8px] font-bold uppercase mt-1">Letgo</span>
                   </a>
-                  <a href={product.instagramLink || "#"} target={product.instagramLink ? "_blank" : "_self"} className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.instagramLink ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 text-white hover:scale-105 shadow-lg shadow-purple-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
-                      <Instagram size={24}/><span className="text-[8px] font-bold uppercase mt-1">Instagram</span>
+
+                  {/* Instagram */}
+                  <a href={product.instagramLink || "#"} target={product.instagramLink ? "_blank" : "_self"}
+                     className={`flex flex-col items-center justify-center h-20 rounded-xl transition-all border border-transparent ${product.instagramLink ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 text-white hover:scale-105 shadow-lg shadow-purple-500/20' : 'bg-slate-800/40 text-slate-600 grayscale opacity-50 cursor-not-allowed'}`}>
+                     <Instagram size={24}/>
+                     <span className="text-[8px] font-bold uppercase mt-1">Instagram</span>
                   </a>
               </div>
            </div>
@@ -268,7 +256,17 @@ ${product.instagramLink ? 'Instagram: ' + product.instagramLink : ''}
               </div>
               <div className="grid grid-cols-2 gap-2">
                  {["Satışta", "Kargoda", "Opsiyonlandı", "Satıldı"].map((statusOption) => (
-                     <button key={statusOption} onClick={() => setProduct({...product, status: statusOption})} className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all ${product.status === statusOption ? (statusOption === "Satışta" ? "bg-green-500 border-green-400 text-white shadow-lg shadow-green-900/20" : statusOption === "Kargoda" ? "bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-900/20" : statusOption === "Opsiyonlandı" ? "bg-orange-500 border-orange-400 text-white shadow-lg shadow-orange-900/20" : "bg-slate-200 border-white text-black shadow-lg") : "bg-slate-900/50 text-slate-500 border-slate-800 hover:bg-slate-800 hover:border-slate-600"}`}>
+                     <button 
+                       key={statusOption}
+                       onClick={() => setProduct({...product, status: statusOption})}
+                       className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all
+                       ${product.status === statusOption 
+                           ? (statusOption === "Satışta" ? "bg-green-500 border-green-400 text-white shadow-lg shadow-green-900/20" 
+                           : statusOption === "Kargoda" ? "bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-900/20"
+                           : statusOption === "Opsiyonlandı" ? "bg-orange-500 border-orange-400 text-white shadow-lg shadow-orange-900/20"
+                           : "bg-slate-200 border-white text-black shadow-lg")
+                           : "bg-slate-900/50 text-slate-500 border-slate-800 hover:bg-slate-800 hover:border-slate-600"}`}
+                     >
                         {statusOption === "Satışta" && <ShoppingBag size={18}/>}
                         {statusOption === "Kargoda" && <Truck size={18}/>}
                         {statusOption === "Opsiyonlandı" && <Clock size={18}/>}
@@ -308,6 +306,7 @@ ${product.instagramLink ? 'Instagram: ' + product.instagramLink : ''}
                   </div>
                   <span className="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded">{product.images.length} Adet</span>
               </div>
+              
               <div className="grid grid-cols-3 gap-2 mb-4 max-h-[400px] overflow-y-auto custom-scrollbar">
                   {product.images.map((img, i) => (
                       <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 group bg-black">
@@ -318,6 +317,7 @@ ${product.instagramLink ? 'Instagram: ' + product.instagramLink : ''}
                           {i === 0 && <span className="absolute bottom-0 w-full bg-cyan-600/80 text-white text-[8px] font-bold text-center py-0.5">KAPAK</span>}
                       </div>
                   ))}
+                  
                   <div className="relative aspect-square bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center text-slate-500 hover:text-cyan-400 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all cursor-pointer">
                       {uploading ? <Loader2 className="animate-spin"/> : <Upload size={24}/>}
                       <span className="text-[9px] font-bold mt-1 uppercase">EKLE</span>
@@ -330,64 +330,50 @@ ${product.instagramLink ? 'Instagram: ' + product.instagramLink : ''}
         {/* --- SAĞ KOLON (Detaylar & Link Girişi) --- */}
         <div className="lg:col-span-2 space-y-6">
             
-            {/* LİNK DÜZENLEME */}
+            {/* LİNK DÜZENLEME INPUTLARI */}
             <div className="bg-[#151921] border border-slate-800 p-6 rounded-2xl">
                  <h3 className="text-xs font-bold text-white uppercase flex items-center gap-2 mb-5 border-b border-slate-800 pb-3"><Globe size={14} className="text-blue-500"/> Platform Link Entegrasyonu</h3>
+                 
                  <div className="grid gap-4">
                     <div className="flex gap-3 items-center group">
                         <div className="w-10 h-10 bg-[#F9C305] text-black flex items-center justify-center rounded-xl font-black text-sm shrink-0 shadow-lg shadow-yellow-900/20 group-hover:scale-110 transition-transform">S</div>
-                        <div className="flex-1"><label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">SAHİBİNDEN LİNKİ</label><input type="text" value={product.sahibindenLink} onChange={e => setProduct({...product, sahibindenLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-[#F9C305] outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://sahibinden.com/ilan..."/></div>
+                        <div className="flex-1">
+                             <label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">SAHİBİNDEN LİNKİ</label>
+                             <input type="text" value={product.sahibindenLink} onChange={e => setProduct({...product, sahibindenLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-[#F9C305] outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://sahibinden.com/ilan..."/>
+                        </div>
                     </div>
+
                     <div className="flex gap-3 items-center group">
                         <div className="w-10 h-10 bg-[#00D678] text-white flex items-center justify-center rounded-xl font-black text-sm shrink-0 shadow-lg shadow-green-900/20 group-hover:scale-110 transition-transform">D</div>
-                        <div className="flex-1"><label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">DOLAP LİNKİ</label><input type="text" value={product.dolapLink} onChange={e => setProduct({...product, dolapLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-[#00D678] outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://dolap.com/urun..."/></div>
+                        <div className="flex-1">
+                             <label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">DOLAP LİNKİ</label>
+                             <input type="text" value={product.dolapLink} onChange={e => setProduct({...product, dolapLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-[#00D678] outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://dolap.com/urun..."/>
+                        </div>
                     </div>
+
                     <div className="flex gap-3 items-center group">
                         <div className="w-10 h-10 bg-[#FF3C4C] text-white flex items-center justify-center rounded-xl font-black text-sm shrink-0 shadow-lg shadow-red-900/20 group-hover:scale-110 transition-transform">L</div>
-                        <div className="flex-1"><label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">LETGO LİNKİ</label><input type="text" value={product.letgoLink} onChange={e => setProduct({...product, letgoLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-[#FF3C4C] outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://letgo.com/item..."/></div>
+                        <div className="flex-1">
+                             <label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">LETGO LİNKİ</label>
+                             <input type="text" value={product.letgoLink} onChange={e => setProduct({...product, letgoLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-[#FF3C4C] outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://letgo.com/item..."/>
+                        </div>
                     </div>
+
                     <div className="flex gap-3 items-center group">
                         <div className="w-10 h-10 bg-gradient-to-tr from-yellow-500 via-red-500 to-purple-500 text-white flex items-center justify-center rounded-xl font-black text-sm shrink-0 shadow-lg shadow-purple-900/20 group-hover:scale-110 transition-transform"><Instagram size={20}/></div>
-                        <div className="flex-1"><label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">INSTAGRAM LİNKİ</label><input type="text" value={product.instagramLink} onChange={e => setProduct({...product, instagramLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://instagram.com/p/..."/></div>
+                        <div className="flex-1">
+                             <label className="text-[9px] font-bold text-slate-500 mb-1 block ml-1">INSTAGRAM LİNKİ</label>
+                             <input type="text" value={product.instagramLink} onChange={e => setProduct({...product, instagramLink: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors placeholder:text-slate-700 font-mono" placeholder="https://instagram.com/p/..."/>
+                        </div>
                     </div>
                  </div>
             </div>
 
-            {/* GENEL BİLGİLER & ŞABLON BUTONU */}
-            <div className="bg-[#151921] border border-slate-800 p-6 rounded-2xl relative">
-                <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
-                   <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                     <FileText size={14}/> Ürün Bilgileri
-                   </div>
-                   {/* ŞABLON SEÇİCİ */}
-                   <div className="relative">
-                        <button 
-                            onClick={() => setShowTemplates(!showTemplates)}
-                            className="text-[10px] bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600 hover:text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-colors border border-cyan-600/30"
-                        >
-                            <Wand2 size={12}/> HAZIR ŞABLON
-                        </button>
-                        {showTemplates && (
-                            <div className="absolute right-0 top-8 w-72 bg-[#1e293b] border border-slate-700 rounded-xl shadow-2xl z-50 p-2 animate-in zoom-in-95">
-                                <h4 className="text-[10px] font-bold text-slate-400 p-2 uppercase border-b border-slate-700 mb-1">
-                                    {product.category || "Genel"} İçin Kalıplar
-                                </h4>
-                                <div className="max-h-56 overflow-y-auto custom-scrollbar space-y-1">
-                                    {(TEMPLATES[product.category] || TEMPLATES["Genel"]).map((temp: string, i: number) => (
-                                        <button 
-                                            key={i}
-                                            onClick={() => insertTemplate(temp)}
-                                            className="w-full text-left text-[10px] text-slate-300 p-2 rounded-lg hover:bg-cyan-500/20 hover:text-cyan-300 transition-colors border border-transparent hover:border-cyan-500/30"
-                                        >
-                                            {temp}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+            {/* GENEL BİLGİLER */}
+            <div className="bg-[#151921] border border-slate-800 p-6 rounded-2xl">
+                <div className="flex items-center gap-2 mb-6 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-3">
+                   <FileText size={14}/> Ürün Bilgileri
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label className="text-[10px] text-slate-500 font-bold block mb-1">ÜRÜN BAŞLIĞI</label>
@@ -399,9 +385,9 @@ ${product.instagramLink ? 'Instagram: ' + product.instagramLink : ''}
                     </div>
                 </div>
                 <div>
-                    <label className="text-[10px] text-slate-500 font-bold block mb-1">ÜRÜN AÇIKLAMASI & TEKNİSYEN NOTU</label>
+                    <label className="text-[10px] text-slate-500 font-bold block mb-1">ÜRÜN AÇIKLAMASI</label>
                     <textarea rows={8} value={product.description || ""} onChange={(e) => setProduct({...product, description: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-4 text-slate-300 text-sm outline-none focus:border-cyan-500 transition-colors resize-none leading-relaxed" placeholder="Ürün detaylarını buraya giriniz..."></textarea>
-                    <p className="text-[10px] text-slate-600 mt-2 italic flex items-center gap-1"><Globe size={10}/> Not: Linkler otomatik olarak bu açıklamanın altına eklenir.</p>
+                    <p className="text-[10px] text-slate-600 mt-2 italic flex items-center gap-1"><Globe size={10}/> Not: Girdiğiniz platform linkleri otomatik olarak bu açıklamanın altına eklenir.</p>
                 </div>
             </div>
 

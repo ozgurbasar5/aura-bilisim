@@ -19,6 +19,7 @@ export default function AtolyeListesi() {
         .order('created_at', { ascending: false });
 
       if (data) setJobs(data);
+      if (error) console.error("Veri çekme hatası:", error);
       setLoading(false);
     }
     fetchJobs();
@@ -105,12 +106,35 @@ Cihazınız ile ilgili son durum yukarıdaki gibidir. Detaylı bilgi için bizim
     return "text-yellow-400 bg-yellow-400/10 border-yellow-400/20"; 
   };
 
-  // Arama Filtresi
-  const filteredJobs = jobs.filter(job => 
-    (job.customer || "").toLowerCase().includes(search.toLowerCase()) ||
-    (job.device || "").toLowerCase().includes(search.toLowerCase()) ||
-    (job.tracking_code || "").toLowerCase().includes(search.toLowerCase())
-  );
+  // --- GELİŞMİŞ AKILLI ARAMA FİLTRESİ ---
+  const filteredJobs = jobs.filter(job => {
+    // Arama kutusu boşsa hepsini göster
+    const s = search.toLowerCase().trim();
+    if (!s) return true;
+
+    // Veritabanı alanlarını güvenli hale getir (null kontrolü)
+    const customer = (job.customer || "").toLowerCase();
+    const device = (job.device || "").toLowerCase();
+    const imei = (job.imei || "").toLowerCase(); // IMEI alanı
+    const serial = (job.serial_no || "").toLowerCase(); // Seri No alanı
+    const trackingRaw = (job.tracking_code || "").toLowerCase();
+
+    // 1. İsim, Cihaz, IMEI veya Seri No içinde direkt arama
+    if (customer.includes(s)) return true;
+    if (device.includes(s)) return true;
+    if (imei.includes(s)) return true;
+    if (serial.includes(s)) return true;
+
+    // 2. Akıllı Takip No Araması (Tire ve boşlukları yoksayarak ara)
+    // Örn: Kullanıcı "863" yazarsa "SRV-863..." bulsun.
+    // Örn: Kullanıcı "srv863" yazarsa "SRV-863..." bulsun.
+    const cleanTracking = trackingRaw.replace(/[^a-z0-9]/g, ''); // Sadece harf ve rakam kalsın
+    const cleanSearch = s.replace(/[^a-z0-9]/g, '');
+
+    if (cleanTracking.includes(cleanSearch)) return true;
+
+    return false;
+  });
 
   return (
     <div className="p-6 text-slate-200 pb-20 animate-in fade-in">
@@ -124,7 +148,14 @@ Cihazınız ile ilgili son durum yukarıdaki gibidir. Detaylı bilgi için bizim
         </div>
         <div className="flex gap-3 w-full md:w-auto">
           <div className="relative w-full md:w-64">
-            <input type="text" placeholder="Ara (Ad, Cihaz, Kod)..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-[#0a0c10] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-cyan-500 transition-all"/>
+            {/* INPUT PLACEHOLDER GÜNCELLENDİ */}
+            <input 
+              type="text" 
+              placeholder="Ara (Takip No, İsim, IMEI)..." 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              className="w-full bg-[#0a0c10] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-cyan-500 transition-all"
+            />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
           </div>
           <Link href="/epanel/atolye/yeni">
@@ -148,6 +179,8 @@ Cihazınız ile ilgili son durum yukarıdaki gibidir. Detaylı bilgi için bizim
                     <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
                       <span className="text-cyan-400 font-mono bg-cyan-400/10 px-1.5 rounded">{job.tracking_code}</span>
                       <span className="flex items-center gap-1"><Wrench size={12}/> {job.device}</span>
+                      {/* EĞER IMEI VARSA GÖSTER (OPSİYONEL GÖRÜNÜM) */}
+                      {job.imei && <span className="text-[10px] text-slate-600 hidden sm:inline-block">IMEI: {job.imei.slice(-4)}</span>}
                     </div>
                   </div>
                 </div>
