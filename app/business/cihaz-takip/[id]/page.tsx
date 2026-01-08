@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 import { 
@@ -31,44 +31,33 @@ export default function DealerDeviceDetail() {
   // --- EVRENSEL VERİ ÇÖZÜCÜ ---
   const parseArray = (val: any): any[] => {
     if (!val) return [];
-    if (Array.isArray(val)) return val; // Zaten diziyse döndür
+    if (Array.isArray(val)) return val;
     if (typeof val === 'string') {
         if (val === "null" || val.trim() === "") return [];
         try {
             const parsed = JSON.parse(val);
             return Array.isArray(parsed) ? parsed : [];
-        } catch (e) { 
-            // Eğer JSON parse edilemiyorsa ama string doluysa, belki tek bir resim URL'idir?
-            // Bunu riske atmayıp boş dizi dönüyoruz, ama loglayabiliriz.
-            return []; 
-        }
+        } catch { return []; }
     }
-    // Object ise ve dizi değilse (örn: {0: '...'})
-    if (typeof val === 'object') return Object.values(val);
-    
     return [];
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+    const fetchData = async () => {
       // 1. Auth Kontrol
       const storedUser = localStorage.getItem('aura_dealer_user');
       if (!storedUser) { router.push('/kurumsal/login'); return; }
       const dealerData = JSON.parse(storedUser);
       setDealer(dealerData);
 
-      // 2. Veri Çek (ID veya Takip Kodu ile)
+      // 2. Veri Çek
       const { data, error } = await supabase
         .from('aura_jobs')
         .select('*')
         .or(`id.eq.${id},tracking_code.eq.${id}`)
-        .maybeSingle(); // single() yerine maybeSingle() hata fırlatmaz
+        .maybeSingle();
       
       if (error || !data) { 
-          console.error("Veri hatası:", error);
           alert("Kayıt bulunamadı."); 
           router.push('/business/dashboard'); 
           return; 
@@ -76,7 +65,6 @@ export default function DealerDeviceDetail() {
       
       // Güvenlik kontrolü
       if (data.customer_type === 'Bayi') {
-           // Müşteri adı bayi adını içermiyorsa yetkisiz (Basit kontrol)
            if(!data.customer.toLowerCase().includes(dealerData.sirket_adi.toLowerCase()) && 
               !dealerData.sirket_adi.toLowerCase().includes(data.customer.toLowerCase())){
               alert("Bu kaydı görüntüleme yetkiniz yok."); 
@@ -87,12 +75,10 @@ export default function DealerDeviceDetail() {
 
       setJob(data);
 
-      // --- GÜVENLİ VERİLERİ SET ET ---
       setSafeUpsells(parseArray(data.sold_upsells));
       setSafeRecommended(parseArray(data.recommended_upsells));
       setSafeImages(parseArray(data.images));
       
-      // Logları Çöz
       const logs = parseArray(data.process_details).map((log:any) => ({
           date: log.date || new Date().toISOString(),
           action: log.action || "İşlem",
@@ -102,22 +88,23 @@ export default function DealerDeviceDetail() {
       setSafeLogs(logs);
 
       setLoading(false);
-  };
+    };
+
+    fetchData();
+  }, [id, router]);
 
   // --- İŞLEMLER ---
-
   const handleApproval = async (decision: 'approved' | 'rejected') => {
       if(!confirm(decision === 'approved' ? "Ek ücreti ve işlemi onaylıyor musunuz?" : "İşlemi reddedip iade istiyor musunuz?")) return;
       
       setProcessing(true);
       const newStatus = decision === 'approved' ? 'İşlemde' : 'İade'; 
-      // Onaylanırsa fiyatı güncelle (Mevcut Fiyat + Onay Tutarı)
       const newPrice = decision === 'approved' ? (Number(job.price || 0) + Number(job.approval_amount || 0)) : job.price;
 
       const { error } = await supabase.from('aura_jobs').update({
           status: newStatus,
           approval_status: decision,
-          price: newPrice, // Fiyatı güncelle
+          price: newPrice, 
           updated_at: new Date().toISOString()
       }).eq('id', job.id);
 
@@ -131,7 +118,6 @@ export default function DealerDeviceDetail() {
   };
 
   const handleBuyUpsell = async (item: any) => {
-      // Ürün verisini standardize et
       const standardizedItem = {
           id: item.id || Math.random().toString(36).substr(2, 9),
           name: typeof item === 'object' ? (item.name || item.urun_adi || "Ekstra Ürün") : item,
@@ -141,20 +127,14 @@ export default function DealerDeviceDetail() {
       if(!confirm(`${standardizedItem.name} ürününü ${standardizedItem.price} TL karşılığında eklemek istiyor musunuz?`)) return;
       setProcessing(true);
 
-      // Mevcut listeye ekle
       const newUpsells = [...safeUpsells, standardizedItem];
-      
-      // Önerilenlerden çıkar
       const newRecommended = safeRecommended.filter((i:any) => i.id !== item.id);
-      
-      // Fiyatı güncelle (Toplam Fiyat + Yeni Ürün)
       const newPrice = Number(job.price || 0) + Number(standardizedItem.price);
 
-      // Veritabanına GÜVENLİ formatta (JSON String) kaydetmek en garantisidir
       const { error } = await supabase.from('aura_jobs').update({
           sold_upsells: JSON.stringify(newUpsells), 
           recommended_upsells: JSON.stringify(newRecommended), 
-          price: String(newPrice), // Fiyatı string olarak saklıyoruz genelde
+          price: String(newPrice),
           updated_at: new Date().toISOString()
       }).eq('id', job.id);
 
@@ -197,14 +177,14 @@ export default function DealerDeviceDetail() {
              <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all font-bold text-sm backdrop-blur-md border border-white/5">
                 <ArrowLeft size={16}/> LİSTEYE DÖN
              </button>
-             <button onClick={() => setShowReport(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 hover:text-cyan-300 transition-all font-bold text-sm border border-cyan-500/30">
+             <button onClick={() => setShowReport(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 hover:text-cyan-300 transition-all font-bold text-sm border border-cyan-500/30 shadow-lg shadow-cyan-900/20">
                 <FileText size={16}/> SERVİS RAPORU
              </button>
          </div>
 
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-8 duration-700">
              
-             {/* --- ONAY BEKLEYEN İŞLEM (EN ÜSTTE) --- */}
+             {/* --- ONAY BEKLEYEN İŞLEM --- */}
              {job.approval_status === 'pending' && (
                  <div className="lg:col-span-12">
                      <div className="relative overflow-hidden rounded-[2rem] border-2 border-purple-500 bg-[#0F1623] p-8 shadow-[0_0_40px_rgba(168,85,247,0.2)]">
@@ -243,10 +223,10 @@ export default function DealerDeviceDetail() {
                  </div>
              )}
 
-             {/* --- UPSELL (FIRSATLAR) --- */}
+             {/* --- UPSELL --- */}
              {safeRecommended.length > 0 && (
                  <div className="lg:col-span-12">
-                     <div className="relative overflow-hidden rounded-[2rem] border border-pink-500/30 bg-[#0F1623] p-6">
+                     <div className="relative overflow-hidden rounded-[2rem] border border-pink-500/30 bg-[#0F1623] p-6 shadow-[0_0_30px_rgba(236,72,153,0.1)]">
                          <div className="flex items-center gap-4 mb-6">
                              <div className="h-10 w-10 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-400 border border-pink-500/50"><ShoppingBag size={20} /></div>
                              <div><h2 className="text-xl font-black text-white uppercase">Önerilen Ürünler</h2><p className="text-xs text-slate-400">Cihazınız için tavsiye edilen aksesuarlar.</p></div>
@@ -270,9 +250,8 @@ export default function DealerDeviceDetail() {
                  </div>
              )}
 
-             {/* SOL KOLON: DETAYLAR */}
+             {/* SOL KOLON */}
              <div className="lg:col-span-8 space-y-6">
-                 
                  {/* CİHAZ KARTI */}
                  <div className="relative bg-[#0F1623]/80 backdrop-blur-xl border border-white/5 rounded-[2rem] p-8 shadow-2xl overflow-hidden group">
                      <div className="flex flex-wrap items-start justify-between gap-4 mb-8 relative z-10">
@@ -290,7 +269,6 @@ export default function DealerDeviceDetail() {
                             </div>
                          </div>
                      </div>
-
                      {/* TIMELINE */}
                      <div className="relative pt-4 pb-2">
                          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden mb-6">
@@ -321,7 +299,6 @@ export default function DealerDeviceDetail() {
                              <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5"><span className="text-sm text-slate-400">Kayıt Tarihi</span><span className="text-sm font-bold text-white">{new Date(job.created_at).toLocaleDateString('tr-TR')}</span></div>
                          </div>
                      </div>
-
                      <div className="bg-gradient-to-br from-red-500/5 to-orange-500/5 border border-red-500/10 rounded-3xl p-6 relative overflow-hidden">
                          <Activity className="absolute top-[-10px] right-[-10px] text-red-500/10 w-32 h-32"/>
                          <h3 className="text-red-400 font-bold text-xs uppercase tracking-widest mb-4 flex items-center gap-2"><AlertCircle size={16}/> Arıza / Şikayet</h3>
@@ -332,7 +309,6 @@ export default function DealerDeviceDetail() {
              
              {/* SAĞ KOLON */}
              <div className="lg:col-span-4 space-y-6">
-                 
                  {/* FİYAT */}
                  <div className="bg-gradient-to-b from-[#1a2333] to-[#0f1623] border border-cyan-500/20 rounded-[2rem] p-8 text-center relative overflow-hidden group">
                      <div className="relative z-10">
@@ -353,7 +329,6 @@ export default function DealerDeviceDetail() {
                          )}
                      </div>
                  </div>
-
                  {/* RAPOR */}
                  <div className="bg-[#0F1623] border border-slate-800 rounded-3xl p-6 flex flex-col min-h-[300px]">
                      <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800">
@@ -365,7 +340,6 @@ export default function DealerDeviceDetail() {
                          </p>
                      </div>
                  </div>
-
              </div>
              
              {/* GÖRSELLER */}
@@ -383,7 +357,7 @@ export default function DealerDeviceDetail() {
              )}
          </div>
 
-         {/* --- LIGHTBOX MODAL --- */}
+         {/* --- LIGHTBOX --- */}
          {selectedImage && (
              <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setSelectedImage(null)}>
                  <img src={selectedImage} className="max-w-full max-h-[90vh] rounded-xl shadow-2xl border border-white/10"/>
@@ -391,7 +365,7 @@ export default function DealerDeviceDetail() {
              </div>
          )}
 
-         {/* --- SERVİS RAPORU MODALI (YENİ ÖZELLİK) --- */}
+         {/* --- SERVİS RAPORU MODALI --- */}
          {showReport && (
             <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-white text-black w-full max-w-4xl h-[90vh] rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
@@ -403,16 +377,13 @@ export default function DealerDeviceDetail() {
                             <button onClick={() => setShowReport(false)} className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2"><X size={16}/> Kapat</button>
                         </div>
                     </div>
-                    
-                    {/* A4 Kağıt Görünümü */}
+                    {/* A4 Kağıt */}
                     <div className="flex-1 overflow-y-auto bg-slate-100 p-8 custom-scrollbar">
                         <div id="printable-area" className="bg-white mx-auto shadow-xl p-12 min-h-[1100px] w-[210mm] relative text-sm">
-                            
-                            {/* Logo Header */}
+                            {/* Logo ve Başlık (DÜZELTİLDİ: IMG KULLANILDI) */}
                             <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-8">
                                 <div className="flex items-center gap-4">
-                                    {/* Logo için varsayılan bir kutu veya img */}
-                                    <div className="w-16 h-16 bg-cyan-500 rounded-lg flex items-center justify-center text-white font-black text-2xl">A</div>
+                                    <img src="/image/aura-logo.png" alt="Aura Logo" className="h-20 w-auto object-contain"/>
                                     <div>
                                         <h1 className="text-3xl font-black text-slate-900 tracking-tight">AURA BİLİŞİM</h1>
                                         <p className="text-xs font-bold text-slate-500 tracking-[0.2em] uppercase">TEKNİK SERVİS FORMU</p>
@@ -424,8 +395,7 @@ export default function DealerDeviceDetail() {
                                     <div className="text-xs text-slate-400 mt-1">{new Date().toLocaleDateString('tr-TR')}</div>
                                 </div>
                             </div>
-
-                            {/* Bilgi Tablosu */}
+                            {/* Tablolar */}
                             <div className="grid grid-cols-2 gap-8 mb-8">
                                 <div className="border border-slate-200 rounded-lg p-4">
                                     <h3 className="font-bold border-b border-slate-200 mb-3 pb-1 text-xs uppercase text-slate-500">Müşteri Bilgileri</h3>
@@ -444,8 +414,7 @@ export default function DealerDeviceDetail() {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Arıza ve İşlemler */}
+                            {/* Detaylar */}
                             <div className="mb-8 space-y-6">
                                 <div>
                                     <h4 className="font-bold text-xs uppercase text-slate-500 border-b border-slate-200 pb-1 mb-2">Müşteri Şikayeti / Arıza</h4>
@@ -456,13 +425,12 @@ export default function DealerDeviceDetail() {
                                     <p className="bg-slate-50 p-3 rounded border border-slate-100 text-slate-700 whitespace-pre-line min-h-[100px]">{job.technician_note || "İşlem notu girilmedi."}</p>
                                 </div>
                             </div>
-
-                            {/* Ekstralar ve Tutar */}
+                            {/* Toplam */}
                             <div className="border-t-2 border-slate-900 pt-6">
                                 <div className="flex justify-between items-start">
                                     <div className="w-1/2 pr-8 text-[10px] text-slate-500 text-justify">
                                         <p className="mb-2 font-bold uppercase">Garanti ve Teslimat Şartları:</p>
-                                        <p>1. Teslim edilen cihazlar 90 gün içerisinde alınmalıdır. Süresi dolan cihazlardan firmamız sorumlu değildir.</p>
+                                        <p>1. Teslim edilen cihazlar 90 gün içerisinde alınmalıdır.</p>
                                         <p>2. Sıvı temaslı cihazlarda onarım sonrası garanti verilmemektedir.</p>
                                         <p>3. Veri yedekleme sorumluluğu müşteriye aittir.</p>
                                         <p>4. Yapılan işlem ve değişen parça 6 ay garantilidir.</p>
@@ -479,29 +447,17 @@ export default function DealerDeviceDetail() {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* İmza Alanı */}
+                            {/* İmza */}
                             <div className="flex justify-between mt-16 pt-8 border-t border-slate-200">
-                                <div className="text-center">
-                                    <p className="text-xs font-bold uppercase text-slate-500 mb-12">Teslim Alan (Müşteri)</p>
-                                    <div className="border-t border-slate-400 w-40 mx-auto"></div>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-xs font-bold uppercase text-slate-500 mb-12">Teslim Eden (Teknisyen)</p>
-                                    <div className="border-t border-slate-400 w-40 mx-auto"></div>
-                                </div>
+                                <div className="text-center"><p className="text-xs font-bold uppercase text-slate-500 mb-12">Teslim Alan (Müşteri)</p><div className="border-t border-slate-400 w-40 mx-auto"></div></div>
+                                <div className="text-center"><p className="text-xs font-bold uppercase text-slate-500 mb-12">Teslim Eden (Teknisyen)</p><div className="border-t border-slate-400 w-40 mx-auto"></div></div>
                             </div>
-                            
-                            <div className="absolute bottom-12 left-0 w-full text-center text-[10px] text-slate-400">
-                                www.aurabilisim.com • 0850 123 45 67 • info@aurabilisim.com
-                            </div>
-
+                            <div className="absolute bottom-12 left-0 w-full text-center text-[10px] text-slate-400">www.aurabilisim.com • 0850 123 45 67 • info@aurabilisim.com</div>
                         </div>
                     </div>
                 </div>
             </div>
          )}
-
          <style jsx global>{`
              @media print {
                  @page { size: A4; margin: 0; }
@@ -510,7 +466,6 @@ export default function DealerDeviceDetail() {
                  #printable-area { position: fixed; left: 0; top: 0; width: 100%; height: 100%; margin: 0; padding: 20px; background: white; z-index: 9999; }
              }
          `}</style>
-
       </div>
     </div>
   );
