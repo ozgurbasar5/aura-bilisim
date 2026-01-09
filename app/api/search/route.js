@@ -1,42 +1,34 @@
-// app/api/search/route.js
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/app/lib/supabase";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q"); // Arama terimi
 
-  // Eğer arama kutusu boşsa hepsini getirmesin (veya son 10 kaydı getirsin istersen ayarlanır)
-  if (!q) {
-     // Boşsa boş dön veya varsayılan listeyi dön
-     return NextResponse.json({ results: [] });
+  // Arama kutusu boşsa veya çok kısaysa boş dön
+  if (!q || q.length < 1) {
+    return NextResponse.json({ results: [] });
   }
 
   try {
-    const results = await prisma.customer.findMany({
-      where: {
-        OR: [
-          // İsimde ara
-          { ad: { contains: q, mode: 'insensitive' } }, 
-          // Soyisimde ara
-          { soyad: { contains: q, mode: 'insensitive' } },
-          // Cihaz modelinde ara
-          { cihaz_modeli: { contains: q, mode: 'insensitive' } },
-          // Telefon numarasında ara
-          { telefon: { contains: q } },
-          // İŞTE BURASI: Takip numarasının İÇİNDE ara (SRV yazsan da, 863 yazsan da bulur)
-          { takip_no: { contains: q, mode: 'insensitive' } } 
-        ]
-      },
-      take: 20, // Çok fazla veri gelip sistemi yormasın, en uygun 20 tanesi
-      orderBy: {
-        id: 'desc' // En yeniler en üstte
-      }
-    });
+    // Supabase 'aura_jobs' tablosunda arama yapıyoruz
+    // İsim, Cihaz, Takip No, IMEI ve Telefon alanlarında arar (ilike = harf büyüklüğüne bakmaz)
+    const { data, error } = await supabase
+      .from('aura_jobs') 
+      .select('id, customer, device, tracking_code, status, phone, imei')
+      .or(`customer.ilike.%${q}%,device.ilike.%${q}%,tracking_code.ilike.%${q}%,imei.ilike.%${q}%,phone.ilike.%${q}%`)
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-    return NextResponse.json({ results });
+    if (error) {
+      console.error("Supabase Arama Hatası:", error);
+      return NextResponse.json({ results: [] });
+    }
+
+    return NextResponse.json({ results: data });
+
   } catch (error) {
-    console.error("Arama hatası:", error);
+    console.error("Genel Arama Hatası:", error);
     return NextResponse.json({ results: [] });
   }
 }
