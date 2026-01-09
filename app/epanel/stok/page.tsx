@@ -4,21 +4,30 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/app/lib/supabase";
 import { 
   Package, Search, Plus, Trash2, Edit, 
-  Calendar, Tag, User, Barcode, DollarSign, X, TrendingUp, RefreshCw
+  Calendar, Tag, User, Barcode, DollarSign, X, TrendingUp, History, Wrench
 } from "lucide-react";
 
 export default function StokYonetimi() {
   const [loading, setLoading] = useState(true);
   const [stocks, setStocks] = useState<any[]>([]);
   const [filterText, setFilterText] = useState("");
+  
+  // Modallar
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false); // Yeni: Geçmiş Modalı
+  
+  // Seçili Stok ve Geçmiş Verisi
+  const [selectedStock, setSelectedStock] = useState<any>(null);
+  const [stockHistory, setStockHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   const [dolarKuru, setDolarKuru] = useState<number>(0);
   
   // İstatistikler
-  const [totalValue, setTotalValue] = useState(0); // Toplam Maliyet
-  const [totalPotential, setTotalPotential] = useState(0); // Toplam Satış
-  const [totalProfit, setTotalProfit] = useState(0); // Tahmini Kâr
-  const [totalCount, setTotalCount] = useState(0); // Toplam Adet
+  const [totalValue, setTotalValue] = useState(0); 
+  const [totalPotential, setTotalPotential] = useState(0); 
+  const [totalProfit, setTotalProfit] = useState(0); 
+  const [totalCount, setTotalCount] = useState(0); 
 
   // Form State
   const [formData, setFormData] = useState<any>({
@@ -27,8 +36,8 @@ export default function StokYonetimi() {
     stok_kodu: "",
     kategori: "Yedek Parça",
     tedarikci: "",
-    alis_fiyati_usd: "", // Dolar alış fiyatı (boş olabilir)
-    alis_fiyati: 0,      // TL karşılığı (asıl maliyet)
+    alis_fiyati_usd: "", 
+    alis_fiyati: 0,      
     satis_fiyati: 0,
     stok_adedi: 0,
     alis_tarihi: new Date().toISOString().split('T')[0]
@@ -41,7 +50,6 @@ export default function StokYonetimi() {
     fetchDolar();
   }, []);
 
-  // DOLAR KURU ÇEKME
   const fetchDolar = async () => {
     try {
         const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=TRY');
@@ -49,21 +57,9 @@ export default function StokYonetimi() {
         setDolarKuru(data.rates.TRY);
     } catch (err) {
         console.error("Kur çekilemedi", err);
-        setDolarKuru(36.00); // Hata olursa manuel fallback
+        setDolarKuru(36.00); 
     }
   };
-
-  // OTOMATİK STOK KODU
-  useEffect(() => {
-    if (formData.urun_adi && !formData.id && !formData.stok_kodu) { 
-        const words = formData.urun_adi.split(' ');
-        const prefix = words.length > 1 
-            ? (words[0].substring(0, 1) + words[1].substring(0, 1)).toUpperCase() 
-            : words[0].substring(0, 2).toUpperCase();
-        const random = Math.floor(1000 + Math.random() * 9000);
-        setFormData((prev:any) => ({ ...prev, stok_kodu: `${prefix}-${random}` }));
-    }
-  }, [formData.urun_adi]);
 
   const fetchStocks = async () => {
     setLoading(true);
@@ -90,7 +86,36 @@ export default function StokYonetimi() {
     setTotalCount(count);
   };
 
-  // DOLAR GİRİLİNCE TL HESAPLA
+  // --- YENİ: STOK GEÇMİŞİNİ GETİR ---
+  const fetchStockHistory = async (stockId: number) => {
+      setHistoryLoading(true);
+      // aura_servis_parcalari tablosundan bu stoğun kullanıldığı işleri çekiyoruz
+      const { data, error } = await supabase
+        .from('aura_servis_parcalari')
+        .select(`
+            *,
+            aura_jobs (
+                id,
+                device,
+                customer,
+                tracking_code,
+                created_at
+            )
+        `)
+        .eq('stok_id', stockId)
+        .order('created_at', { ascending: false });
+
+      if (data) setStockHistory(data);
+      if (error) console.error("Geçmiş hatası:", error);
+      setHistoryLoading(false);
+  };
+
+  const openHistory = (item: any) => {
+      setSelectedStock(item);
+      setIsHistoryModalOpen(true);
+      fetchStockHistory(item.id);
+  };
+
   const handleUsdChange = (val: string) => {
       const usdVal = parseFloat(val);
       if (!isNaN(usdVal) && dolarKuru > 0) {
@@ -106,17 +131,15 @@ export default function StokYonetimi() {
 
     const payload = {
         urun_adi: formData.urun_adi,
-        stok_kodu: formData.stok_kodu,
+        stok_kodu: formData.stok_kodu || `STK-${Math.floor(Math.random()*10000)}`,
         kategori: formData.kategori,
         tedarikci: formData.tedarikci,
         alis_fiyati: Number(formData.alis_fiyati),
         satis_fiyati: Number(formData.satis_fiyati),
         stok_adedi: Number(formData.stok_adedi),
         alis_tarihi: formData.alis_tarihi
-        // alis_fiyati_usd veritabanında sütun varsa eklenebilir, yoksa TL kaydedilir
     };
 
-    // GİDER FİŞİ OLUŞTURMA (STOK ARTIŞINDA)
     const stockDifference = Number(formData.stok_adedi) - oldStockCount;
     if (stockDifference > 0) {
         const expenseAmount = stockDifference * Number(formData.alis_fiyati);
@@ -156,7 +179,7 @@ export default function StokYonetimi() {
   };
 
   const openEdit = (item: any) => {
-      setFormData({ ...item, alis_fiyati_usd: "" }); // Düzenlerken USD sıfırlanır, TL baz alınır
+      setFormData({ ...item, alis_fiyati_usd: "" }); 
       setOldStockCount(item.stok_adedi); 
       setIsModalOpen(true);
   };
@@ -195,11 +218,6 @@ export default function StokYonetimi() {
                 <div className="bg-[#151921] border border-slate-800 p-3 rounded-xl min-w-[140px]">
                     <p className="text-[10px] text-slate-500 font-bold uppercase">SATIŞ DEĞERİ</p>
                     <p className="text-xl font-black text-blue-400">{totalPotential.toLocaleString('tr-TR')} ₺</p>
-                </div>
-                <div className="bg-[#151921] border border-emerald-900/30 p-3 rounded-xl min-w-[140px] relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-1 opacity-20"><TrendingUp className="text-emerald-500" size={40}/></div>
-                    <p className="text-[10px] text-emerald-500 font-bold uppercase">TAHMİNİ KÂR</p>
-                    <p className="text-xl font-black text-emerald-400">{totalProfit.toLocaleString('tr-TR')} ₺</p>
                 </div>
             </div>
         </div>
@@ -255,6 +273,10 @@ export default function StokYonetimi() {
                                 <td className="p-4 text-right text-green-400 font-bold font-mono">{item.satis_fiyati} ₺</td>
                                 <td className="p-4 text-right">
                                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {/* YENİ: GEÇMİŞ BUTONU */}
+                                        <button onClick={() => openHistory(item)} className="p-2 bg-purple-600/20 text-purple-400 rounded hover:bg-purple-600 hover:text-white transition-colors" title="Hareket Geçmişi">
+                                            <History size={14}/>
+                                        </button>
                                         <button onClick={() => openEdit(item)} className="p-2 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600 hover:text-white transition-colors"><Edit size={14}/></button>
                                         <button onClick={() => handleDelete(item.id)} className="p-2 bg-red-600/20 text-red-400 rounded hover:bg-red-600 hover:text-white transition-colors"><Trash2 size={14}/></button>
                                     </div>
@@ -268,7 +290,7 @@ export default function StokYonetimi() {
             </table>
         </div>
 
-        {/* MODAL */}
+        {/* STOK EKLE/DÜZENLE MODAL */}
         {isModalOpen && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-[#1e293b] border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
@@ -308,7 +330,6 @@ export default function StokYonetimi() {
                             <input type="date" value={formData.alis_tarihi} onChange={e => setFormData({...formData, alis_tarihi: e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-3 text-white text-sm outline-none focus:border-yellow-500"/>
                         </div>
 
-                        {/* --- YENİ EKLENEN: DOLAR & TL HESAPLAMA --- */}
                         <div className="col-span-2 grid grid-cols-3 gap-4 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
                              <div>
                                 <label className="text-[10px] font-bold text-blue-400 mb-1 flex items-center gap-1"><DollarSign size={10}/> ALIŞ ($)</label>
@@ -341,6 +362,51 @@ export default function StokYonetimi() {
                             <button onClick={() => setIsModalOpen(false)} className="px-5 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 font-bold text-xs transition-colors">İPTAL</button>
                             <button onClick={handleSave} className="px-8 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg font-bold text-xs shadow-lg transition-all active:scale-95">KAYDET</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* --- YENİ: HAREKET GEÇMİŞİ MODALI --- */}
+        {isHistoryModalOpen && selectedStock && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="bg-[#1e293b] border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+                    <div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-white font-bold flex items-center gap-2"><History size={18} className="text-purple-400"/> HAREKET GEÇMİŞİ</h3>
+                            <p className="text-[10px] text-slate-400">{selectedStock.urun_adi}</p>
+                        </div>
+                        <button onClick={() => setIsHistoryModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button>
+                    </div>
+                    
+                    <div className="p-4 max-h-[60vh] overflow-y-auto">
+                        {historyLoading ? (
+                            <div className="text-center text-slate-500 py-4">Yükleniyor...</div>
+                        ) : stockHistory.length > 0 ? (
+                            <div className="space-y-3">
+                                {stockHistory.map((log: any) => (
+                                    <div key={log.id} className="bg-[#0b0e14] border border-slate-800 p-3 rounded-xl flex items-center justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xs font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded">{log.aura_jobs?.tracking_code || "Web"}</span>
+                                                <span className="text-xs text-slate-400">{new Date(log.created_at).toLocaleDateString('tr-TR')}</span>
+                                            </div>
+                                            <div className="text-[11px] text-slate-300 flex items-center gap-1">
+                                                <Wrench size={10}/> {log.aura_jobs?.device} - {log.aura_jobs?.customer}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-sm font-black text-red-400">-{log.adet} Adet</div>
+                                            <div className="text-[9px] text-slate-500">Kullanıldı</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center text-slate-500 py-8 border border-dashed border-slate-700 rounded-xl">
+                                <p>Henüz bu parça hiçbir cihazda kullanılmamış.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

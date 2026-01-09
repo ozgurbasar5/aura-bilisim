@@ -82,6 +82,7 @@ const CATEGORY_DATA: any = {
 export default function ServisDetaySayfasi() {
   const router = useRouter();
   const params = useParams(); 
+  const id = params?.id as string; 
   
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -148,7 +149,6 @@ export default function ServisDetaySayfasi() {
   const getCategoryInfo = (catName: string) => CATEGORY_DATA[catName] || CATEGORY_DATA["Diğer"];
   const getCurrentTips = () => CATEGORY_TIPS[formData.category] || CATEGORY_TIPS["Diğer"];
 
-  // --- EVRENSEL VERİ ÇÖZÜCÜ ---
   const parseArray = (val: any): any[] => {
     if (!val) return [];
     if (Array.isArray(val)) return val;
@@ -164,7 +164,6 @@ export default function ServisDetaySayfasi() {
     return [];
   };
 
-  // --- VERİLERİ ÇEK ---
   useEffect(() => {
       const getUser = async () => {
           const { data: { user } } = await supabase.auth.getUser();
@@ -172,7 +171,6 @@ export default function ServisDetaySayfasi() {
       };
       getUser();
 
-      // Bayileri Çek
       const fetchDealers = async () => {
           const { data } = await supabase.from('bayi_basvurulari').select('*').eq('durum', 'Onaylandı').order('sirket_adi');
           if (data) setDealersList(data);
@@ -180,9 +178,9 @@ export default function ServisDetaySayfasi() {
       fetchDealers();
 
       async function fetchData() {
-        if (!params?.id) return;
+        if (!id) return;
         try {
-            if (params.id === 'yeni') {
+            if (id === 'yeni') {
                 const defaultTips = CATEGORY_TIPS["Cep Telefonu"];
                 setFormData((prev: any) => ({ 
                     ...prev, 
@@ -191,10 +189,9 @@ export default function ServisDetaySayfasi() {
                     tip_id: defaultTips[0].id
                 }));
             } else {
-                const { data, error } = await supabase.from('aura_jobs').select('*').eq('id', params.id).single();
+                const { data, error } = await supabase.from('aura_jobs').select('*').eq('id', id).single();
                 if (error) throw error;
                 if (data) {
-                    // Logları birleştir
                     const embeddedLogs = parseArray(data.process_details).map((log:any) => ({
                         id: 'embedded-' + Math.random(),
                         action_type: log.action || "İşlem",
@@ -236,15 +233,14 @@ export default function ServisDetaySayfasi() {
                     
                     if (data.serial_no || data.serial_number) checkExpertise(data.serial_no || data.serial_number);
                     fetchTimeline(data.id, embeddedLogs); 
-                    fetchUsedParts(data.id);
+                    fetchUsedParts(data.id); 
                 }
             }
         } catch (error) { console.error(error); } finally { setLoading(false); }
     }
     fetchData();
-  }, [params.id]);
+  }, [id]);
 
-  // --- KATEGORİYE GÖRE FIRSAT ÜRÜNLERİ ---
   useEffect(() => {
       const fetchUpsells = async () => {
           if (!formData.category) return;
@@ -261,7 +257,6 @@ export default function ServisDetaySayfasi() {
       fetchUpsells();
   }, [formData.category]); 
 
-  // --- BAYİ SEÇİMİ ---
   const handleDealerChange = (selectedDealerName: string) => {
       const dealer = dealersList.find(d => d.sirket_adi === selectedDealerName);
       if (dealer) {
@@ -277,37 +272,48 @@ export default function ServisDetaySayfasi() {
       }
   };
 
-  // --- YARDIMCI FONKSİYONLAR ---
-
   const checkExpertise = async (imei: string) => {
       if (!imei || imei.length < 5) { setExpertiseId(null); return; }
       const { data } = await supabase.from('aura_expertise').select('id').eq('serial_no', imei).single();
       if (data) setExpertiseId(data.id); else setExpertiseId(null);
   };
 
-  const fetchTimeline = async (jobId: number, embeddedLogs: any[] = []) => {
+  const fetchTimeline = async (jobId: string, embeddedLogs: any[] = []) => {
       const { data } = await supabase.from('aura_timeline').select('*').eq('job_id', jobId).order('created_at', { ascending: false });
       const combined = [...(data || []), ...embeddedLogs];
       combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setTimelineLogs(combined);
   };
 
+  // --- LOG KAYDETME (DÜZELTİLDİ: VERİTABANINA YAZAR) ---
   const logToTimeline = async (action: string, desc: string) => {
-      if (params.id === 'yeni') return; 
+      if (id === 'yeni') return; 
+      
+      const now = new Date().toISOString();
       const newLog = {
-          job_id: params.id,
+          job_id: id, 
           action_type: action,
           description: desc,
-          created_by: currentUserEmail
+          created_by: currentUserEmail,
+          created_at: now
       };
-      await supabase.from('aura_timeline').insert([newLog]);
+
       setTimelineLogs(prev => [newLog, ...prev]);
+
+      // Supabase'e kaydet (F5'te kaybolmaması için)
+      await supabase.from('aura_timeline').insert([{
+          job_id: id,
+          action_type: action,
+          description: desc,
+          created_by: currentUserEmail,
+          created_at: now
+      }]);
   };
 
-  const fetchUsedParts = async (jobId: number) => {
+  const fetchUsedParts = async (jobId: string) => {
       const { data } = await supabase.from('aura_servis_parcalari')
         .select(`*, aura_stok(urun_adi)`)
-        .eq('job_id', jobId);
+        .eq('job_id', jobId); 
       if(data) setUsedParts(data);
   };
 
@@ -322,7 +328,7 @@ export default function ServisDetaySayfasi() {
   };
 
   const addPartToJob = async (part: any) => {
-      if(params.id === 'yeni') { alert("Önce servisi kaydetmelisiniz."); return; }
+      if(id === 'yeni') { alert("Önce servisi kaydetmelisiniz."); return; }
       
       const quantityStr = prompt(`Kaç adet "${part.urun_adi}" kullanacaksınız?`, "1");
       if(!quantityStr || isNaN(Number(quantityStr)) || Number(quantityStr) < 1) return;
@@ -339,7 +345,7 @@ export default function ServisDetaySayfasi() {
       if(!confirm(`${part.urun_adi} (x${qty}) stoktan düşülecek. Onaylıyor musunuz?`)) return;
 
       const { error } = await supabase.from('aura_servis_parcalari').insert([{
-          job_id: params.id,
+          job_id: id,
           stok_id: part.id,
           adet: qty,
           alis_fiyati_anlik: part.alis_fiyati,
@@ -352,17 +358,17 @@ export default function ServisDetaySayfasi() {
 
       const newCost = Number(formData.cost) + totalCost;
       const newPrice = Number(formData.price) + totalPrice;
-      const newNotes = formData.notes + `\n[PARÇA] ${part.urun_adi} (x${qty}) Eklendi.`;
+      const newNotes = formData.notes ? formData.notes + `\n[PARÇA] ${part.urun_adi} (x${qty})` : `[PARÇA] ${part.urun_adi} (x${qty})`;
 
       await supabase.from('aura_jobs').update({ 
           price: String(newPrice), 
           cost: newCost,
           technician_note: newNotes
-      }).eq('id', params.id);
+      }).eq('id', id);
 
       setFormData({ ...formData, price: newPrice, cost: newCost, notes: newNotes });
       logToTimeline("Parça Kullanıldı", `${part.urun_adi} (x${qty}) stoktan düşüldü.`);
-      fetchUsedParts(Number(params.id));
+      fetchUsedParts(id); 
       setIsStockModalOpen(false);
   };
 
@@ -383,11 +389,11 @@ export default function ServisDetaySayfasi() {
       await supabase.from('aura_jobs').update({ 
           price: String(newPrice), 
           cost: newCost 
-      }).eq('id', params.id);
+      }).eq('id', id);
 
       setFormData({ ...formData, price: newPrice, cost: newCost });
       logToTimeline("Parça İptali", `Parça kullanımı iptal edildi, ${adet} adet stok iade alındı.`);
-      fetchUsedParts(Number(params.id));
+      fetchUsedParts(id);
   };
 
   const handleWikiSearch = async () => {
@@ -474,7 +480,6 @@ export default function ServisDetaySayfasi() {
         cost: Number(formData.cost),
         tracking_code: formData.tracking_code || `SRV-${Math.floor(10000 + Math.random() * 90000)}`,
         
-        // JSON Verileri (Stringify ile Text'e çevir)
         accessories: JSON.stringify(formData.accessories),
         accessory: JSON.stringify(formData.accessories),
         pre_checks: JSON.stringify(formData.preCheck),
@@ -491,17 +496,17 @@ export default function ServisDetaySayfasi() {
     };
 
     let res;
-    if (params.id === 'yeni') {
+    if (id === 'yeni') {
         res = await supabase.from('aura_jobs').insert([payload]).select();
     } else {
-        res = await supabase.from('aura_jobs').update(payload).eq('id', params.id);
+        res = await supabase.from('aura_jobs').update(payload).eq('id', id);
         logToTimeline("Kayıt Güncellendi", `Durum: ${formData.status}, Tutar: ${formData.price}TL.`);
     }
 
     setLoading(false);
     if (!res.error) {
         alert("Kayıt Başarılı!");
-        if (params.id === 'yeni' && res.data) router.push(`/epanel/atolye/${res.data[0].id}`);
+        if (id === 'yeni' && res.data) router.push(`/epanel/atolye/${res.data[0].id}`);
     } else {
         console.error("Save Error:", res.error);
         alert("Hata: " + res.error.message);
@@ -512,7 +517,7 @@ export default function ServisDetaySayfasi() {
     setLoading(true);
     const { error } = await supabase.from('aura_jobs').update({
         approval_status: 'pending', approval_amount: String(approvalData.amount), approval_desc: approvalData.desc, status: 'Onay Bekliyor'
-    }).eq('id', params.id);
+    }).eq('id', id);
     if (!error) {
         alert("Onay isteği gönderildi!");
         setFormData({ ...formData, status: 'Onay Bekliyor', approval_status: 'pending', approval_amount: approvalData.amount, approval_desc: approvalData.desc });
@@ -555,7 +560,7 @@ export default function ServisDetaySayfasi() {
   const handleDelete = async () => {
     if(!confirm("BU SERVİS KAYDINI TAMAMEN SİLMEK İSTEDİĞİNİZE EMİN MİSİNİZ?\n\nBu işlem geri alınamaz!")) return;
     setLoading(true);
-    const { error } = await supabase.from('aura_jobs').delete().eq('id', params.id);
+    const { error } = await supabase.from('aura_jobs').delete().eq('id', id);
     if (error) { alert("Silme hatası: " + error.message); setLoading(false); }
     else { alert("Kayıt başarıyla silindi."); router.push('/epanel/atolye'); }
   };
@@ -610,7 +615,7 @@ export default function ServisDetaySayfasi() {
                 <button onClick={() => window.print()} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 text-white font-bold text-sm active:scale-95">
                     <Printer size={18}/> YAZDIR
                 </button>
-                {params.id !== 'yeni' && (
+                {id !== 'yeni' && (
                     <button onClick={handleDelete} className="px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-lg border border-red-500/20 font-bold"><Trash2 size={18}/></button>
                 )}
                 <button onClick={handleSave} className="px-6 py-2 bg-cyan-600 rounded-lg font-bold text-white shadow-lg"><Save size={18}/> KAYDET</button>
@@ -752,7 +757,7 @@ export default function ServisDetaySayfasi() {
                 </div>
 
                 {/* --- STOK / PARÇA YÖNETİMİ --- */}
-                {params.id !== 'yeni' && (
+                {id !== 'yeni' && (
                     <div className="bg-[#151921] border border-slate-800 rounded-xl p-6 shadow-lg">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><PackageMinus size={14} className="text-yellow-500"/> Kullanılan Parçalar</h3>
@@ -787,7 +792,7 @@ export default function ServisDetaySayfasi() {
             <div className="col-span-12 lg:col-span-4 space-y-6">
                 
                 {/* --- TIMELINE --- */}
-                {params.id !== 'yeni' && (
+                {id !== 'yeni' && (
                     <div className="bg-[#151921] border border-slate-800 rounded-xl overflow-hidden shadow-lg flex flex-col max-h-[300px]">
                         <div className="p-3 bg-slate-900/50 border-b border-slate-800 flex justify-between items-center">
                             <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Clock size={14} className="text-emerald-500"/> Canlı Akış</h3>
@@ -886,16 +891,151 @@ export default function ServisDetaySayfasi() {
             </div>
         </div>
 
-        {/* MODALS */}
+        {/* MODALS (WIKI, STOCK, APPROVAL) */}
         {isStockModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] rounded-2xl w-full max-w-lg border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[70vh]"><div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center"><h3 className="text-white font-bold flex items-center gap-2"><Box size={18} className="text-yellow-400"/> STOKTAN PARÇA SEÇ</h3><button onClick={() => setIsStockModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button></div><div className="p-4 bg-[#0b0e14]"><div className="relative"><input type="text" value={stockSearchTerm} onChange={(e) => { setStockSearchTerm(e.target.value); if(e.target.value.length>1) handleStockSearch(); }} className="w-full bg-[#151921] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-yellow-500" placeholder="Parça ara..." autoFocus/><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/></div></div><div className="flex-1 overflow-y-auto p-2 space-y-1">{stockResults.map((part) => (<button key={part.id} onClick={() => addPartToJob(part)} className="w-full flex justify-between items-center p-3 hover:bg-slate-800 rounded-lg border border-transparent hover:border-slate-700 transition-all group text-left"><div><p className="text-sm font-bold text-white group-hover:text-yellow-400">{part.urun_adi}</p><p className="text-[10px] text-slate-500">{part.kategori} • Stok: {part.stok_adedi}</p></div><div className="text-right"><p className="text-xs font-bold text-slate-300">{part.satis_fiyati}₺</p></div></button>))}</div></div></div>)}
-        
         {isWikiModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] rounded-2xl w-full max-w-2xl border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]"><div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center"><h3 className="text-white font-bold flex items-center gap-2"><Book size={18} className="text-purple-400"/> AURA WIKI</h3><button onClick={() => setIsWikiModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button></div>{wikiViewMode==='search'?(<div className="p-6 flex-1 overflow-y-auto"><div className="relative mb-6"><input type="text" value={wikiSearchTerm} onChange={(e)=>setWikiSearchTerm(e.target.value)} onKeyDown={(e)=>e.key==='Enter'&&handleWikiSearch()} className="w-full bg-[#0b0e14] border border-slate-600 rounded-xl py-3 pl-11 pr-4 text-white focus:border-purple-500 outline-none" placeholder="Arıza ara..."/><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/><button onClick={handleWikiSearch} className="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">ARA</button></div>{wikiResults.length>0?(<div className="space-y-3">{wikiResults.map((res:any)=>(<div key={res.id} className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl hover:bg-slate-800 transition-colors"><div className="flex justify-between items-start mb-2"><h4 className="text-purple-400 font-bold text-sm">{res.title}</h4><button onClick={()=>applyWikiSolution(res.solution_steps)} className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded font-bold">UYGULA</button></div><p className="text-slate-400 text-xs mb-2 line-clamp-2">{res.problem_desc}</p></div>))}</div>):(<div className="text-center py-10"><Book size={40} className="text-slate-700 mx-auto mb-3"/><p className="text-slate-400 font-bold">Sonuç Bulunamadı</p><button onClick={()=>{setWikiViewMode('add');setNewWikiEntry({...newWikiEntry,title:wikiSearchTerm,problem:formData.issue});}} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 mx-auto"><Plus size={14}/> YENİ EKLE</button></div>)}</div>):(<div className="p-6 flex-1 overflow-y-auto space-y-4"><div className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer hover:text-white mb-2" onClick={()=>setWikiViewMode('search')}><ArrowLeft size={14}/> Geri</div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">BAŞLIK</label><input type="text" value={newWikiEntry.title} onChange={(e)=>setNewWikiEntry({...newWikiEntry,title:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm"/></div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">SORUN</label><textarea value={newWikiEntry.problem} onChange={(e)=>setNewWikiEntry({...newWikiEntry,problem:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-20 resize-none"/></div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">ÇÖZÜM</label><textarea value={newWikiEntry.solution} onChange={(e)=>setNewWikiEntry({...newWikiEntry,solution:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-40 resize-none"/></div><button onClick={handleAddToWiki} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg">KAYDET</button></div>)}</div></div>)}
-        
         {approvalModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] p-6 rounded-2xl w-full max-w-sm border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200"><h3 className="text-white font-bold mb-4 flex items-center gap-2"><Zap size={18} className="text-purple-500"/> Ekstra İşlem Onayı</h3><input type="number" onChange={(e)=>setApprovalData({...approvalData,amount:Number(e.target.value)})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-3 text-white font-bold" placeholder="Tutar"/><textarea onChange={(e)=>setApprovalData({...approvalData,desc:e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white h-24 text-sm resize-none" placeholder="Açıklama..."></textarea><div className="flex gap-2"><button onClick={()=>setApprovalModalOpen(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-xs font-bold text-slate-300">İPTAL</button><button onClick={sendApprovalRequest} className="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg text-xs font-bold text-white shadow-lg">GÖNDER</button></div></div></div>)}
         
-        <div id="printable-area" className="hidden bg-white text-black font-sans"><div className="p-10 w-full h-full box-border"><div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6"><div className="flex items-center gap-4"><img src="/image/aura-logo.png" className="h-16 w-auto object-contain"/><div><h1 className="text-3xl font-black text-cyan-600">AURA BİLİŞİM</h1><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">PROFESYONEL TEKNİK SERVİS</p></div></div><div className="text-right"><div className="text-4xl font-black text-slate-900">SERVİS FİŞİ</div><div className="flex flex-col items-end mt-1"><span className="text-lg font-bold bg-slate-100 px-3 py-1 rounded">NO: {formData.tracking_code || formData.id}</span><span className="text-sm text-slate-600 mt-1">{formData.date}</span></div></div></div><div className="grid grid-cols-2 gap-8 mb-6"><div className="border border-slate-300 rounded-lg p-4 bg-slate-50"><h3 className="font-bold border-b border-slate-300 mb-2 pb-1 text-sm uppercase text-slate-700">Müşteri Bilgileri</h3><div className="space-y-1 text-sm"><p><span className="font-bold text-slate-600">Ad Soyad:</span> {formData.customer}</p><p><span className="font-bold text-slate-600">Telefon:</span> {formData.phone}</p><p><span className="font-bold text-slate-600">Adres:</span> {formData.address || "Belirtilmemiş"}</p></div></div><div className="border border-slate-300 rounded-lg p-4 bg-slate-50"><h3 className="font-bold border-b border-slate-300 mb-2 pb-1 text-sm uppercase text-slate-700">Cihaz Bilgileri</h3><div className="space-y-1 text-sm"><p><span className="font-bold text-slate-600">Cihaz:</span> {formData.device}</p><p><span className="font-bold text-slate-600">Seri No:</span> {formData.serialNo}</p><p><span className="font-bold text-slate-600">Kategori:</span> {formData.category}</p></div></div></div><div className="grid grid-cols-3 gap-6 mb-6"><div className="col-span-1 border border-slate-300 rounded-lg p-3"><h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Şikayet</h4><p className="text-xs italic">{formData.issue}</p></div><div className="col-span-1 border border-slate-300 rounded-lg p-3"><h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Aksesuarlar</h4><div className="flex flex-wrap gap-1">{Array.isArray(formData.accessories) && formData.accessories.length > 0 ? formData.accessories.map((acc:string,i:number)=><span key={i} className="border border-slate-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{acc}</span>) : <span className="text-xs italic text-slate-400">Yok</span>}</div></div><div className="col-span-1 border border-slate-300 rounded-lg p-3"><h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Kontrol</h4><div className="flex flex-wrap gap-1">{Array.isArray(formData.preCheck) && formData.preCheck.length > 0 ? formData.preCheck.map((chk:string)=><span key={chk} className="text-[10px]">☑ {chk}</span>) : <span className="text-xs italic text-slate-400">Temiz</span>}</div></div></div><div className="mt-auto"><div className="flex justify-between items-end border-t-2 border-black pt-4 mb-8"><div className="w-2/3 pr-8"><h5 className="text-[10px] font-bold uppercase mb-1">Yasal Bilgilendirme</h5><p className="text-[8px] text-justify leading-tight text-slate-600">1. Cihazlar 90 gün içinde alınmalıdır. 2. Sıvı temas garantisizdir. 3. Veri yedeği müşteriye aittir. 4. İşlem garantisi 6 aydır.</p></div><div className="w-1/3 text-right"><div className="text-sm font-bold text-slate-500 uppercase mb-1">TOPLAM</div><div className="text-3xl font-black text-slate-900">{formData.price.toLocaleString('tr-TR')} ₺</div><div className="text-[9px] text-slate-400 mt-1">KDV Dahil Değildir</div></div></div><div className="flex justify-between gap-8"><div className="w-1/2 text-center"><div className="h-16 border-b border-slate-400 mb-2"></div><span className="text-xs font-bold uppercase">MÜŞTERİ</span></div><div className="w-1/2 text-center"><div className="h-16 border-b border-slate-400 mb-2"></div><span className="text-xs font-bold uppercase">TEKNİSYEN</span></div></div></div></div></div>
+        {/* --- YAZDIRMA ALANI (GELİŞTİRİLMİŞ VERSİYON) --- */}
+        <div id="printable-area" className="hidden bg-white text-black font-sans">
+            <div className="p-10 w-full h-full box-border">
+                {/* HEADER */}
+                <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+                    <div className="flex items-center gap-4">
+                        <img src="/image/aura-logo.png" className="h-16 w-auto object-contain"/>
+                        <div>
+                            <h1 className="text-3xl font-black text-cyan-600">AURA BİLİŞİM</h1>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">PROFESYONEL TEKNİK SERVİS</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-4xl font-black text-slate-900">SERVİS FİŞİ</div>
+                        <div className="flex flex-col items-end mt-1">
+                            <span className="text-lg font-bold bg-slate-100 px-3 py-1 rounded">NO: {formData.tracking_code || formData.id}</span>
+                            <span className="text-sm text-slate-600 mt-1">{formData.date}</span>
+                        </div>
+                    </div>
+                </div>
 
-        <style jsx global>{` @media print { @page { size: A4; margin: 0; } body { visibility: hidden; background-color: white; -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } #printable-area { visibility: visible; display: block !important; position: fixed; left: 0; top: 0; width: 210mm; height: 297mm; padding: 0; background-color: white; z-index: 9999; } #printable-area * { visibility: visible; } } `}</style>
+                {/* INFO GRID */}
+                <div className="grid grid-cols-2 gap-8 mb-6">
+                    <div className="border border-slate-300 rounded-lg p-4 bg-slate-50">
+                        <h3 className="font-bold border-b border-slate-300 mb-2 pb-1 text-sm uppercase text-slate-700">Müşteri Bilgileri</h3>
+                        <div className="space-y-1 text-sm">
+                            <p><span className="font-bold text-slate-600">Ad Soyad:</span> {formData.customer}</p>
+                            <p><span className="font-bold text-slate-600">Telefon:</span> {formData.phone}</p>
+                            <p><span className="font-bold text-slate-600">Adres:</span> {formData.address || "Belirtilmemiş"}</p>
+                        </div>
+                    </div>
+                    <div className="border border-slate-300 rounded-lg p-4 bg-slate-50">
+                        <h3 className="font-bold border-b border-slate-300 mb-2 pb-1 text-sm uppercase text-slate-700">Cihaz Bilgileri</h3>
+                        <div className="space-y-1 text-sm">
+                            <p><span className="font-bold text-slate-600">Cihaz:</span> {formData.device}</p>
+                            <p><span className="font-bold text-slate-600">Seri No:</span> {formData.serialNo}</p>
+                            <p><span className="font-bold text-slate-600">Kategori:</span> {formData.category}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* DETAILS GRID */}
+                <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div className="col-span-1 border border-slate-300 rounded-lg p-3">
+                        <h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Şikayet</h4>
+                        <p className="text-xs italic">{formData.issue}</p>
+                    </div>
+                    <div className="col-span-1 border border-slate-300 rounded-lg p-3">
+                        <h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Aksesuarlar</h4>
+                        <div className="flex flex-wrap gap-1">
+                            {Array.isArray(formData.accessories) && formData.accessories.length > 0 ? formData.accessories.map((acc:string,i:number)=><span key={i} className="border border-slate-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{acc}</span>) : <span className="text-xs italic text-slate-400">Yok</span>}
+                        </div>
+                    </div>
+                    <div className="col-span-1 border border-slate-300 rounded-lg p-3">
+                        <h4 className="font-bold text-xs uppercase mb-2 border-b border-slate-200 pb-1">Kontrol</h4>
+                        <div className="flex flex-wrap gap-1">
+                            {Array.isArray(formData.preCheck) && formData.preCheck.length > 0 ? formData.preCheck.map((chk:string)=><span key={chk} className="text-[10px]">☑ {chk}</span>) : <span className="text-xs italic text-slate-400">Temiz</span>}
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- YENİ EKLENEN DETAYLI İŞLEM VE PARÇA ALANI --- */}
+                <div className="border border-slate-300 rounded-lg p-4 bg-slate-50 mb-6">
+                    <h3 className="font-bold border-b border-slate-300 mb-2 pb-1 text-sm uppercase text-slate-700">Servis İşlemleri & Değişen Parçalar</h3>
+                    <div className="grid grid-cols-2 gap-6">
+                        {/* Sol: Notlar */}
+                        <div>
+                            <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-1">Teknisyen Notları / Yapılan İşlem</h4>
+                            <p className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed min-h-[60px]">
+                                {formData.notes || "Herhangi bir not girilmemiştir."}
+                            </p>
+                        </div>
+                        {/* Sağ: Parçalar ve Ürünler */}
+                        <div>
+                            <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-1">Kullanılan Parça / Ürün Listesi</h4>
+                            <ul className="text-xs space-y-1">
+                                {/* Kullanılan Parçalar */}
+                                {usedParts.map(part => (
+                                    <li key={part.id} className="flex justify-between border-b border-slate-200 pb-0.5">
+                                        <span>{part.aura_stok?.urun_adi} <span className="text-[10px] text-slate-500">(x{part.adet})</span></span>
+                                        <span className="font-bold font-mono">{part.satis_fiyati_anlik * part.adet}₺</span>
+                                    </li>
+                                ))}
+                                {/* Satılan Upsell Ürünleri */}
+                                {Array.isArray(formData.sold_upsells) && formData.sold_upsells.map((item:any, i:number) => (
+                                     <li key={'up'+i} className="flex justify-between border-b border-slate-200 pb-0.5">
+                                        <span>{item.name || item.urun_adi}</span>
+                                        <span className="font-bold font-mono">{item.price}₺</span>
+                                    </li>
+                                ))}
+                                {usedParts.length === 0 && (!formData.sold_upsells || formData.sold_upsells.length === 0) && (
+                                    <li className="italic text-slate-400 mt-2">Parça değişimi veya ürün satışı yapılmadı.</li>
+                                )}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* FOOTER */}
+                <div className="mt-auto">
+                    <div className="flex justify-between items-end border-t-2 border-black pt-4 mb-8">
+                        <div className="w-2/3 pr-8">
+                            <h5 className="text-[10px] font-bold uppercase mb-1">Yasal Bilgilendirme</h5>
+                            <p className="text-[8px] text-justify leading-tight text-slate-600">
+                                1. Teslim tarihinden itibaren 90 gün içinde alınmayan cihazlardan firmamız sorumlu değildir. 
+                                2. Sıvı temaslı cihazlarda onarım garantisi verilmemektedir. 
+                                3. Cihazdaki verilerin yedeğini almak müşterinin sorumluluğundadır, veri kaybından firmamız sorumlu tutulamaz. 
+                                4. Değişen parça ve yapılan işlem garantisi 6 aydır (Kırılma ve sıvı temas hariç).
+                            </p>
+                        </div>
+                        <div className="w-1/3 text-right">
+                            <div className="text-sm font-bold text-slate-500 uppercase mb-1">TOPLAM TUTAR</div>
+                            <div className="text-3xl font-black text-slate-900">{formData.price.toLocaleString('tr-TR')} ₺</div>
+                            <div className="text-[9px] text-slate-400 mt-1">Fiyatlara KDV Dahil Değildir</div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex justify-between gap-8">
+                        <div className="w-1/2 text-center">
+                            <div className="h-16 border-b border-slate-400 mb-2"></div>
+                            <span className="text-xs font-bold uppercase">MÜŞTERİ (TESLİM ALAN)</span>
+                        </div>
+                        <div className="w-1/2 text-center">
+                            <div className="h-16 border-b border-slate-400 mb-2"></div>
+                            <span className="text-xs font-bold uppercase">TEKNİSYEN / YETKİLİ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style jsx global>{` 
+            @media print { 
+                @page { size: A4; margin: 0; } 
+                body { visibility: hidden; background-color: white; -webkit-print-color-adjust: exact; } 
+                .print\\:hidden { display: none !important; } 
+                #printable-area { visibility: visible; display: block !important; position: fixed; left: 0; top: 0; width: 210mm; height: 297mm; padding: 0; background-color: white; z-index: 9999; } 
+                #printable-area * { visibility: visible; } 
+            } 
+        `}</style>
     </div>
   );
 }
