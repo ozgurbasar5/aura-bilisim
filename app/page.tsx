@@ -575,8 +575,6 @@ function BeforeAfter() {
   );
 }
 
-// ... (Önceki kodlar: LiveLogs, DeviceAnatomy, BeforeAfter bileşenleri aynı kalacak) ...
-
 // -----------------------------------------------------------------------------
 // 5. YENİ BİLEŞEN: MİKRO KOZMOS (MAKRO GALERİ - Vektörel ve Teknik)
 // -----------------------------------------------------------------------------
@@ -691,8 +689,6 @@ function MacroGallery() {
     );
 }
 
-// ... (FAQ ve Home bileşenleri aynı kalacak) ...
-
 // -----------------------------------------------------------------------------
 // 6. BİLEŞEN: SIKÇA SORULAN SORULAR (FAQ)
 // -----------------------------------------------------------------------------
@@ -729,8 +725,6 @@ function FAQ() {
         </section>
     )
 }
-
-// ... (Önceki importlar aynen kalsın)
 
 // -----------------------------------------------------------------------------
 // 7. YENİ BİLEŞEN: AURA TERMINAL (İLETİŞİM FORMU)
@@ -879,7 +873,6 @@ function AuraTerminal() {
 // -----------------------------------------------------------------------------
 // 8. YENİ BİLEŞEN: GLITCH TEXT (BAŞLIK EFEKTİ)
 // -----------------------------------------------------------------------------
-// Bu bileşeni başlıkların içinde kullanabilirsiniz. Örn: <GlitchText text="Teknolojiniz" />
 function GlitchText({ text }: { text: string }) {
   const [displayText, setDisplayText] = useState(text);
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&";
@@ -918,7 +911,7 @@ function ThermalVision() {
     <section className="py-24 bg-[#020408] relative overflow-hidden border-t border-white/5">
         <div className="container mx-auto px-6 flex flex-col lg:flex-row items-center gap-16">
             
-            {/* SOL: Metin Alanı (Burada bir değişiklik yok) */}
+            {/* SOL: Metin Alanı */}
             <div className="flex-1 space-y-8 relative z-10">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/30 border border-red-500/20 text-red-400 text-xs font-bold tracking-widest uppercase mb-2 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                     <Thermometer size={14} className="animate-pulse"/>
@@ -944,17 +937,14 @@ function ThermalVision() {
                 </button>
             </div>
 
-            {/* SAĞ: Vektörel Termal Simülasyon (TAMAMEN YENİLENDİ) */}
+            {/* SAĞ: Vektörel Termal Simülasyon */}
             <div className="flex-1 w-full max-w-xl relative group">
-                {/* Konteyner: Görüntü oranı korundu, arka plan rengi eklendi */}
                 <div className={`relative rounded-3xl overflow-hidden aspect-video border-2 transition-all duration-500 shadow-2xl bg-[#050810] ${active ? 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.2)]' : 'border-white/10'}`}>
                     
-                    {/* KATMAN 1: SVG Base (Teknik Çizim / Wireframe) */}
-                    {/* Bu katman her zaman görünür, termal mod açılınca hafifçe solar */}
+                    {/* KATMAN 1: SVG Base */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <svg viewBox="0 0 400 250" className={`w-full h-full transition-opacity duration-700 ${active ? 'opacity-30' : 'opacity-50'}`}>
                             <defs>
-                                {/* Arka plan ızgara deseni */}
                                 <pattern id="grid-pattern-thermal" width="20" height="20" patternUnits="userSpaceOnUse">
                                     <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" strokeWidth="0.5"/>
                                 </pattern>
@@ -967,9 +957,7 @@ function ThermalVision() {
                             {/* CPU Soket Alanı */}
                             <g transform="translate(160, 90)">
                                 <rect width="80" height="80" rx="4" fill="#0f172a" stroke="#475569" strokeWidth="2"/>
-                                {/* İç CPU Çerçevesi */}
                                 <rect x="15" y="15" width="50" height="50" rx="2" fill="none" stroke="#334155" strokeWidth="1"/>
-                                {/* Merkez Nokta */}
                                 <circle cx="40" cy="40" r="5" fill="#1e293b" stroke="#334155"/>
                             </g>
 
@@ -979,7 +967,7 @@ function ThermalVision() {
                                 <rect x="18" width="10" height="80" fill="none" stroke="#334155" strokeWidth="2"/>
                             </g>
 
-                            {/* Güç Bileşenleri (VRM/Mosfet) */}
+                            {/* Güç Bileşenleri */}
                             <g transform="translate(100, 90)">
                                 <rect width="40" height="35" fill="none" stroke="#334155" strokeWidth="1"/>
                                 <rect y="45" width="40" height="35" fill="none" stroke="#334155" strokeWidth="1"/>
@@ -987,44 +975,36 @@ function ThermalVision() {
                                 <circle cx="20" cy="62.5" r="8" fill="none" stroke="#334155" strokeWidth="1"/>
                             </g>
 
-                            {/* Devre Yolları (Traces) */}
+                            {/* Devre Yolları */}
                             <path d="M 160 130 H 140 M 160 110 H 140 M 240 130 H 260 M 200 90 V 60 M 200 170 V 200 M 120 90 V 60 M 120 170 V 200" stroke="#334155" strokeWidth="1" strokeDasharray="2,2"/>
                         </svg>
                     </div>
 
-                    {/* KATMAN 2: Termal Canlı Isı Haritası (Gradients & Animasyonlar) */}
-                    {/* Sadece 'active' durumunda görünür */}
+                    {/* KATMAN 2: Termal Canlı Isı Haritası */}
                     <div className={`absolute inset-0 transition-opacity duration-700 pointer-events-none ${active ? 'opacity-100' : 'opacity-0'}`}>
-                        
-                        {/* Ana Isı Kaynağı (CPU) - Yoğun Kırmızı/Sarı */}
+                        {/* Ana Isı Kaynağı */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40">
                             <div className="absolute inset-0 bg-red-600 rounded-full blur-[50px] opacity-60 animate-pulse-slow"></div>
                             <div className="absolute inset-8 bg-orange-500 rounded-full blur-[35px] opacity-80 animate-pulse"></div>
                             <div className="absolute inset-12 bg-yellow-400 rounded-full blur-[25px] opacity-90"></div>
                         </div>
 
-                        {/* İkincil Isı Kaynağı (VRM Sol) - Mor/Kırmızı */}
+                        {/* İkincil Isı Kaynakları */}
                         <div className="absolute top-[45%] left-[28%] w-20 h-20 bg-purple-600 rounded-full blur-[35px] opacity-50 animate-pulse-slow" style={{animationDelay: '0.5s'}}></div>
-                        {/* Üçüncül Isı Kaynağı (RAM Altı) - Mavi/Mor */}
                         <div className="absolute bottom-[30%] right-[30%] w-16 h-16 bg-blue-600 rounded-full blur-[30px] opacity-40 animate-pulse-slow" style={{animationDelay: '1s'}}></div>
 
-                        {/* Vektörel İzobarlar (Sıcaklık Halkaları) */}
+                        {/* Vektörel İzobarlar */}
                         <svg viewBox="0 0 400 250" className="absolute inset-0 w-full h-full">
                             <g transform="translate(200, 130)">
-                                {/* Dış Halka (Yanıp sönen) */}
                                 <circle r="80" fill="none" stroke="#ef4444" strokeWidth="1" opacity="0.3" className="animate-pulse"/>
-                                {/* Orta Halka */}
                                 <circle r="55" fill="none" stroke="#f97316" strokeWidth="1.5" opacity="0.6" className="animate-pulse-slow"/>
-                                {/* İç Halka (En sıcak) */}
                                 <circle r="30" fill="none" stroke="#eab308" strokeWidth="2" opacity="0.8" className="animate-pulse" style={{animationDuration: '1.5s'}}/>
                             </g>
                         </svg>
                     </div>
 
-                    {/* KATMAN 3: HUD Arayüzü (Bilgi Ekranı) */}
+                    {/* KATMAN 3: HUD Arayüzü */}
                     <div className={`absolute inset-0 pointer-events-none flex flex-col justify-between p-6 transition-all duration-500 ${active ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                        
-                        {/* Üst Bilgi Paneli */}
                         <div className="flex justify-between items-start">
                             <div className="flex flex-col gap-1">
                                 <span className="text-[10px] font-mono text-red-400 bg-black/60 px-2 py-1 rounded border border-red-500/30 backdrop-blur-sm flex items-center gap-2">
@@ -1033,13 +1013,11 @@ function ThermalVision() {
                                 <span className="text-[8px] font-mono text-white/40 pl-1">SENSOR_ARRAY_MAIN // IR_OPTIC</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                {/* Sıcaklık Değeri (Daha büyük ve gölgeli) */}
                                 <span className="text-4xl font-black text-white font-mono drop-shadow-[0_0_15px_rgba(239,68,68,0.8)] tracking-tighter">94.2°C</span>
                                 <span className="text-[9px] text-red-500 font-bold uppercase animate-pulse border border-red-500/50 px-1 rounded bg-red-950/50 mt-1">Thermal Throttling Active</span>
                             </div>
                         </div>
                         
-                        {/* Merkez Hedef (Crosshair - Daha detaylı) */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 flex items-center justify-center opacity-60">
                             <div className="absolute w-[1px] h-full bg-gradient-to-b from-transparent via-red-500/50 to-transparent"></div>
                             <div className="absolute h-[1px] w-full bg-gradient-to-r from-transparent via-red-500/50 to-transparent"></div>
@@ -1048,21 +1026,19 @@ function ThermalVision() {
                             </div>
                         </div>
 
-                        {/* Alt Renk Skalası ve Bilgiler */}
                         <div className="flex justify-between items-end">
                             <div className="space-y-1 w-1/3">
-                                {/* Renk Gradient Barı */}
                                 <div className="h-2 w-full bg-gradient-to-r from-blue-700 via-purple-500 via-red-500 to-yellow-400 rounded-full border border-white/10 shadow-lg relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 h-full w-1 bg-white animate-pulse"></div> {/* Max indicator */}
+                                    <div className="absolute top-0 right-0 h-full w-1 bg-white animate-pulse"></div>
                                 </div>
                                 <div className="flex justify-between text-[8px] font-mono text-white/50">
-                                    <span>25°C (Ambient)</span>
-                                    <span className="text-red-400 font-bold">105°C (Max)</span>
+                                    <span>25°C</span>
+                                    <span className="text-red-400 font-bold">105°C</span>
                                 </div>
                             </div>
                             <div className="text-right space-y-1">
                                 <div className="text-[8px] font-mono text-white/40">EMISSIVITY: 0.95</div>
-                                <span className="text-[10px] font-mono text-white/50 border border-white/10 px-2 py-1 rounded inline-block bg-black/40">ISO 12800 / HI-GAIN</span>
+                                <span className="text-[10px] font-mono text-white/50 border border-white/10 px-2 py-1 rounded inline-block bg-black/40">ISO 12800</span>
                             </div>
                         </div>
                     </div>
@@ -1222,7 +1198,7 @@ export default function Home() {
   return (
     <div className="relative bg-[#020617] text-white font-sans selection:bg-cyan-500/30 min-h-screen overflow-x-hidden">
       
-      {/* NAVBAR */}
+      {/* NAVBAR - TAMAMI GÜNCELLENMİŞ VERSİYON */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${scrolled ? "bg-[#020617]/95 backdrop-blur-xl border-white/5 h-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" : "bg-[#020617] border-transparent h-24"} print:hidden`}>
         <div className="container mx-auto px-6 h-full flex items-center justify-between">
           
@@ -1251,7 +1227,7 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* DESKTOP MENÜ LİNKLERİ */}
+          {/* DESKTOP MENÜ LİNKLERİ (Sadece PC'de görünür) */}
           <div className="hidden xl:flex items-center gap-8">
               {[ { href: "/", label: "Ana Sayfa" }, { href: "/destek", label: "Destek" }, { href: "/hakkimizda", label: "Hakkımızda" }, { href: "/sss", label: "S.S.S" }, { href: "/iletisim", label: "İletişim" } ].map((link) => (
                 <Link key={link.href} href={link.href} className={`text-[14px] font-bold transition-all relative py-2 px-1 group ${isActive(link.href) ? "text-cyan-400" : "text-slate-300 hover:text-white"}`}>
@@ -1261,10 +1237,9 @@ export default function Home() {
               ))}
           </div>
 
-          {/* SAĞ TARAF BUTONLARI (KURUMSAL EKLENDİ) */}
+          {/* SAĞ TARAF BUTONLARI (Desktop) */}
           <div className="flex items-center gap-3 shrink-0">
-              
-              {/* YENİ KURUMSAL BUTONU */}
+              {/* Kurumsal Butonu (Desktop) */}
               <Link href="/kurumsal-cozumler" className="hidden lg:flex items-center gap-2 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 hover:from-white hover:to-amber-200 text-black px-5 py-2.5 rounded-xl font-black text-xs transition-all shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:shadow-[0_0_30px_rgba(251,191,36,0.6)] hover:-translate-y-0.5 border border-yellow-300/50 group">
                   <Building2 size={16} className="text-black/80 fill-black/10"/> 
                   <span className="tracking-wide">KURUMSAL</span>
@@ -1283,29 +1258,56 @@ export default function Home() {
                   <span>ONARIM BAŞLAT</span>
               </Link>
               
+              {/* HAMBURGER BUTONU (Sadece Mobilde Görünür) */}
               <button onClick={() => setMenuAcik(!menuAcik)} className="xl:hidden p-2 text-slate-300 hover:text-white transition-colors">
                   {menuAcik ? <X size={28}/> : <Menu size={28}/>}
               </button>
           </div>
         </div>
         
-        {/* MOBİL MENÜ (KURUMSAL EKLENDİ) */}
+        {/* MOBİL MENÜ (AÇILIR KISIM - TÜM BUTONLAR EKLENDİ) */}
         {menuAcik && (
-          <div className="xl:hidden fixed top-20 left-0 w-full bg-[#0b0e14] border-b border-white/10 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top-2 z-50">
-              {[ 
-                  { href: "/", label: "Ana Sayfa", icon: HomeIcon }, 
-                  { href: "/kurumsal-cozumler", label: "Kurumsal Çözümler", icon: Building2 }, // Mobil menüye eklendi
-                  { href: "/cihaz-sorgula", label: "Cihaz Sorgula", icon: Search }, 
-                  { href: "/magaza", label: "Mağaza", icon: ShoppingBag } 
-              ].map((item) => (
-                <Link key={item.href} href={item.href} onClick={() => setMenuAcik(false)} className={`py-4 px-4 rounded-lg font-bold flex items-center gap-4 hover:bg-white/5 transition-colors ${item.href === '/kurumsal-cozumler' ? 'text-amber-400' : 'text-slate-400 hover:text-white'}`}>
-                    <item.icon size={20}/> {item.label}
-                </Link>
-              ))}
+          <div className="xl:hidden fixed top-20 left-0 w-full bg-[#0b0e14]/95 backdrop-blur-xl border-b border-white/10 p-6 flex flex-col gap-4 shadow-2xl animate-in slide-in-from-top-2 z-50 overflow-y-auto max-h-[calc(100vh-80px)]">
+              
+              {/* Navigasyon Linkleri */}
+              <div className="grid grid-cols-2 gap-2">
+                 {[ 
+                     { href: "/", label: "Ana Sayfa", icon: HomeIcon }, 
+                     { href: "/destek", label: "Destek", icon: LifeBuoy },
+                     { href: "/hakkimizda", label: "Hakkımızda", icon: Info },
+                     { href: "/iletisim", label: "İletişim", icon: Phone }
+                 ].map((item) => (
+                   <Link key={item.href} href={item.href} onClick={() => setMenuAcik(false)} className="py-3 px-4 rounded-lg font-bold flex items-center gap-3 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors text-sm">
+                       <item.icon size={18} className="text-cyan-500"/> {item.label}
+                   </Link>
+                 ))}
+              </div>
+
+              <div className="h-px w-full bg-white/10 my-1"></div>
+
+              {/* Aksiyon Butonları (Mobilde Eksik Olanlar Buraya Eklendi) */}
+              <div className="space-y-3">
+                  <Link href="/kurumsal-cozumler" onClick={() => setMenuAcik(false)} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 text-black px-4 py-3 rounded-xl font-black text-sm shadow-[0_0_15px_rgba(251,191,36,0.3)]">
+                      <Building2 size={18} className="text-black/80"/> KURUMSAL ÇÖZÜMLER
+                  </Link>
+
+                  <div className="grid grid-cols-2 gap-3">
+                      <Link href="/cihaz-sorgula" onClick={() => setMenuAcik(false)} className="flex items-center justify-center gap-2 border border-slate-700 bg-[#0f172a] text-white px-3 py-3 rounded-xl font-bold text-xs">
+                          <Search size={16} className="text-cyan-400"/> CİHAZ SORGULA
+                      </Link>
+                      
+                      <Link href="/magaza" onClick={() => setMenuAcik(false)} className="flex items-center justify-center gap-2 border border-slate-700 bg-[#0f172a] text-white px-3 py-3 rounded-xl font-bold text-xs">
+                          <ShoppingBag size={16} className="text-purple-400"/> MAĞAZA
+                      </Link>
+                  </div>
+
+                  <Link href="/onarim-talebi" onClick={() => setMenuAcik(false)} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-lg shadow-cyan-900/20">
+                      <Wrench size={18}/> ONARIM BAŞLAT
+                  </Link>
+              </div>
           </div>
         )}
       </nav>
-
       {/* ARKA PLAN DEKORASYON */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0"></div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-cyan-600/15 rounded-full blur-[150px] pointer-events-none z-0 animate-pulse-slow"></div>
@@ -1509,7 +1511,9 @@ export default function Home() {
         <MessageCircle size={28} fill="white" className="text-white" />
         <span className="absolute right-full mr-3 bg-white text-black px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">Hızlı Destek</span>
       </a>
-    
+      
+   
+
     </div>
   );
 }
