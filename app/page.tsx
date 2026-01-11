@@ -32,10 +32,13 @@ import {
   
   // Sistem
   BarChart3, Thermometer, Droplets, GripVertical,
+
+  
   
   // YENİ EKLENEN
   Building2
 } from "lucide-react";
+import HeroVisuals from "@/components/HeroVisuals";
 
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
@@ -1346,8 +1349,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* LIVE LOGS */}
-      <LiveLogs />
+      
 
       {/* MARKALAR (Infinite Scroll) */}
       <section className="relative py-24 bg-[#010205] border-b border-white/5 overflow-hidden">
@@ -1369,6 +1371,16 @@ export default function Home() {
             </div>
         </div>
       </section>
+
+      {/* GÜVEN BANDI (Footer Öncesi Son Dokunuş) */}
+      <div className="w-full bg-gradient-to-r from-[#020617] via-[#0a0e17] to-[#020617] border-t border-white/5 py-6 relative z-20 overflow-hidden">
+        <div className="container mx-auto px-6 flex flex-wrap items-center justify-center md:justify-between gap-6 text-sm font-medium text-slate-300">
+            <div className="flex items-center gap-2"><Award className="w-5 h-5 text-cyan-500" /> <span>İstanbul'un <strong>En Prestijli</strong> Teknik Üssü</span></div>
+            <div className="flex items-center gap-2"><Trophy size={18} className="text-yellow-500" /> <span>Global Servis Standartları</span></div>
+            <div className="flex items-center gap-2"><HeartPulse size={18} className="text-red-500" /> <span><strong>10.000+</strong> Kusursuz Teslimat</span></div>
+        </div>
+      </div>
+
 
       {/* HİZMETLER */}
       <section className="py-28 relative z-20">
@@ -1497,15 +1509,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* GÜVEN BANDI (Footer Öncesi Son Dokunuş) */}
-      <div className="w-full bg-gradient-to-r from-[#020617] via-[#0a0e17] to-[#020617] border-t border-white/5 py-6 relative z-20 overflow-hidden">
-        <div className="container mx-auto px-6 flex flex-wrap items-center justify-center md:justify-between gap-6 text-sm font-medium text-slate-300">
-            <div className="flex items-center gap-2"><Award className="w-5 h-5 text-cyan-500" /> <span>İstanbul'un <strong>En Prestijli</strong> Teknik Üssü</span></div>
-            <div className="flex items-center gap-2"><Trophy size={18} className="text-yellow-500" /> <span>Global Servis Standartları</span></div>
-            <div className="flex items-center gap-2"><HeartPulse size={18} className="text-red-500" /> <span><strong>10.000+</strong> Kusursuz Teslimat</span></div>
-        </div>
-      </div>
-
+    
       {/* WHATSAPP BUTONU */}
       <a href="https://wa.me/905396321429" target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-4 rounded-full shadow-[0_0_20px_rgba(37,211,102,0.4)] hover:shadow-[0_0_30px_rgba(37,211,102,0.6)] hover:scale-110 transition-all duration-300 flex items-center justify-center" aria-label="WhatsApp Destek">
         <MessageCircle size={28} fill="white" className="text-white" />

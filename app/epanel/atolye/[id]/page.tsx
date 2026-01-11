@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { 
   ArrowLeft, Save, Printer, User, Smartphone, Zap, Laptop, Watch, Box, 
   CheckSquare, ClipboardCheck, History, CreditCard, AlertTriangle, Send, Phone, Globe, MapPin, MessageCircle, Lock,
   Lightbulb, Battery, Fan, Eye, ShieldCheck, Database, Wrench, HardDrive, Wifi, Trash2, Camera, Upload, X, Image as ImageIcon,
-  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight, CheckCircle, Building2, QrCode, Wallet, ScanLine, Activity, Monitor, Cpu, Speaker, Vibrate, Cable, MemoryStick, Mic, Radio, Layers
+  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight, CheckCircle, Building2, QrCode, Wallet, ScanLine, Activity, Monitor, Cpu, Speaker, Vibrate, Cable, MemoryStick, Mic, Radio, Layers, Package, Check
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
 import { Html5QrcodeScanner } from "html5-qrcode";
@@ -24,115 +24,56 @@ interface DevicePart {
     fillRule?: "nonzero" | "evenodd" | "inherit";
 }
 
-// --- ELIT GÖRSEL PARÇALAR (CLEAN BLOCK STYLE - SON KULLANICI DOSTU) ---
+// --- ELIT GÖRSEL PARÇALAR ---
 const DEVICE_PARTS_SVG: DevicePart[] = [
-    // 1. ANAKART (Sağ Üst L Blok)
-    { 
-        id: 'motherboard', 
-        name: 'ANAKART', 
-        icon: Cpu, 
-        price: 4500, 
-        path: "M 160 40 L 270 40 L 270 300 L 160 300 L 160 140 L 140 140 L 140 40 Z",
-        cx: 215, cy: 90,
-        baseColor: "#334155" 
-    },
-    // 2. BATARYA (Sol Büyük Blok)
-    { 
-        id: 'battery', 
-        name: 'BATARYA', 
-        icon: Battery, 
-        price: 900, 
-        path: "M 20 130 L 130 130 L 130 460 L 20 460 Z",
-        cx: 75, cy: 295,
-        baseColor: "#1e293b" 
-    },
-    // 3. ARKA KAMERA (Karemsi)
-    { 
-        id: 'camera_back', 
-        name: 'ARKA KAMERA', 
-        icon: Camera, 
-        price: 1200, 
-        path: "M 190 50 L 260 50 L 260 120 L 190 120 Z",
-        cx: 225, cy: 85,
-        baseColor: "#0f172a"
-    },
-    // 4. ÖN KAMERA / FACE ID
-    { 
-        id: 'camera_front', 
-        name: 'ÖN KAMERA', 
-        icon: Eye, 
-        price: 800, 
-        path: "M 80 20 L 150 20 L 150 50 L 80 50 Z",
-        cx: 115, cy: 35,
-        baseColor: "#000000"
-    },
-    // 5. ŞARJ SOKETİ
-    { 
-        id: 'charging', 
-        name: 'ŞARJ SOKETİ', 
-        icon: Zap, 
-        price: 600, 
-        path: "M 80 540 L 220 540 L 220 590 L 80 590 Z",
-        cx: 150, cy: 565,
-        baseColor: "#475569" 
-    },
-    // 6. TAPTIC
-    { 
-        id: 'taptic', 
-        name: 'TİTREŞİM', 
-        icon: Vibrate, 
-        price: 450, 
-        path: "M 20 480 L 100 480 L 100 530 L 20 530 Z",
-        cx: 60, cy: 505,
-        baseColor: "#334155"
-    },
-    // 7. HOPARLÖR
-    { 
-        id: 'speaker', 
-        name: 'HOPARLÖR', 
-        icon: Speaker, 
-        price: 500, 
-        path: "M 130 480 L 270 480 L 270 530 L 130 530 Z",
-        cx: 200, cy: 505,
-        baseColor: "#334155"
-    },
-    // 8. AHİZE
-    { 
-        id: 'earpiece', 
-        name: 'AHİZE', 
-        icon: Phone, 
-        price: 300, 
-        path: "M 100 5 L 200 5 L 200 15 L 100 15 Z",
-        cx: 150, cy: 10,
-        baseColor: "#64748b"
-    },
-    // 9. MAGSAFE
-    {
-        id: 'wireless_charging',
-        name: 'KABLOSUZ ŞARJ',
-        icon: Radio,
-        price: 400,
-        path: "M 150 200 m -50 0 a 50 50 0 1 0 100 0 a 50 50 0 1 0 -100 0 M 150 215 m -35 0 a 35 35 0 1 0 70 0 a 35 35 0 1 0 -70 0",
-        fillRule: "evenodd",
-        cx: 150, cy: 200,
-        baseColor: "#94a3b8" 
-    },
-    // 10. EKRAN (Çerçeve)
-    { 
-        id: 'screen', 
-        name: 'EKRAN / CAM', 
-        icon: Monitor, 
-        price: 2500, 
-        path: "M 5 5 L 295 5 L 295 595 L 5 595 Z M 10 10 L 10 590 L 290 590 L 290 10 Z", 
-        fillRule: "evenodd",
-        cx: 150, cy: 300,
-        baseColor: "transparent"
-    },
+    { id: 'motherboard', name: 'ANAKART', icon: Cpu, price: 4500, path: "M 160 40 L 270 40 L 270 300 L 160 300 L 160 140 L 140 140 L 140 40 Z", cx: 215, cy: 90, baseColor: "#334155" },
+    { id: 'battery', name: 'BATARYA', icon: Battery, price: 900, path: "M 20 130 L 130 130 L 130 460 L 20 460 Z", cx: 75, cy: 295, baseColor: "#1e293b" },
+    { id: 'camera_back', name: 'ARKA KAMERA', icon: Camera, price: 1200, path: "M 190 50 L 260 50 L 260 120 L 190 120 Z", cx: 225, cy: 85, baseColor: "#0f172a" },
+    { id: 'camera_front', name: 'ÖN KAMERA', icon: Eye, price: 800, path: "M 80 20 L 150 20 L 150 50 L 80 50 Z", cx: 115, cy: 35, baseColor: "#000000" },
+    { id: 'charging', name: 'ŞARJ SOKETİ', icon: Zap, price: 600, path: "M 80 540 L 220 540 L 220 590 L 80 590 Z", cx: 150, cy: 565, baseColor: "#475569" },
+    { id: 'taptic', name: 'TİTREŞİM', icon: Vibrate, price: 450, path: "M 20 480 L 100 480 L 100 530 L 20 530 Z", cx: 60, cy: 505, baseColor: "#334155" },
+    { id: 'speaker', name: 'HOPARLÖR', icon: Speaker, price: 500, path: "M 130 480 L 270 480 L 270 530 L 130 530 Z", cx: 200, cy: 505, baseColor: "#334155" },
+    { id: 'earpiece', name: 'AHİZE', icon: Phone, price: 300, path: "M 100 5 L 200 5 L 200 15 L 100 15 Z", cx: 150, cy: 10, baseColor: "#64748b" },
+    { id: 'wireless_charging', name: 'KABLOSUZ ŞARJ', icon: Radio, price: 400, path: "M 150 200 m -50 0 a 50 50 0 1 0 100 0 a 50 50 0 1 0 -100 0 M 150 215 m -35 0 a 35 35 0 1 0 70 0 a 35 35 0 1 0 -70 0", fillRule: "evenodd", cx: 150, cy: 200, baseColor: "#94a3b8" },
+    { id: 'screen', name: 'EKRAN / CAM', icon: Monitor, price: 2500, path: "M 5 5 L 295 5 L 295 595 L 5 595 Z M 10 10 L 10 590 L 290 590 L 290 10 Z", fillRule: "evenodd", cx: 150, cy: 300, baseColor: "transparent" },
 ];
 
-// --- KATEGORİ VERİLERİ ---
-const CATEGORY_TIPS: any = { "Cep Telefonu": [], "Robot Süpürge": [], "Bilgisayar": [], "Tablet": [], "Akıllı Saat": [], "Diğer": [] };
-const CATEGORY_DATA: any = { "Cep Telefonu": { accessories: ["Kutu", "Şarj Aleti", "Kılıf"], preChecks: ["Ekran Kırık", "Çizik", "Ses Yok"], finalChecks: ["Dokunmatik", "Kamera", "Şarj"] }, "Robot Süpürge": { accessories: ["İstasyon", "Fırça"], preChecks: ["Tekerlek", "Lidar"], finalChecks: ["Emiş", "Sensör"] }, "Bilgisayar": { accessories: ["Şarj Aleti", "Çanta"], preChecks: ["Kırık", "Menteşe"], finalChecks: ["Klavye", "Ekran"] }, "Tablet": { accessories: ["Kılıf"], preChecks: ["Ekran"], finalChecks: ["Dokunmatik"] }, "Akıllı Saat": { accessories: ["Kordon"], preChecks: ["Cam"], finalChecks: ["Sensör"] }, "Diğer": { accessories: [], preChecks: [], finalChecks: [] } };
+// --- KATEGORİ VERİLERİ (GELİŞMİŞ) ---
+const CATEGORY_DATA: any = { 
+    "Cep Telefonu": { 
+        accessories: ["Kutu", "Şarj Aleti", "Kılıf", "Sim İğnesi"], 
+        preChecks: ["Ekran Kırık", "Kasa Ezik", "Sıvı Teması", "FaceID Arızalı", "Kamera Lens Çizik", "Vida Eksik"], 
+        finalChecks: ["Dokunmatik Testi", "Ön/Arka Kamera", "Şarj Entegresi", "Mikrofon/Hoparlör", "Şebeke/Wifi", "Yakınlık Sensörü", "TrueTone"] 
+    }, 
+    "Robot Süpürge": { 
+        accessories: ["Şarj İstasyonu", "Yan Fırça", "Paspas", "Su Tankı", "Toz Haznesi"], 
+        preChecks: ["Tekerlek Sıkışık", "Lidar Dönmüyor", "Sıvı Teması", "Fan Sesi Yüksek", "Fırça Hatası"], 
+        finalChecks: ["Emiş Gücü Testi", "Haritalama", "Şarj Oluyor", "Su Akıtma Testi", "Sensör Kontrolü", "Wifi Bağlantısı"] 
+    }, 
+    "Bilgisayar": { 
+        accessories: ["Şarj Aleti", "Çanta", "Mouse"], 
+        preChecks: ["Ekran Kırık", "Menteşe Gevşek", "Klavye Eksik", "Kasa Hasarlı", "Sıvı Teması"], 
+        finalChecks: ["Klavye Testi", "Ekran Görüntü", "Ses/Hoparlör", "Wifi/Bluetooth", "Termal Test", "SSD Sağlık", "Fan Devir"] 
+    }, 
+    "Tablet": { 
+        accessories: ["Kılıf", "Kalem", "Şarj Aleti"], 
+        preChecks: ["Ekran Çatlak", "Kasa Yamuk", "Butonlar Basmıyor"], 
+        finalChecks: ["Dokunmatik", "Kalem Testi", "Kamera", "Şarj", "Wifi"] 
+    }, 
+    "Akıllı Saat": { 
+        accessories: ["Kordon", "Şarj Kablosu"], 
+        preChecks: ["Cam Çizik", "Kordon Kopuk", "Sensör Camı Kırık"], 
+        finalChecks: ["Dokunmatik", "Nabız Sensörü", "Titreşim", "Eşleşme Testi"] 
+    }, 
+    "Diğer": { 
+        accessories: ["Güç Kablosu", "Kumanda"], 
+        preChecks: ["Fiziksel Hasar", "Eksik Parça"], 
+        finalChecks: ["Güç Testi", "Fonksiyon Testi"] 
+    } 
+};
+
+// Hizmet Kategorileri (Veritabanında category='Hizmet' veya özel bir type ile ayrılabilir)
+const SERVICE_CATEGORIES = ["Garanti Uzatma", "Koruma Paketi", "Yazılım Hizmeti", "Bakım Paketi", "Hizmet"];
 
 export default function ServisDetaySayfasi() {
   const router = useRouter();
@@ -145,7 +86,8 @@ export default function ServisDetaySayfasi() {
   const [currentUserEmail, setCurrentUserEmail] = useState("Sistem");
   
   // LİSTELER
-  const [availableUpsells, setAvailableUpsells] = useState<any[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<any[]>([]);
+  const [availableServices, setAvailableServices] = useState<any[]>([]);
   const [dealersList, setDealersList] = useState<any[]>([]);
   
   // MODALLAR
@@ -197,6 +139,13 @@ export default function ServisDetaySayfasi() {
           const { data: { user } } = await supabase.auth.getUser(); if (user?.email) setCurrentUserEmail(user.email);
           const { data: dealers } = await supabase.from('bayi_basvurulari').select('*').eq('durum', 'Onaylandı'); if(dealers) setDealersList(dealers);
 
+          // Upsell Verilerini Çek ve Ayır (Ürün vs Hizmet)
+          const { data: upsells } = await supabase.from('aura_upsell_products').select('*').eq('is_active', true);
+          if (upsells) {
+              setAvailableServices(upsells.filter(u => SERVICE_CATEGORIES.includes(u.category) || u.category === 'Hizmet'));
+              setAvailableProducts(upsells.filter(u => !SERVICE_CATEGORIES.includes(u.category) && u.category !== 'Hizmet'));
+          }
+
           if (id === 'yeni') {
               setFormData((p:any) => ({ ...p, tracking_code: `SRV-${Math.floor(10000 + Math.random() * 90000)}` }));
               setLoading(false);
@@ -220,15 +169,6 @@ export default function ServisDetaySayfasi() {
       };
       init();
   }, [id]);
-
-  useEffect(() => {
-      const fetchUpsells = async () => {
-          if (!formData.category) return;
-          const { data } = await supabase.from('aura_upsell_products').select('*').eq('category', formData.category).eq('is_active', true); 
-          if(data) setAvailableUpsells(data); else setAvailableUpsells([]); 
-      };
-      fetchUpsells();
-  }, [formData.category]); 
 
   // --- BARKOD ---
   useEffect(() => {
@@ -354,10 +294,52 @@ export default function ServisDetaySayfasi() {
   };
 
   const toggleUpsell = (item: any) => {
-      const current = Array.isArray(formData.recommended_upsells) ? [...formData.recommended_upsells] : [];
+      const current = Array.isArray(formData.sold_upsells) ? [...formData.sold_upsells] : [];
       const exists = current.find((i:any) => i.id === item.id);
-      if (exists) setFormData({...formData, recommended_upsells: current.filter((i:any) => i.id !== item.id)});
-      else setFormData({...formData, recommended_upsells: [...current, item]});
+      let newSold;
+      if (exists) {
+          newSold = current.filter((i:any) => i.id !== item.id);
+          setFormData({...formData, sold_upsells: newSold, price: Number(formData.price) - Number(item.price)});
+      } else {
+          newSold = [...current, item];
+          setFormData({...formData, sold_upsells: newSold, price: Number(formData.price) + Number(item.price)});
+      }
+  };
+
+  // --- OTO-KURUMSAL YAZI ÜRETİCİSİ (YENİ) ---
+  const generateCorporateReport = () => {
+      const parts = usedParts.map(p => p.aura_stok?.urun_adi).join(", ");
+      const upsells = Array.isArray(formData.sold_upsells) ? formData.sold_upsells.map((u:any) => typeof u === 'object' ? u.name : u).join(", ") : "";
+      
+      let report = `Sayın *${formData.customer}*,\n\n`;
+      report += `Teknik servisimize *${formData.tracking_code}* referans numarası ile kabul edilen *${formData.device}* cihazınızın işlemleri tamamlanmıştır.\n\n`;
+      
+      if (usedParts.length > 0) {
+          report += `🔧 *Yapılan Teknik Müdahaleler:*\nCihazınızda tespit edilen donanım arızaları giderilmiş ve aşağıdaki orijinal bileşenlerin değişimi sağlanmıştır:\n• ${parts}\n\n`;
+      }
+      
+      if (upsells.length > 0) {
+          report += `✨ *Ek Hizmetler ve Aksesuarlar:*\nCihaz performansını artırmak ve korumak amacıyla:\n• ${upsells} eklenmiştir.\n\n`;
+      }
+
+      report += `📝 *Teknisyen Notu:*\n${formData.notes || "Genel bakım, temizlik ve performans optimizasyonu yapılmıştır."}\n\n`;
+      report += `📊 *Sonuç:*\nCihazınız tüm kalite kontrol testlerinden (Ekran, Batarya, Şebeke, Sensörler) başarıyla geçmiş olup, fabrika standartlarında performans göstermektedir.\n\n`;
+      report += `💰 *Toplam Tutar:* ${formData.price} TL\n\n`;
+      report += `Cihazınızı servisimizden teslim alabilirsiniz.\n\nSaygılarımızla,\n*Aura Bilişim Teknik Servis Ekibi*`;
+      
+      return report;
+  };
+
+  // --- WHATSAPP GÖNDERİMİ (GÜNCELLENMİŞ) ---
+  const sendWhatsAppMessage = () => {
+      let cleanPhone = (formData.phone || "").replace(/\D/g, ''); 
+      if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1); 
+      if (cleanPhone.length === 10) cleanPhone = '90' + cleanPhone; 
+      
+      const message = generateCorporateReport();
+      
+      logToTimeline("WhatsApp Mesajı", "Müşteriye kurumsal durum bildirimi gönderildi."); 
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank"); 
   };
 
   const handlePaymentAndComplete = async () => {
@@ -369,7 +351,7 @@ export default function ServisDetaySayfasi() {
       logToTimeline("Teslimat & Ödeme", `Cihaz teslim edildi. ${formData.price} TL tahsil edildi.`);
       setFormData({...formData, status: 'Teslim Edildi'});
       setIsPaymentModalOpen(false); setLoading(false); alert("İşlem tamamlandı!");
-      if(confirm("Mesaj gönderilsin mi?")) sendWhatsAppMessage();
+      if(confirm("Müşteriye bilgilendirme mesajı gönderilsin mi?")) sendWhatsAppMessage();
   };
 
   const handleSave = async () => {
@@ -419,95 +401,166 @@ export default function ServisDetaySayfasi() {
   };
   const removeImage = (index: number) => { const newImages = Array.isArray(formData.images) ? [...formData.images] : []; newImages.splice(index, 1); setFormData({ ...formData, images: newImages }); };
   const handleDelete = async () => { if(!confirm("Silmek istiyor musunuz?")) return; setLoading(true); const { error } = await supabase.from('aura_jobs').delete().eq('id', id); if (error) { alert("Hata: " + error.message); setLoading(false); } else { alert("Silindi."); router.push('/epanel/atolye'); } };
-  const sendWhatsAppMessage = () => { let cleanPhone = (formData.phone || "").replace(/\D/g, ''); if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1); if (cleanPhone.length === 10) cleanPhone = '90' + cleanPhone; let rawMessage = formData.status === "Hazır" ? `Sayın *${formData.customer}*,\n\n*${formData.tracking_code}* kodlu cihazınız hazır.\n💰 Tutar: ${formData.price} TL` : `Merhaba,\n\nCihaz durumu: *${formData.status}*.`; logToTimeline("WhatsApp Mesajı", "Müşteriye durum bildirimi gönderildi."); window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(rawMessage)}`, "_blank"); };
   const toggleArrayItem = (field: string, item: string) => { setFormData((prev: any) => { const current = Array.isArray(prev[field]) ? prev[field] : []; const updated = current.includes(item) ? current.filter((i: string) => i !== item) : [...current, item]; return { ...prev, [field]: updated }; }); };
 
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://aurabilisim.net/cihaz-sorgula?takip=${formData.tracking_code}`)}`;
-  if (loading) return <div className="p-20 text-white text-center">Yükleniyor...</div>;
   const catInfo = getCategoryInfo(formData.category);
   const totalPartsCost = usedParts.reduce((acc, part) => acc + (Number(part.satis_fiyati_anlik) * Number(part.adet)), 0);
   const totalUpsellsCost = Array.isArray(formData.sold_upsells) ? formData.sold_upsells.reduce((acc:any, item:any) => acc + (Number(item.price)||0), 0) : 0;
   const laborCost = Math.max(Number(formData.price) - totalPartsCost - totalUpsellsCost, 0);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://aurabilisim.net/cihaz-sorgula?takip=${formData.tracking_code}`)}`;
+
+  if (loading) return <div className="p-20 text-white text-center">Yükleniyor...</div>;
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-slate-200 p-6 font-sans relative">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-slate-800 pb-4 sticky top-0 bg-[#0b0e14]/95 backdrop-blur-md z-50 gap-4 print:hidden">
-            <div className="flex items-center gap-4">
-                <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 font-bold text-sm"><ArrowLeft size={18}/> GERİ DÖN</button>
-                <h1 className="text-xl font-black text-white">SERVİS <span className="text-cyan-500">#{formData.tracking_code || "YENİ"}</span></h1>
-            </div>
-            <div className="flex gap-3 w-full md:w-auto">
-                <button onClick={sendWhatsAppMessage} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg text-white font-bold text-sm shadow-lg active:scale-95"><MessageCircle size={18}/> WP</button>
-                <button onClick={() => window.print()} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 text-white font-bold text-sm active:scale-95"><Printer size={18}/> YAZDIR</button>
-                {formData.status !== 'Teslim Edildi' && id !== 'yeni' && (<button onClick={() => setIsPaymentModalOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-bold text-sm shadow-lg active:scale-95"><CheckCircle2 size={18}/> TESLİM ET</button>)}
-                {id !== 'yeni' && (<button onClick={handleDelete} className="px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-lg font-bold"><Trash2 size={18}/></button>)}
-                <button onClick={handleSave} className="px-6 py-2 bg-cyan-600 rounded-lg font-bold text-white shadow-lg"><Save size={18}/> KAYDET</button>
-            </div>
-        </div>
+       {/* HEADER */}
+       <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-slate-800 pb-4 sticky top-0 bg-[#0b0e14]/95 backdrop-blur-md z-50 gap-4 print:hidden">
+           <div className="flex items-center gap-4">
+               <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 font-bold text-sm"><ArrowLeft size={18}/> GERİ DÖN</button>
+               <h1 className="text-xl font-black text-white">SERVİS <span className="text-cyan-500">#{formData.tracking_code || "YENİ"}</span></h1>
+           </div>
+           <div className="flex gap-3 w-full md:w-auto">
+               <button onClick={sendWhatsAppMessage} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg text-white font-bold text-sm shadow-lg active:scale-95"><MessageCircle size={18}/> WP</button>
+               <button onClick={() => window.print()} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 text-white font-bold text-sm active:scale-95"><Printer size={18}/> YAZDIR</button>
+               {formData.status !== 'Teslim Edildi' && id !== 'yeni' && (<button onClick={() => setIsPaymentModalOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-bold text-sm shadow-lg active:scale-95"><CheckCircle2 size={18}/> TESLİM ET</button>)}
+               {id !== 'yeni' && (<button onClick={handleDelete} className="px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-lg font-bold"><Trash2 size={18}/></button>)}
+               <button onClick={handleSave} className="px-6 py-2 bg-cyan-600 rounded-lg font-bold text-white shadow-lg"><Save size={18}/> KAYDET</button>
+           </div>
+       </div>
 
-        <div className="grid grid-cols-12 gap-6 print:hidden">
-            <div className="col-span-12 lg:col-span-3 space-y-6">
-                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><User size={14} className="text-cyan-500"/> Müşteri</h3>
-                    <div className="space-y-3">
-                        <div className="flex bg-black/30 p-1 rounded-lg border border-slate-800 mb-3">{["Son Kullanıcı", "Bayi"].map(t => (<button key={t} onClick={() => setFormData((p:any)=>({...p, customerType: t}))} className={`flex-1 text-[10px] py-1.5 rounded font-bold transition-all uppercase ${formData.customerType === t ? 'bg-cyan-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>{t}</button>))}</div>
-                        {formData.customerType === 'Bayi' ? (<div className="relative"><Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500" size={14} /><select className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 pl-9 text-sm font-bold text-white outline-none focus:border-cyan-500 appearance-none" value={formData.customer} onChange={(e) => handleDealerChange(e.target.value)}><option value="">Bayi Seçiniz...</option>{dealersList.map((d: any) => ( <option key={d.id} value={d.sirket_adi}>{d.sirket_adi}</option> ))}</select></div>) : (<input type="text" value={formData.customer} onChange={e => setFormData((p:any)=>({...p, customer: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white outline-none" placeholder="Ad Soyad"/>)}
-                        <input type="text" value={formData.phone} onChange={e => setFormData((p:any)=>({...p, phone: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-mono" placeholder="Telefon"/>
-                        <textarea value={formData.address} onChange={e => setFormData((p:any)=>({...p, address: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-xs h-20 outline-none resize-none" placeholder="Adres..."></textarea>
-                        <div className="pt-2 border-t border-slate-800 space-y-2">
+       <div className="grid grid-cols-12 gap-6 print:hidden">
+           {/* SOL: MÜŞTERİ & CİHAZ & UPSELL */}
+           <div className="col-span-12 lg:col-span-3 space-y-6">
+               <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
+                   <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><User size={14} className="text-cyan-500"/> Müşteri</h3>
+                   <div className="space-y-3">
+                       <div className="flex bg-black/30 p-1 rounded-lg border border-slate-800 mb-3">{["Son Kullanıcı", "Bayi"].map(t => (<button key={t} onClick={() => setFormData((p:any)=>({...p, customerType: t}))} className={`flex-1 text-[10px] py-1.5 rounded font-bold transition-all uppercase ${formData.customerType === t ? 'bg-cyan-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>{t}</button>))}</div>
+                       {formData.customerType === 'Bayi' ? (<div className="relative"><Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500" size={14} /><select className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 pl-9 text-sm font-bold text-white outline-none focus:border-cyan-500 appearance-none" value={formData.customer} onChange={(e) => handleDealerChange(e.target.value)}><option value="">Bayi Seçiniz...</option>{dealersList.map((d: any) => ( <option key={d.id} value={d.sirket_adi}>{d.sirket_adi}</option> ))}</select></div>) : (<input type="text" value={formData.customer} onChange={e => setFormData((p:any)=>({...p, customer: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white outline-none" placeholder="Ad Soyad"/>)}
+                       <input type="text" value={formData.phone} onChange={e => setFormData((p:any)=>({...p, phone: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-mono" placeholder="Telefon"/>
+                       <textarea value={formData.address} onChange={e => setFormData((p:any)=>({...p, address: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-xs h-20 outline-none resize-none" placeholder="Adres..."></textarea>
+                       <div className="pt-2 border-t border-slate-800 space-y-2">
                             <select value={formData.status} onChange={e => setFormData((p:any)=>({...p, status: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white"><option>Bekliyor</option><option>İşlemde</option><option>Parça Bekliyor</option><option>Onay Bekliyor</option><option>Hazır</option><option>Teslim Edildi</option></select>
                             <div className="flex gap-2"><div className="flex-1"><label className="text-[9px] text-green-500 font-bold">FİYAT</label><input type="number" value={formData.price} onChange={e => setFormData((p:any)=>({...p, price: Number(e.target.value)}))} className="w-full bg-[#0b0e14] border border-green-900/50 text-green-400 font-bold text-right p-2 rounded-lg"/></div><div className="flex-1"><label className="text-[9px] text-red-500 font-bold">MALİYET</label><input type="number" value={formData.cost} onChange={e => setFormData((p:any)=>({...p, cost: Number(e.target.value)}))} className="w-full bg-[#0b0e14] border border-red-900/50 text-red-400 font-bold text-right p-2 rounded-lg"/></div></div>
-                        </div>
-                        {formData.approval_status === 'none' && <button onClick={() => setApprovalModalOpen(true)} className="w-full py-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg font-bold text-xs flex justify-center gap-2"><Zap size={14}/> EKSTRA ONAY İSTE</button>}
-                        {formData.approval_status === 'pending' && <div className="text-center text-xs text-yellow-500 bg-yellow-500/10 p-2 rounded border border-yellow-500/30 animate-pulse">ONAY BEKLENİYOR (+{formData.approval_amount}₺)</div>}
-                        {formData.approval_status === 'approved' && <div className="text-center text-xs text-green-500 bg-green-500/10 p-2 rounded border border-green-500/30">MÜŞTERİ ONAYLADI ✅</div>}
-                    </div>
-                </div>
+                       </div>
+                       {formData.approval_status === 'none' && <button onClick={() => setApprovalModalOpen(true)} className="w-full py-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg font-bold text-xs flex justify-center gap-2"><Zap size={14}/> EKSTRA ONAY İSTE</button>}
+                       {formData.approval_status === 'pending' && <div className="text-center text-xs text-yellow-500 bg-yellow-500/10 p-2 rounded border border-yellow-500/30 animate-pulse">ONAY BEKLENİYOR (+{formData.approval_amount}₺)</div>}
+                       {formData.approval_status === 'approved' && <div className="text-center text-xs text-green-500 bg-green-500/10 p-2 rounded border border-green-500/30">MÜŞTERİ ONAYLADI ✅</div>}
+                   </div>
+               </div>
 
-                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Lock size={14} className="text-indigo-400"/> Özel Not (Gizli)</h3>
-                    <textarea value={formData.privateNote} onChange={e => setFormData((p:any)=>({...p, privateNote: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs h-24 outline-none resize-none focus:border-indigo-500 text-slate-300" placeholder="Sadece yöneticiler ve teknisyenler görebilir..."></textarea>
-                </div>
-                
-                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ShoppingBag size={14} className="text-pink-500"/> Fırsat Öner (Upsell)</h3>
-                    <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                        {availableUpsells.length > 0 ? availableUpsells.map((item:any) => {
-                            const recUpsells = Array.isArray(formData.recommended_upsells) ? formData.recommended_upsells : [];
-                            const sldUpsells = Array.isArray(formData.sold_upsells) ? formData.sold_upsells : [];
-                            const isSelected = recUpsells.some((i:any) => i.id === item.id);
-                            const isSold = sldUpsells.some((i:any) => i.id === item.id || i.name === item.name || i === item.name);
-                            if(isSold) return <div key={item.id} className="p-2 bg-green-500/10 border border-green-500/30 rounded text-xs text-green-400 flex justify-between"><span>{item.name}</span><span className="font-bold">SATILDI</span></div>;
-                            return ( <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSelected ? 'bg-pink-500/20 border-pink-500 text-pink-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-slate-500'}`}><span>{item.name}</span><span className="font-bold">{item.price}₺</span></button> );
-                        }) : (<div className="text-center text-[10px] text-slate-600">Bu kategori için ürün bulunamadı.</div>)}
-                    </div>
-                    {Array.isArray(formData.recommended_upsells) && formData.recommended_upsells.length > 0 && <div className="text-[10px] text-slate-500 text-center mt-2">Seçili {formData.recommended_upsells.length} ürün müşteriye gösterilecek.</div>}
-                </div>
-            </div>
+               <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
+                   <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Lock size={14} className="text-indigo-400"/> Özel Not (Gizli)</h3>
+                   <textarea value={formData.privateNote} onChange={e => setFormData((p:any)=>({...p, privateNote: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs h-24 outline-none resize-none focus:border-indigo-500 text-slate-300" placeholder="Sadece yöneticiler ve teknisyenler görebilir..."></textarea>
+               </div>
+               
+               {/* --- GELİŞTİRİLMİŞ UPSELL & HİZMETLER --- */}
+               <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
+                   <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ShoppingBag size={14} className="text-pink-500"/> Fırsat & Hizmet Ekle</h3>
+                   
+                   <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
+                       {/* HİZMETLER (ÖNCELİKLİ) */}
+                       {availableServices.length > 0 && (
+                           <div>
+                               <div className="text-[9px] font-bold text-purple-400 mb-2 border-b border-slate-800 pb-1">EK HİZMETLER</div>
+                               <div className="grid grid-cols-1 gap-2">
+                                   {availableServices.map((item:any) => {
+                                       const isSold = formData.sold_upsells?.some((i:any) => i.id === item.id);
+                                       return (
+                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-purple-900/40 border-purple-500 text-purple-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-purple-500/50'}`}>
+                                               <div className="flex items-center gap-2"><ShieldCheck size={12}/> {item.name}</div>
+                                               <span className="font-bold">{item.price}₺</span>
+                                           </button>
+                                       )
+                                   })}
+                               </div>
+                           </div>
+                       )}
 
-            <div className="col-span-12 lg:col-span-5 space-y-6">
+                       {/* ÜRÜNLER */}
+                       {availableProducts.length > 0 && (
+                           <div className="mt-4">
+                               <div className="text-[9px] font-bold text-cyan-400 mb-2 border-b border-slate-800 pb-1">AKSESUAR & ÜRÜN</div>
+                               <div className="grid grid-cols-1 gap-2">
+                                   {availableProducts.map((item:any) => {
+                                       const isSold = formData.sold_upsells?.some((i:any) => i.id === item.id);
+                                       return (
+                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-cyan-500/50'}`}>
+                                               <div className="flex items-center gap-2"><Package size={12}/> {item.name}</div>
+                                               <span className="font-bold">{item.price}₺</span>
+                                           </button>
+                                       )
+                                   })}
+                               </div>
+                           </div>
+                       )}
+                   </div>
+                   {Array.isArray(formData.sold_upsells) && formData.sold_upsells.length > 0 && <div className="text-[10px] text-green-500 text-center mt-3 bg-green-900/20 p-2 rounded border border-green-900/50">Toplam {formData.sold_upsells.length} ek kalem eklendi.</div>}
+               </div>
+           </div>
+
+           {/* ORTA: CİHAZ & İŞLEM */}
+           <div className="col-span-12 lg:col-span-5 space-y-6">
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-6 shadow-lg">
                     <div className="flex justify-between items-center mb-5">
                          <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Smartphone size={14} className="text-blue-500"/> Cihaz Kimliği</h3>
                          <button onClick={() => setIsVisualDiagnosticOpen(true)} className="text-[9px] bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 px-3 py-1.5 rounded-full border border-cyan-500/30 font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-cyan-500/10"><Activity size={12} className="animate-pulse"/> AURA VISUAL DIAGNOSTIC</button>
                     </div>
                     <div className="space-y-4">
-                        <div><label className="text-[10px] text-slate-500 font-bold ml-1">MARKA / MODEL</label><input type="text" value={formData.device} onChange={e => setFormData((p:any)=>({...p, device: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-lg font-black text-white outline-none focus:border-cyan-500" placeholder="Model (Örn: iPhone 13)"/></div>
+                        <div className="flex gap-4">
+                             <div className="flex-1">
+                                 <label className="text-[10px] text-slate-500 font-bold ml-1">KATEGORİ</label>
+                                 <select 
+                                     value={formData.category} 
+                                     onChange={e => handleCategoryChange(e.target.value)} 
+                                     className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-cyan-500"
+                                 >
+                                     {Object.keys(CATEGORY_DATA).map(c => <option key={c} value={c}>{c}</option>)}
+                                 </select>
+                             </div>
+                             <div className="flex-1">
+                                 <label className="text-[10px] text-slate-500 font-bold ml-1">MARKA / MODEL</label>
+                                 <input type="text" value={formData.device} onChange={e => setFormData((p:any)=>({...p, device: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-cyan-500" placeholder="Model"/>
+                             </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4"><div className="relative"><input type="text" value={formData.serialNo} onChange={e => { setFormData((p:any)=>({...p, serialNo: e.target.value})); checkExpertise(e.target.value); }} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-mono uppercase outline-none focus:border-cyan-500" placeholder="IMEI / SERİ NO"/>{(formData.serialNo || "").length > 5 && (<div className="absolute right-1 top-1 bottom-1">{expertiseId ? (<button onClick={() => router.push(`/epanel/ekspertiz/detay/${expertiseId}`)} className="h-full px-3 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><FileText size={12}/> RAPOR VAR</button>) : (<button onClick={() => router.push(`/epanel/ekspertiz?yeni=${formData.serialNo}`)} className="h-full px-3 bg-slate-700 hover:bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><PlusCircle size={12}/> RAPOR EKLE</button>)}</div>)}</div><input type="text" value={formData.password} onChange={e => setFormData((p:any)=>({...p, password: e.target.value}))} className="w-full bg-[#0b0e14] border border-red-900/30 text-red-400 rounded-lg p-3 font-bold outline-none focus:border-red-500" placeholder="Şifre"/></div>
                         <div><div className="flex justify-between items-center mb-1 ml-1"><label className="text-[10px] text-slate-500 font-bold">ŞİKAYET / ARIZA</label><button onClick={() => { setIsWikiModalOpen(true); setWikiSearchTerm(formData.device); handleWikiSearch(); }} className="text-[10px] flex items-center gap-1 text-purple-400 hover:text-purple-300 font-bold bg-purple-900/20 px-2 py-0.5 rounded border border-purple-500/30"><Book size={10}/> Wiki'de Ara</button></div><textarea value={formData.issue} onChange={e => setFormData((p:any)=>({...p, issue: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm h-24 outline-none resize-none focus:border-cyan-500" placeholder="Arıza detayını giriniz..."></textarea></div>
                         <div className="bg-black/20 p-3 rounded-xl border border-slate-800"><label className="text-[10px] text-cyan-500 font-bold uppercase mb-2 block">Teslim Alınanlar</label><div className="flex flex-wrap gap-2">{catInfo.accessories.map((acc: string) => { const accArray = Array.isArray(formData.accessories) ? formData.accessories : []; const isSelected = accArray.includes(acc); return (<button key={acc} onClick={() => { const curr = isSelected ? accArray.filter((i:any)=>i!==acc) : [...accArray, acc]; setFormData({...formData, accessories: curr}); }} className={`px-2 py-1 rounded border text-[10px] font-bold transition-all ${isSelected ? 'bg-cyan-900/40 border-cyan-500 text-cyan-400 scale-105' : 'bg-[#0b0e14] border-slate-500 hover:border-slate-600'}`}>{acc}</button>); })}</div></div>
                     </div>
                 </div>
 
+                {/* --- GELİŞTİRİLMİŞ ÖN KONTROL --- */}
+                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><AlertTriangle size={14} className="text-orange-500"/> Ön Kontrol (Giriş)</h3>
+                        <span className="text-[9px] text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-700">{formData.category}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        {catInfo.preChecks.map((item: string) => { 
+                            const preArray = Array.isArray(formData.preCheck) ? formData.preCheck : []; 
+                            const isSelected = preArray.includes(item); 
+                            return (
+                                <button key={item} onClick={() => toggleArrayItem("preCheck", item)} className={`relative flex items-center gap-3 p-3 rounded-xl border text-left text-[11px] font-bold transition-all group ${isSelected ? 'bg-red-500/10 border-red-500/50 text-red-400' : 'bg-[#0b0e14] border-slate-800 text-slate-500 hover:border-slate-600'}`}>
+                                    <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-red-500 border-red-500 text-white' : 'border-slate-600 group-hover:border-slate-500'}`}>
+                                        {isSelected && <X size={10} strokeWidth={4}/>}
+                                    </div>
+                                    {item}
+                                </button>
+                            ); 
+                        })}
+                    </div>
+                </div>
+
                 {id !== 'yeni' && (
                     <div className="bg-[#151921] border border-slate-800 rounded-xl p-6 shadow-lg">
-                        <div className="flex justify-between items-center mb-4"><h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><PackageMinus size={14} className="text-yellow-500"/> Kullanılan Parçalar</h3><div className="flex gap-2"><button onClick={() => { setIsStockModalOpen(true); setShowScanner(true); }} className="text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-lg"><ScanLine size={12}/> BARKOD</button><button onClick={() => setIsStockModalOpen(true)} className="text-[10px] bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-lg"><Plus size={12}/> STOKTAN DÜŞ</button></div></div>
-                        <div className="space-y-2">{usedParts.length > 0 ? usedParts.map((part) => (<div key={part.id} className="flex justify-between items-center bg-[#0b0e14] border border-slate-800 p-2.5 rounded-lg group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500 font-bold text-xs">{part.adet}x</div><div><p className="text-xs font-bold text-white">{part.aura_stok?.urun_adi}</p><p className="text-[10px] text-slate-500">Mal: {(part.alis_fiyati_anlik * part.adet)}₺ • Sat: {(part.satis_fiyati_anlik * part.adet)}₺</p></div></div><button onClick={() => removePartFromJob(part.id, part.stok_id, part.alis_fiyati_anlik, part.satis_fiyati_anlik, part.adet)} className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button></div>)) : (<div className="text-center text-[10px] text-slate-600 border border-dashed border-slate-800 p-4 rounded-lg">Henüz parça eklenmedi. "Stoktan Düş" butonunu kullanın.</div>)}</div>
+                        <div className="flex justify-between items-center mb-4"><h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><PackageMinus size={14} className="text-yellow-500"/> Parça / İşçilik</h3><div className="flex gap-2"><button onClick={() => { setIsStockModalOpen(true); setShowScanner(true); }} className="text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-lg"><ScanLine size={12}/> BARKOD</button><button onClick={() => setIsStockModalOpen(true)} className="text-[10px] bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-lg"><Plus size={12}/> EKLE</button></div></div>
+                        <div className="space-y-2">{usedParts.length > 0 ? usedParts.map((part) => (<div key={part.id} className="flex justify-between items-center bg-[#0b0e14] border border-slate-800 p-2.5 rounded-lg group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500 font-bold text-xs">{part.adet}x</div><div><p className="text-xs font-bold text-white">{part.aura_stok?.urun_adi}</p><p className="text-[10px] text-slate-500">Mal: {(part.alis_fiyati_anlik * part.adet)}₺ • Sat: {(part.satis_fiyati_anlik * part.adet)}₺</p></div></div><button onClick={() => removePartFromJob(part.id, part.stok_id, part.alis_fiyati_anlik, part.satis_fiyati_anlik, part.adet)} className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button></div>)) : (<div className="text-center text-[10px] text-slate-600 border border-dashed border-slate-800 p-4 rounded-lg">Henüz parça eklenmedi.</div>)}</div>
                     </div>
                 )}
-            </div>
+           </div>
 
-            <div className="col-span-12 lg:col-span-4 space-y-6">
+           {/* SAĞ: NOTLAR & KONTROL */}
+           <div className="col-span-12 lg:col-span-4 space-y-6">
                 {id !== 'yeni' && (
                     <div className="bg-[#151921] border border-slate-800 rounded-xl overflow-hidden shadow-lg flex flex-col max-h-[300px]">
                         <div className="p-3 bg-slate-900/50 border-b border-slate-800 flex justify-between items-center"><h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Clock size={14} className="text-emerald-500"/> Canlı Akış</h3><span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20">LOGLAR</span></div>
@@ -515,27 +568,38 @@ export default function ServisDetaySayfasi() {
                     </div>
                 )}
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <div className="bg-[#0b0e14] border border-slate-800 border-b-0 rounded-t-lg px-4 py-2 flex justify-between items-center"><span className="font-bold text-sm uppercase text-slate-300">Servis İşlemleri & Değişen Parçalar</span><span className="text-xs font-bold border border-slate-700 bg-[#151921] px-2 py-0.5 rounded uppercase text-slate-400">DURUM: {formData.status}</span></div>
-                    <div className="border border-slate-800 rounded-b-lg p-4 min-h-[120px] bg-[#0b0e14]"><textarea value={formData.notes} onChange={e => setFormData((p:any)=>({...p, notes: e.target.value}))} className="w-full bg-transparent border-none text-slate-300 text-sm h-full outline-none resize-none" placeholder="Yapılan işlemler..."></textarea>{Array.isArray(formData.sold_upsells) && formData.sold_upsells.length > 0 && (<div className="mt-4 pt-4 border-t border-slate-800"><h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Eklenen Ürünler / Hizmetler:</h5><ul className="text-sm list-disc pl-4 space-y-1 text-slate-400">{formData.sold_upsells.map((item:any, idx:number) => (<li key={idx}>{typeof item === 'object' ? (item.name || item.urun_adi || "İsimsiz Ürün") : item}</li>))}</ul></div>)}</div>
+                    <div className="bg-[#0b0e14] border border-slate-800 border-b-0 rounded-t-lg px-4 py-2 flex justify-between items-center"><span className="font-bold text-sm uppercase text-slate-300">Yapılan İşlemler (Rapor)</span></div>
+                    <textarea value={formData.notes} onChange={e => setFormData((p:any)=>({...p, notes: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-800 text-slate-300 text-sm h-32 p-3 outline-none resize-none rounded-b-lg" placeholder="Teknisyen notu..."></textarea>
+                    {formData.sold_upsells?.length > 0 && <div className="mt-3 p-3 bg-black/20 rounded border border-slate-800"><div className="text-[10px] font-bold text-slate-500 mb-2">EKLENEN HİZMETLER</div><div className="space-y-1">{formData.sold_upsells.map((u:any, i:number) => <div key={i} className="text-xs text-white flex justify-between"><span>{u.name}</span><span className="font-bold">{u.price}₺</span></div>)}</div></div>}
                 </div>
-                
+
+                {/* --- GELİŞTİRİLMİŞ KALİTE KONTROL --- */}
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><AlertTriangle size={14} className="text-orange-500"/> Ön Kontrol</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                        {catInfo.preChecks.map((item: string) => { const preArray = Array.isArray(formData.preCheck) ? formData.preCheck : []; const isSelected = preArray.includes(item); return (<button key={item} onClick={() => { const curr = isSelected ? preArray.filter((i:any)=>i!==item) : [...preArray, item]; setFormData({...formData, preCheck: curr}); }} className={`flex items-center gap-2 p-2 rounded border text-left text-[10px] transition-all ${isSelected ? 'bg-red-500/10 border-red-500/50 text-red-400 font-bold' : 'bg-[#0b0e14] border-slate-800 text-slate-600 hover:border-slate-700'}`}><div className={`w-2 h-2 rounded-full ${isSelected?'bg-red-500':'bg-slate-700'}`}></div>{item}</button>); })}
+                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ClipboardCheck size={14} className="text-green-500"/> Kalite Kontrol (Çıkış)</h3>
+                    <div className="grid grid-cols-1 gap-2">
+                        {catInfo.finalChecks.map((item: string) => {
+                            const finalArray = Array.isArray(formData.finalCheck) ? formData.finalCheck : [];
+                            const isSelected = finalArray.includes(item);
+                            return (
+                                <button key={item} onClick={() => toggleArrayItem("finalCheck", item)} className={`relative flex items-center gap-3 p-3 w-full rounded-xl border text-[11px] font-bold text-left transition-all group ${isSelected ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-[#0b0e14] border-slate-800 text-slate-500 hover:border-slate-600'}`}>
+                                    <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-green-600 border-green-600 text-white' : 'border-slate-600 group-hover:border-slate-500'}`}>
+                                        {isSelected && <Check size={10} strokeWidth={4}/>}
+                                    </div>
+                                    {item}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
-                
+
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <div className="flex justify-between mb-4">
-                        <h3 className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-2"><Camera size={14} className="text-cyan-500"/> Fotoğraflar</h3>
-                        <label className={`cursor-pointer text-[10px] bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 rounded-lg text-white font-bold transition-all flex items-center gap-1 ${uploading ? 'opacity-50' : ''}`}>
-                            <Upload size={10}/> {uploading ? '...' : 'Ekle'}
-                            <input type="file" multiple className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading}/>
-                        </label>
-                    </div>
-                    {Array.isArray(formData.images) && formData.images.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-2">
+                    <h3 className="text-[11px] font-bold text-slate-400 uppercase mb-4 flex items-center gap-2"><Camera size={14} className="text-cyan-500"/> Fotoğraflar</h3>
+                    <label className={`cursor-pointer w-full text-[10px] bg-[#0b0e14] hover:bg-slate-900 border border-slate-700 border-dashed py-3 rounded-lg text-slate-400 font-bold transition-all flex items-center justify-center gap-2 ${uploading ? 'opacity-50' : ''}`}>
+                        <Upload size={14}/> {uploading ? 'Yükleniyor...' : 'Fotoğraf Yükle'}
+                        <input type="file" multiple className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading}/>
+                    </label>
+                    {Array.isArray(formData.images) && formData.images.length > 0 && (
+                        <div className="grid grid-cols-4 gap-2 mt-4">
                             {formData.images.map((img:string, i:number)=>(
                                 <div key={i} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-700">
                                     <img src={img} className="w-full h-full object-cover"/>
@@ -543,157 +607,13 @@ export default function ServisDetaySayfasi() {
                                 </div>
                             ))}
                         </div>
-                    ) : ( <div className="text-center text-slate-600 text-xs border border-dashed border-slate-800 p-4 rounded-lg">Görsel yok.</div> )}
+                    )}
                 </div>
-                
-                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ClipboardCheck size={14} className="text-green-500"/> Kalite Kontrol</h3>
-                    <div className="space-y-2">
-                         {catInfo.finalChecks.map((item: string) => {
-                             const finalArray = Array.isArray(formData.finalCheck) ? formData.finalCheck : [];
-                             const isSelected = finalArray.includes(item);
-                             return (
-                                <button key={item} onClick={() => toggleArrayItem("finalCheck", item)} className={`flex items-center gap-3 p-2 w-full rounded-lg border text-[11px] font-bold text-left transition-all ${isSelected ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-[#0b0e14] border-slate-800 text-slate-600 hover:border-slate-700'}`}>
-                                    <div className={`min-w-[14px] h-[14px] rounded flex items-center justify-center border ${isSelected ? 'bg-green-600 border-green-600 text-white' : 'border-slate-700'}`}>{isSelected && <ClipboardCheck size={8}/>}</div>{item}
-                                </button>
-                             );
-                         })}
-                    </div>
-                </div>
-            </div>
-        </div>
+           </div>
+       </div>
 
-        {/* --- AURA VISUAL DIAGNOSTIC MODAL (CLEAN BLOCKS STYLE) --- */}
-        {isVisualDiagnosticOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-lg animate-in zoom-in-95">
-                <div className="bg-[#0f172a] w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
-                    <button onClick={() => setIsVisualDiagnosticOpen(false)} className="absolute top-6 right-6 text-white z-50 hover:bg-slate-800 p-2 rounded-full transition-all"><X size={24}/></button>
-                    
-                    {/* SOL: CİHAZ GÖRSELİ */}
-                    <div className="flex-1 relative flex items-center justify-center bg-slate-900 overflow-hidden">
-                        <div className="absolute inset-0 bg-[linear-gradient(#1e293b_1px,transparent_1px),linear-gradient(90deg,#1e293b_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
-                        
-                        <div className="relative z-10 w-[360px] h-[720px] scale-90 md:scale-100 transition-all">
-                            {/* Telefon Kasası */}
-                            <div className="absolute inset-0 border-8 border-slate-700 rounded-[3.5rem] bg-slate-950 shadow-2xl"></div>
-                            
-                            {/* SVG KATMANI */}
-                            <svg viewBox="0 0 300 600" className="absolute inset-0 w-full h-full z-10 overflow-visible p-4">
-                                <defs>
-                                    <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
-                                        <feGaussianBlur stdDeviation="4" result="blur" />
-                                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                    </filter>
-                                </defs>
-
-                                {DEVICE_PARTS_SVG.map((part) => {
-                                    const isSelected = formData.selectedVisualParts?.find((p:any) => p.id === part.id);
-                                    
-                                    // Renkler
-                                    const fillColor = isSelected 
-                                        ? (isSelected.type === 'degisim' ? '#ef4444' : '#eab308') 
-                                        : (part.baseColor || '#334155');
-                                    
-                                    const strokeColor = isSelected ? 'white' : '#475569';
-                                    const opacity = isSelected ? 1 : 0.8;
-                                    const filter = isSelected ? "url(#neonGlow)" : "none";
-
-                                    return (
-                                        <g key={part.id} onClick={() => handleVisualPartClick(part.id)} className="cursor-pointer hover:opacity-100 transition-all duration-200 group/part">
-                                            <path 
-                                                d={part.path} 
-                                                fill={fillColor} 
-                                                stroke={strokeColor} 
-                                                strokeWidth="2"
-                                                fillRule={part.fillRule as any || "nonzero"}
-                                                style={{ opacity, filter }}
-                                                className="transition-all duration-200" 
-                                            />
-                                            
-                                            {/* Parça İsmi (Ortada Net Yazar) */}
-                                            <text 
-                                                x={part.id === 'battery' ? 75 : (part.id === 'motherboard' ? 215 : 150)} 
-                                                y={part.id === 'battery' ? 300 : (part.id === 'motherboard' ? 170 : (part.id === 'charging' ? 565 : (part.id === 'taptic' ? 505 : (part.id === 'speaker' ? 505 : (part.id === 'camera_back' ? 85 : 35)))))} 
-                                                textAnchor="middle" 
-                                                fontSize="10" 
-                                                fill="white" 
-                                                className={`font-bold uppercase tracking-wider pointer-events-none select-none ${isSelected ? 'opacity-100' : 'opacity-0 group-hover/part:opacity-100'} transition-opacity`}
-                                                style={{ textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}
-                                            >
-                                                {part.name}
-                                            </text>
-
-                                            {/* İkon (Ortada) */}
-                                            <foreignObject x={part.id === 'battery' ? 65 : (part.id === 'motherboard' ? 205 : 140)} y={part.id === 'battery' ? 270 : (part.id === 'motherboard' ? 140 : (part.id === 'charging' ? 545 : (part.id === 'taptic' ? 485 : (part.id === 'speaker' ? 485 : (part.id === 'camera_back' ? 65 : 15)))))} width="20" height="20">
-                                                <div className={`flex justify-center items-center w-full h-full text-white/50 ${isSelected ? 'text-white' : ''}`}>
-                                                    <part.icon size={20}/>
-                                                </div>
-                                            </foreignObject>
-                                        </g>
-                                    );
-                                })}
-                            </svg>
-                        </div>
-                        
-                        <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-6">
-                            <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-full border border-slate-700 shadow-lg"><div className="w-3 h-3 rounded bg-[#ef4444] shadow-[0_0_8px_#ef4444]"></div><span className="text-xs text-white font-bold">DEĞİŞİM (KIRMIZI)</span></div>
-                            <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-full border border-slate-700 shadow-lg"><div className="w-3 h-3 rounded bg-[#eab308] shadow-[0_0_8px_#eab308]"></div><span className="text-xs text-white font-bold">ONARIM (SARI)</span></div>
-                        </div>
-                    </div>
-
-                    {/* SAĞ: İŞLEM LİSTESİ */}
-                    <div className="w-full md:w-96 bg-[#0f172a] border-l border-slate-800 p-8 flex flex-col shadow-xl z-20">
-                        <div className="flex items-center gap-3 mb-6 border-b border-slate-800 pb-4">
-                            <div className="p-3 bg-cyan-500/20 rounded-xl text-cyan-400"><Activity size={24}/></div>
-                            <div>
-                                <h2 className="text-white font-bold text-lg leading-tight">ARIZA TESPİT</h2>
-                                <p className="text-slate-400 text-xs">Parçaları seçerek işlem ekleyin.</p>
-                            </div>
-                        </div>
-                        
-                        <div className="flex-1 overflow-y-auto space-y-3 mb-6 custom-scrollbar pr-2">
-                            {(!formData.selectedVisualParts || formData.selectedVisualParts.length === 0) && (
-                                <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-slate-800 rounded-2xl text-slate-500">
-                                    <ScanLine size={32} className="mb-2 opacity-50"/>
-                                    <span className="text-xs">Sol taraftan parça seçiniz.</span>
-                                </div>
-                            )}
-                            
-                            {formData.selectedVisualParts?.map((part: any, i:number) => (
-                                <div key={i} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex justify-between items-center group hover:border-slate-600 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${part.type === 'degisim' ? 'bg-red-500/20 text-red-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
-                                            <part.icon size={18}/>
-                                        </div>
-                                        <div>
-                                            <div className="text-white font-bold text-sm">{part.name}</div>
-                                            <div className="text-[10px] text-slate-400 uppercase font-bold">{part.type}</div>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-white font-mono font-bold">{part.finalPrice}₺</div>
-                                        <button onClick={() => handleVisualPartClick(part.id)} className="text-[10px] text-red-400 hover:text-red-300 underline decoration-red-400/30">İptal</button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-                            <div className="flex justify-between items-center mb-4">
-                                <span className="text-slate-400 text-xs font-bold uppercase">Tahmini Tutar</span>
-                                <span className="text-2xl font-black text-white">{formData.price}₺</span>
-                            </div>
-                            <button onClick={() => setIsVisualDiagnosticOpen(false)} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all">
-                                ONAYLA VE KAYDET
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* DİĞER MODALLAR */}
-        {isPaymentModalOpen && (
+       {/* MODALLAR */}
+       {isPaymentModalOpen && (
             <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95">
                 <div className="bg-[#1e293b] rounded-2xl w-full max-w-sm border border-slate-700 shadow-2xl overflow-hidden p-6 text-center">
                     <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30"><Wallet size={32} className="text-emerald-400"/></div>
@@ -705,12 +625,72 @@ export default function ServisDetaySayfasi() {
                 </div>
             </div>
         )}
-        {isStockModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] rounded-2xl w-full max-w-lg border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[70vh]"><div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center"><h3 className="text-white font-bold flex items-center gap-2"><Box size={18} className="text-yellow-400"/> STOKTAN PARÇA SEÇ</h3><button onClick={() => { setIsStockModalOpen(false); setShowScanner(false); }}><X size={20} className="text-slate-400 hover:text-white"/></button></div><div className="p-4 bg-[#0b0e14]"><div className="relative"><input type="text" value={stockSearchTerm} onChange={(e) => { setStockSearchTerm(e.target.value); if(e.target.value.length>1) handleStockSearch(); }} className="w-full bg-[#151921] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-yellow-500" placeholder="Parça ara veya barkod okut..." autoFocus/><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/></div>{showScanner && (<div className="mt-4 border-2 border-dashed border-slate-700 rounded-xl p-2 bg-black"><div id="reader" className="w-full"></div><p className="text-center text-xs text-slate-500 mt-2">Kameraya barkodu gösterin...</p></div>)}</div><div className="flex-1 overflow-y-auto p-2 space-y-1">{stockResults.map((part) => (<button key={part.id} onClick={() => addPartToJob(part)} className="w-full flex justify-between items-center p-3 hover:bg-slate-800 rounded-lg border border-transparent hover:border-slate-700 transition-all group text-left"><div><p className="text-sm font-bold text-white group-hover:text-yellow-400">{part.urun_adi}</p><p className="text-[10px] text-slate-500">{part.kategori} • Stok: {part.stok_adedi}</p></div><div className="text-right"><p className="text-xs font-bold text-slate-300">{part.satis_fiyati}₺</p></div></button>))}</div></div></div>)}
-        {isWikiModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] rounded-2xl w-full max-w-2xl border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]"><div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center"><h3 className="text-white font-bold flex items-center gap-2"><Book size={18} className="text-purple-400"/> AURA WIKI</h3><button onClick={() => setIsWikiModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button></div>{wikiViewMode==='search'?(<div className="p-6 flex-1 overflow-y-auto"><div className="relative mb-6"><input type="text" value={wikiSearchTerm} onChange={(e)=>setWikiSearchTerm(e.target.value)} onKeyDown={(e)=>e.key==='Enter'&&handleWikiSearch()} className="w-full bg-[#0b0e14] border border-slate-600 rounded-xl py-3 pl-11 pr-4 text-white focus:border-purple-500 outline-none" placeholder="Arıza ara..."/><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/><button onClick={handleWikiSearch} className="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">ARA</button></div>{wikiResults.length>0?(<div className="space-y-3">{wikiResults.map((res:any)=>(<div key={res.id} className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl hover:bg-slate-800 transition-colors"><div className="flex justify-between items-start mb-2"><h4 className="text-purple-400 font-bold text-sm">{res.title}</h4><button onClick={()=>applyWikiSolution(res.solution_steps)} className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded font-bold">UYGULA</button></div><p className="text-slate-400 text-xs mb-2 line-clamp-2">{res.problem_desc}</p></div>))}</div>):(<div className="text-center py-10"><Book size={40} className="text-slate-700 mx-auto mb-3"/><p className="text-slate-400 font-bold">Sonuç Bulunamadı</p><button onClick={()=>{setWikiViewMode('add');setNewWikiEntry({...newWikiEntry,title:wikiSearchTerm,problem:formData.issue});}} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 mx-auto"><Plus size={14}/> YENİ EKLE</button></div>)}</div>):(<div className="p-6 flex-1 overflow-y-auto space-y-4"><div className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer hover:text-white mb-2" onClick={()=>setWikiViewMode('search')}><ArrowLeft size={14}/> Geri</div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">BAŞLIK</label><input type="text" value={newWikiEntry.title} onChange={(e)=>setNewWikiEntry({...newWikiEntry,title:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm"/></div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">SORUN</label><textarea value={newWikiEntry.problem} onChange={(e)=>setNewWikiEntry({...newWikiEntry,problem:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-20 resize-none"/></div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">ÇÖZÜM</label><textarea value={newWikiEntry.solution} onChange={(e)=>setNewWikiEntry({...newWikiEntry,solution:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-40 resize-none"/></div><button onClick={handleAddToWiki} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg">KAYDET</button></div>)}</div></div>)}
-        {approvalModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] p-6 rounded-2xl w-full max-w-sm border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200"><h3 className="text-white font-bold mb-4 flex items-center gap-2"><Zap size={18} className="text-purple-500"/> Ekstra İşlem Onayı</h3><input type="number" onChange={(e)=>setApprovalData({...approvalData,amount:Number(e.target.value)})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-3 text-white font-bold" placeholder="Tutar"/><textarea onChange={(e)=>setApprovalData({...approvalData,desc:e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white h-24 text-sm resize-none" placeholder="Açıklama..."></textarea><div className="flex gap-2"><button onClick={()=>setApprovalModalOpen(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-xs font-bold text-slate-300">İPTAL</button><button onClick={sendApprovalRequest} className="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg text-xs font-bold text-white shadow-lg">GÖNDER</button></div></div></div>)}
-        
-        {/* --- YENİLENMİŞ YAZDIRMA ALANI (FATURA TİPİ) --- */}
-        <div id="printable-area" className="hidden bg-white text-black font-sans">
+       {isStockModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] rounded-2xl w-full max-w-lg border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[70vh]"><div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center"><h3 className="text-white font-bold flex items-center gap-2"><Box size={18} className="text-yellow-400"/> STOKTAN PARÇA SEÇ</h3><button onClick={() => { setIsStockModalOpen(false); setShowScanner(false); }}><X size={20} className="text-slate-400 hover:text-white"/></button></div><div className="p-4 bg-[#0b0e14]"><div className="relative"><input type="text" value={stockSearchTerm} onChange={(e) => { setStockSearchTerm(e.target.value); if(e.target.value.length>1) handleStockSearch(); }} className="w-full bg-[#151921] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-yellow-500" placeholder="Parça ara veya barkod okut..." autoFocus/><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/></div>{showScanner && (<div className="mt-4 border-2 border-dashed border-slate-700 rounded-xl p-2 bg-black"><div id="reader" className="w-full"></div><p className="text-center text-xs text-slate-500 mt-2">Kameraya barkodu gösterin...</p></div>)}</div><div className="flex-1 overflow-y-auto p-2 space-y-1">{stockResults.map((part) => (<button key={part.id} onClick={() => addPartToJob(part)} className="w-full flex justify-between items-center p-3 hover:bg-slate-800 rounded-lg border border-transparent hover:border-slate-700 transition-all group text-left"><div><p className="text-sm font-bold text-white group-hover:text-yellow-400">{part.urun_adi}</p><p className="text-[10px] text-slate-500">{part.kategori} • Stok: {part.stok_adedi}</p></div><div className="text-right"><p className="text-xs font-bold text-slate-300">{part.satis_fiyati}₺</p></div></button>))}</div></div></div>)}
+       {approvalModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] p-6 rounded-2xl w-full max-w-sm border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200"><h3 className="text-white font-bold mb-4 flex items-center gap-2"><Zap size={18} className="text-purple-500"/> Ekstra İşlem Onayı</h3><input type="number" onChange={(e)=>setApprovalData({...approvalData,amount:Number(e.target.value)})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-3 text-white font-bold" placeholder="Tutar"/><textarea onChange={(e)=>setApprovalData({...approvalData,desc:e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white h-24 text-sm resize-none" placeholder="Açıklama..."></textarea><div className="flex gap-2"><button onClick={()=>setApprovalModalOpen(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-xs font-bold text-slate-300">İPTAL</button><button onClick={sendApprovalRequest} className="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg text-xs font-bold text-white shadow-lg">GÖNDER</button></div></div></div>)}
+       {isWikiModalOpen && (<div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-[#1e293b] rounded-2xl w-full max-w-2xl border border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]"><div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center"><h3 className="text-white font-bold flex items-center gap-2"><Book size={18} className="text-purple-400"/> AURA WIKI</h3><button onClick={() => setIsWikiModalOpen(false)}><X size={20} className="text-slate-400 hover:text-white"/></button></div>{wikiViewMode==='search'?(<div className="p-6 flex-1 overflow-y-auto"><div className="relative mb-6"><input type="text" value={wikiSearchTerm} onChange={(e)=>setWikiSearchTerm(e.target.value)} onKeyDown={(e)=>e.key==='Enter'&&handleWikiSearch()} className="w-full bg-[#0b0e14] border border-slate-600 rounded-xl py-3 pl-11 pr-4 text-white focus:border-purple-500 outline-none" placeholder="Arıza ara..."/><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/><button onClick={handleWikiSearch} className="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">ARA</button></div>{wikiResults.length>0?(<div className="space-y-3">{wikiResults.map((res:any)=>(<div key={res.id} className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl hover:bg-slate-800 transition-colors"><div className="flex justify-between items-start mb-2"><h4 className="text-purple-400 font-bold text-sm">{res.title}</h4><button onClick={()=>applyWikiSolution(res.solution_steps)} className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded font-bold">UYGULA</button></div><p className="text-slate-400 text-xs mb-2 line-clamp-2">{res.problem_desc}</p></div>))}</div>):(<div className="text-center py-10"><Book size={40} className="text-slate-700 mx-auto mb-3"/><p className="text-slate-400 font-bold">Sonuç Bulunamadı</p><button onClick={()=>{setWikiViewMode('add');setNewWikiEntry({...newWikiEntry,title:wikiSearchTerm,problem:formData.issue});}} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 mx-auto"><Plus size={14}/> YENİ EKLE</button></div>)}</div>):(<div className="p-6 flex-1 overflow-y-auto space-y-4"><div className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer hover:text-white mb-2" onClick={()=>setWikiViewMode('search')}><ArrowLeft size={14}/> Geri</div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">BAŞLIK</label><input type="text" value={newWikiEntry.title} onChange={(e)=>setNewWikiEntry({...newWikiEntry,title:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm"/></div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">SORUN</label><textarea value={newWikiEntry.problem} onChange={(e)=>setNewWikiEntry({...newWikiEntry,problem:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-20 resize-none"/></div><div><label className="text-[10px] font-bold text-slate-500 mb-1 block">ÇÖZÜM</label><textarea value={newWikiEntry.solution} onChange={(e)=>setNewWikiEntry({...newWikiEntry,solution:e.target.value})} className="w-full bg-[#0b0e14] border border-slate-600 rounded-lg p-2.5 text-white text-sm h-40 resize-none"/></div><button onClick={handleAddToWiki} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg">KAYDET</button></div>)}</div></div>)}
+       {isVisualDiagnosticOpen && (
+            <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-lg animate-in zoom-in-95">
+                <div className="bg-[#0f172a] w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
+                    <button onClick={() => setIsVisualDiagnosticOpen(false)} className="absolute top-6 right-6 text-white z-50 hover:bg-slate-800 p-2 rounded-full transition-all"><X size={24}/></button>
+                    <div className="flex-1 relative flex items-center justify-center bg-slate-900 overflow-hidden">
+                        <div className="absolute inset-0 bg-[linear-gradient(#1e293b_1px,transparent_1px),linear-gradient(90deg,#1e293b_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
+                        <div className="relative z-10 w-[360px] h-[720px] scale-90 md:scale-100 transition-all">
+                            <div className="absolute inset-0 border-8 border-slate-700 rounded-[3.5rem] bg-slate-950 shadow-2xl"></div>
+                            <svg viewBox="0 0 300 600" className="absolute inset-0 w-full h-full z-10 overflow-visible p-4">
+                                <defs>
+                                    <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+                                        <feGaussianBlur stdDeviation="4" result="blur" />
+                                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                    </filter>
+                                </defs>
+                                {DEVICE_PARTS_SVG.map((part) => {
+                                    const isSelected = formData.selectedVisualParts?.find((p:any) => p.id === part.id);
+                                    const fillColor = isSelected ? (isSelected.type === 'degisim' ? '#ef4444' : '#eab308') : (part.baseColor || '#334155');
+                                    const strokeColor = isSelected ? 'white' : '#475569';
+                                    const opacity = isSelected ? 1 : 0.8;
+                                    const filter = isSelected ? "url(#neonGlow)" : "none";
+                                    return (
+                                        <g key={part.id} onClick={() => handleVisualPartClick(part.id)} className="cursor-pointer hover:opacity-100 transition-all duration-200 group/part">
+                                            <path d={part.path} fill={fillColor} stroke={strokeColor} strokeWidth="2" fillRule={part.fillRule as any || "nonzero"} style={{ opacity, filter }} className="transition-all duration-200" />
+                                            <text x={part.id === 'battery' ? 75 : (part.id === 'motherboard' ? 215 : 150)} y={part.id === 'battery' ? 300 : (part.id === 'motherboard' ? 170 : (part.id === 'charging' ? 565 : (part.id === 'taptic' ? 505 : (part.id === 'speaker' ? 505 : (part.id === 'camera_back' ? 85 : 35)))))} textAnchor="middle" fontSize="10" fill="white" className={`font-bold uppercase tracking-wider pointer-events-none select-none ${isSelected ? 'opacity-100' : 'opacity-0 group-hover/part:opacity-100'} transition-opacity`} style={{ textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>{part.name}</text>
+                                            <foreignObject x={part.id === 'battery' ? 65 : (part.id === 'motherboard' ? 205 : 140)} y={part.id === 'battery' ? 270 : (part.id === 'motherboard' ? 140 : (part.id === 'charging' ? 545 : (part.id === 'taptic' ? 485 : (part.id === 'speaker' ? 485 : (part.id === 'camera_back' ? 65 : 15)))))} width="20" height="20">
+                                                <div className={`flex justify-center items-center w-full h-full text-white/50 ${isSelected ? 'text-white' : ''}`}><part.icon size={20}/></div>
+                                            </foreignObject>
+                                        </g>
+                                    );
+                                })}
+                            </svg>
+                        </div>
+                        <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-6">
+                            <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-full border border-slate-700 shadow-lg"><div className="w-3 h-3 rounded bg-[#ef4444] shadow-[0_0_8px_#ef4444]"></div><span className="text-xs text-white font-bold">DEĞİŞİM (KIRMIZI)</span></div>
+                            <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-full border border-slate-700 shadow-lg"><div className="w-3 h-3 rounded bg-[#eab308] shadow-[0_0_8px_#eab308]"></div><span className="text-xs text-white font-bold">ONARIM (SARI)</span></div>
+                        </div>
+                    </div>
+                    <div className="w-full md:w-96 bg-[#0f172a] border-l border-slate-800 p-8 flex flex-col shadow-xl z-20">
+                        <div className="flex items-center gap-3 mb-6 border-b border-slate-800 pb-4">
+                            <div className="p-3 bg-cyan-500/20 rounded-xl text-cyan-400"><Activity size={24}/></div>
+                            <div><h2 className="text-white font-bold text-lg leading-tight">ARIZA TESPİT</h2><p className="text-slate-400 text-xs">Parçaları seçerek işlem ekleyin.</p></div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-3 mb-6 custom-scrollbar pr-2">
+                            {(!formData.selectedVisualParts || formData.selectedVisualParts.length === 0) && (<div className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-slate-800 rounded-2xl text-slate-500"><ScanLine size={32} className="mb-2 opacity-50"/><span className="text-xs">Sol taraftan parça seçiniz.</span></div>)}
+                            {formData.selectedVisualParts?.map((part: any, i:number) => (
+                                <div key={i} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex justify-between items-center group hover:border-slate-600 transition-colors">
+                                    <div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-lg flex items-center justify-center ${part.type === 'degisim' ? 'bg-red-500/20 text-red-500' : 'bg-yellow-500/20 text-yellow-500'}`}><part.icon size={18}/></div><div><div className="text-white font-bold text-sm">{part.name}</div><div className="text-[10px] text-slate-400 uppercase font-bold">{part.type}</div></div></div>
+                                    <div className="text-right"><div className="text-white font-mono font-bold">{part.finalPrice}₺</div><button onClick={() => handleVisualPartClick(part.id)} className="text-[10px] text-red-400 hover:text-red-300 underline decoration-red-400/30">İptal</button></div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
+                            <div className="flex justify-between items-center mb-4"><span className="text-slate-400 text-xs font-bold uppercase">Tahmini Tutar</span><span className="text-2xl font-black text-white">{formData.price}₺</span></div>
+                            <button onClick={() => setIsVisualDiagnosticOpen(false)} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all">ONAYLA VE KAYDET</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+       {/* YAZDIRMA ALANI */}
+       <div id="printable-area" className="hidden bg-white text-black font-sans">
             <div className="w-full h-full p-8 box-border flex flex-col justify-between">
                 <div>
                     <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
@@ -730,9 +710,9 @@ export default function ServisDetaySayfasi() {
                 </div>
                 <div className="flex justify-between mt-auto pt-4 border-t-2 border-black"><div className="text-center w-1/3"><p className="text-xs font-bold mb-8">TESLİM EDEN (MÜŞTERİ)</p><div className="border-b border-black w-full"></div><p className="text-[10px] mt-1">{formData.customer}</p></div><div className="text-center w-1/3"><p className="text-xs font-bold mb-8">TESLİM ALAN (YETKİLİ)</p><div className="border-b border-black w-full"></div><p className="text-[10px] mt-1">Aura Bilişim Teknik Servis</p></div></div>
             </div>
-        </div>
+       </div>
 
-        <style jsx global>{` @media print { @page { size: A4; margin: 0; } body { visibility: hidden; background-color: white; -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } #printable-area { visibility: visible; display: block !important; position: fixed; left: 0; top: 0; width: 210mm; height: 297mm; padding: 0; background-color: white; z-index: 9999; } #printable-area * { visibility: visible; } } `}</style>
+       <style jsx global>{` @media print { @page { size: A4; margin: 0; } body { visibility: hidden; background-color: white; -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } #printable-area { visibility: visible; display: block !important; position: fixed; left: 0; top: 0; width: 210mm; height: 297mm; padding: 0; background-color: white; z-index: 9999; } #printable-area * { visibility: visible; } } `}</style>
     </div>
   );
 }
