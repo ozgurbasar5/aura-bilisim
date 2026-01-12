@@ -12,6 +12,10 @@ export default function Navbar() {
   const [menuAcik, setMenuAcik] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  
+  // DÜZELTME: Eğer epanel sayfasındaysak Navbar'ı GİZLE
+  if (pathname?.startsWith("/epanel")) return null;
+
   const isActive = (path: string) => pathname === path;
 
   useEffect(() => {
@@ -85,7 +89,7 @@ export default function Navbar() {
           </div>
         </div>
         
-        {/* MOBİL MENÜ (AÇILIR KISIM - GÜNCELLENMİŞ) */}
+        {/* MOBİL MENÜ */}
         {menuAcik && (
           <div className="xl:hidden fixed top-20 left-0 w-full bg-[#0b0e14]/95 backdrop-blur-xl border-b border-white/10 p-6 flex flex-col gap-4 shadow-2xl animate-in slide-in-from-top-2 z-50 overflow-y-auto max-h-[calc(100vh-80px)]">
               

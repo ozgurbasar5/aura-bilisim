@@ -1,520 +1,473 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { 
   Users, Smartphone, Zap, Laptop, Box, 
   Wrench, CheckCircle2, Clock, 
-  TrendingUp, TrendingDown, DollarSign, Wallet, 
+  DollarSign, Wallet, 
   ShoppingBag, Package, Truck, ArrowRight, 
   LayoutDashboard, Search, Bell, AlertTriangle, 
-  Target, CreditCard, Banknote, Calendar, Filter,
-  PieChart, Activity, RefreshCw, Calculator, Archive, Plus, Settings
+  Target, Banknote, Calendar, 
+  Activity, RefreshCw, Calculator, Plus, Bike, MapPin, CalendarClock,
+  TrendingUp, TrendingDown, Cpu, ChevronRight, PlayCircle, BarChart3, AlertOctagon, UserCheck, Star, CreditCard, Coins, CheckSquare, PlusCircle, X
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase"; 
 
-// --- BİLEŞENLER ---
-
-const NeonCard = ({ children, className = "", title, icon: Icon, action, theme = "cyan", noPadding = false }: any) => {
-    const themes: any = {
-        cyan: { border: "border-cyan-500/20 hover:border-cyan-500/50", shadow: "hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]", iconBg: "bg-cyan-500/10", iconText: "text-cyan-400", gradient: "from-cyan-500/5" },
-        purple: { border: "border-purple-500/20 hover:border-purple-500/50", shadow: "hover:shadow-[0_0_30px_rgba(168,85,247,0.15)]", iconBg: "bg-purple-500/10", iconText: "text-purple-400", gradient: "from-purple-500/5" },
-        emerald: { border: "border-emerald-500/20 hover:border-emerald-500/50", shadow: "hover:shadow-[0_0_30px_rgba(16,185,129,0.15)]", iconBg: "bg-emerald-500/10", iconText: "text-emerald-400", gradient: "from-emerald-500/5" },
-        amber: { border: "border-amber-500/20 hover:border-amber-500/50", shadow: "hover:shadow-[0_0_30px_rgba(245,158,11,0.15)]", iconBg: "bg-amber-500/10", iconText: "text-amber-400", gradient: "from-amber-500/5" },
-        red: { border: "border-red-500/20 hover:border-red-500/50", shadow: "hover:shadow-[0_0_30px_rgba(239,68,68,0.15)]", iconBg: "bg-red-500/10", iconText: "text-red-400", gradient: "from-red-500/5" },
-        blue: { border: "border-blue-500/20 hover:border-blue-500/50", shadow: "hover:shadow-[0_0_30px_rgba(59,130,246,0.15)]", iconBg: "bg-blue-500/10", iconText: "text-blue-400", gradient: "from-blue-500/5" },
-    };
-    const currentTheme = themes[theme] || themes.cyan;
+// --- GRAFİK BİLEŞENİ (GERÇEK VERİ İÇİN GÜNCELLENDİ) ---
+const SimpleLineChart = ({ data, color = "#06b6d4" }: { data: number[], color?: string }) => {
+    // Veri yoksa düz çizgi
+    const safeData = data.length > 0 ? data : [0,0,0,0,0,0,0];
+    const max = Math.max(...safeData, 100); // 0 bölme hatası olmasın diye min 100
+    const min = 0;
+    
+    const points = safeData.map((val, i) => {
+        const x = (i / (safeData.length - 1)) * 100;
+        const y = 100 - ((val / max) * 80) - 10; 
+        return `${x},${y}`;
+    }).join(" ");
 
     return (
-        <div className={`relative bg-[#0b0e14]/80 backdrop-blur-xl border rounded-2xl overflow-hidden group transition-all duration-500 ${currentTheme.border} ${currentTheme.shadow} ${className}`}>
-            {title && (
-                <div className="px-5 py-4 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-                    <div className="flex items-center gap-3">
-                        {Icon && <div className={`p-1.5 rounded-lg ${currentTheme.iconBg} ${currentTheme.iconText}`}><Icon size={16} /></div>}
-                        <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest">{title}</h3>
+        <div className="w-full h-28 relative overflow-hidden group">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                <path d={`M0,100 ${points.split(" ").map(p => "L" + p).join(" ")} L100,100 Z`} fill={color} fillOpacity="0.15" />
+                <polyline fill="none" stroke={color} strokeWidth="2" points={points} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {/* Hover Tooltips */}
+            <div className="absolute inset-0 flex justify-between items-end px-1 pb-1">
+                {safeData.map((d, i) => (
+                    <div key={i} className="group/point relative flex flex-col items-center justify-end h-full w-full">
+                        <div className="w-2 h-2 rounded-full bg-[#0b0e14] border-2 transition-all group-hover/point:scale-150 group-hover/point:bg-white z-10" style={{ borderColor: color, position: 'absolute', bottom: `${(d / max) * 80 + 10}%` }}></div>
+                        
+                        {/* Tooltip */}
+                        <div className="absolute opacity-0 group-hover/point:opacity-100 transition-opacity -top-2 bg-[#1e293b] border border-white/10 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-xl whitespace-nowrap z-20 pointer-events-none" style={{ bottom: `${(d / max) * 80 + 20}%`, top: 'auto' }}>
+                            {d.toLocaleString()} ₺
+                        </div>
+                        
+                        {/* Dikey Çizgi Efekti */}
+                        <div className="w-[1px] bg-white/5 h-full absolute bottom-0 opacity-0 group-hover/point:opacity-100 transition-opacity"></div>
                     </div>
-                    {action && <div>{action}</div>}
+                ))}
+            </div>
+        </div>
+    )
+}
+
+// --- BENTO KART ---
+const BentoCard = ({ children, className = "", title, icon: Icon, subTitle, glow = "blue", action }: any) => {
+    const glows: any = {
+        blue: "hover:shadow-[0_0_40px_-10px_rgba(59,130,246,0.2)] border-blue-500/20 hover:border-blue-500/40",
+        purple: "hover:shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)] border-purple-500/20 hover:border-purple-500/40",
+        emerald: "hover:shadow-[0_0_40px_-10px_rgba(16,185,129,0.2)] border-emerald-500/20 hover:border-emerald-500/40",
+        orange: "hover:shadow-[0_0_40px_-10px_rgba(249,115,22,0.2)] border-orange-500/20 hover:border-orange-500/40",
+        red: "hover:shadow-[0_0_40px_-10px_rgba(239,68,68,0.2)] border-red-500/20 hover:border-red-500/40",
+        cyan: "hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.2)] border-cyan-500/20 hover:border-cyan-500/40",
+        yellow: "hover:shadow-[0_0_40px_-10px_rgba(234,179,8,0.2)] border-yellow-500/20 hover:border-yellow-500/40",
+    };
+
+    return (
+        <div className={`relative bg-[#0f1219]/80 backdrop-blur-3xl border rounded-3xl p-5 transition-all duration-500 group overflow-hidden flex flex-col ${glows[glow]} ${className}`}>
+            <div className={`absolute -right-12 -top-12 w-48 h-48 bg-${glow}-500/5 rounded-full blur-[60px] group-hover:bg-${glow}-500/10 transition-all pointer-events-none`}></div>
+            {title && (
+                <div className="flex justify-between items-center mb-4 relative z-10 shrink-0">
+                    <div>
+                        <h3 className="text-xs font-black text-white flex items-center gap-2 uppercase tracking-widest">
+                            {Icon && <Icon size={14} className={`text-${glow}-400`} />}
+                            {title}
+                        </h3>
+                        {subTitle && <p className="text-[9px] text-slate-500 font-bold mt-0.5">{subTitle}</p>}
+                    </div>
+                    {action}
                 </div>
             )}
-            <div className={`relative z-10 ${noPadding ? '' : 'p-5'}`}>{children}</div>
-            <div className={`absolute inset-0 bg-gradient-to-br ${currentTheme.gradient} via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`}></div>
+            <div className="relative z-10 flex-1">{children}</div>
         </div>
     );
 };
 
+// --- KPI KART ---
 const StatCard = ({ title, value, subValue, icon: Icon, color, trend }: any) => {
     const colorMap: any = {
-        cyan: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20 shadow-cyan-500/10",
-        emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10",
-        yellow: "text-amber-400 bg-amber-500/10 border-amber-500/20 shadow-amber-500/10",
-        purple: "text-purple-400 bg-purple-500/10 border-purple-500/20 shadow-purple-500/10",
+        cyan: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+        emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+        yellow: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+        purple: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+        red: "text-red-400 bg-red-500/10 border-red-500/20",
     };
     const classes = colorMap[color] || "text-slate-400 bg-slate-500/10 border-slate-500/20";
-    const highlightColor = classes.split(' ')[0];
 
     return (
         <div className={`relative p-5 bg-[#0f1219]/80 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden hover:-translate-y-1 transition-all duration-300 group hover:border-white/10`}>
-            <div className={`absolute -right-6 -top-6 p-16 rounded-full opacity-[0.03] group-hover:opacity-[0.08] transition-opacity ${classes.split(' ')[1]}`}></div>
-            <div className="flex justify-between items-start mb-4 relative z-10">
-                <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{title}</p>
-                    <h3 className="text-3xl font-black text-white tracking-tight">{value}</h3>
+            <div className="flex justify-between items-start mb-3 relative z-10">
+                <div className={`p-2.5 rounded-xl border ${classes} transition-transform group-hover:rotate-12`}>
+                    <Icon size={20} />
                 </div>
-                <div className={`p-3 rounded-xl border shadow-lg ${classes} transition-transform group-hover:scale-110`}>
-                    <Icon size={22} />
-                </div>
+                {trend && <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${classes}`}>{trend}</span>}
             </div>
-            <div className="relative z-10 flex items-center gap-2 text-[10px] font-medium text-slate-400 bg-slate-800/50 w-fit px-2 py-1 rounded border border-white/5">
-                {trend && <span className={highlightColor}>{trend}</span>}
-                <span>{subValue}</span>
-            </div>
-            <div className="absolute bottom-0 left-0 h-1 w-full bg-slate-800">
-                 <div className={`h-full ${classes.split(' ')[1].replace('/10', '')} w-3/4 opacity-50`}></div>
+            <div>
+                <h3 className="text-2xl font-black text-white tracking-tight">{value}</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 flex items-center gap-1">{title} <span className="text-slate-600 font-normal normal-case opacity-50">| {subValue}</span></p>
             </div>
         </div>
     );
 };
 
-const KanbanCard = ({ job }: any) => (
-    <div className="bg-[#151921] p-3 rounded-xl border border-white/5 hover:border-cyan-500/30 transition-all group cursor-pointer shadow-sm hover:shadow-lg hover:shadow-cyan-900/10 relative overflow-hidden mb-3 last:mb-0">
-        <div className="flex justify-between items-start mb-2 relative z-10">
-            <span className="text-[10px] font-mono text-slate-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">#{job.id}</span>
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                job.device?.toLowerCase()?.includes('iphone') ? 'text-purple-400 bg-purple-500/10 border border-purple-500/20' :
-                job.device?.toLowerCase()?.includes('robot') ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20' : 
-                'text-cyan-400 bg-cyan-500/10 border border-cyan-500/20'
-            }`}>{job.category || 'Cihaz'}</span>
+// --- TICKER ---
+const NewsTicker = ({ items }: { items: string[] }) => (
+    <div className="w-full bg-cyan-950/20 border-y border-cyan-500/10 h-7 flex items-center overflow-hidden relative">
+        <div className="absolute left-0 bg-cyan-950/80 backdrop-blur h-full px-3 flex items-center z-10 border-r border-cyan-500/20">
+            <span className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse mr-2"></span>
+            <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest">LIVE</span>
         </div>
-        <h4 className="text-sm font-bold text-white mb-1 truncate relative z-10">{job.customer}</h4>
-        <p className="text-xs text-slate-400 truncate mb-3 relative z-10 flex items-center gap-1"><Smartphone size={12}/> {job.device}</p>
-        
-        <div className="flex justify-between items-center pt-2 border-t border-white/5 relative z-10">
-            <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-500 font-mono">{new Date(job.created_at).toLocaleDateString('tr-TR', {day:'numeric', month:'short'})}</span>
-                {job.price > 0 && <span className="text-[10px] text-emerald-400 font-bold font-mono bg-emerald-500/10 px-1.5 rounded border border-emerald-500/20">{Number(job.price).toLocaleString()}₺</span>}
-            </div>
-            <ArrowRight size={14} className="text-slate-600 group-hover:text-white transition-colors"/>
+        <div className="whitespace-nowrap animate-marquee flex gap-12 pl-24">
+            {items.map((item, i) => (
+                <span key={i} className="text-[10px] text-slate-300 font-mono flex items-center gap-2 uppercase">
+                    <Activity size={10} className="text-slate-600"/> {item}
+                </span>
+            ))}
         </div>
-        {/* Aciliyet Çizgisi */}
-        <div className={`absolute left-0 top-0 bottom-0 w-1 ${job.aciliyet === 'Yüksek' ? 'bg-red-500' : 'bg-slate-800'}`}></div>
     </div>
 );
 
-const FinancialBar = ({ label, value, total, color }: any) => {
-    const percent = total > 0 ? Math.min((value / total) * 100, 100) : 0;
-    return (
-        <div className="mb-4 last:mb-0 group cursor-default">
-            <div className="flex justify-between items-end mb-1.5">
-                <span className="text-[11px] font-bold text-slate-400 group-hover:text-white transition-colors">{label}</span>
-                <span className="text-xs font-mono font-bold text-slate-300">{value.toLocaleString('tr-TR')} ₺</span>
-            </div>
-            <div className="h-2 w-full bg-[#1e293b] rounded-full overflow-hidden relative border border-white/5">
-                <div className={`h-full absolute top-0 left-0 ${color} shadow-[0_0_10px_currentColor] transition-all duration-1000 ease-out`} style={{ width: `${percent}%` }}></div>
-            </div>
-        </div>
-    );
-};
-
-const QuickAction = ({ icon: Icon, label, desc, href, color }: any) => (
-  <Link href={href} className="group relative bg-[#0f172a] border border-white/5 hover:border-white/10 rounded-xl p-3 flex items-center gap-3 transition-all hover:-translate-y-1 overflow-hidden">
-      <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity ${color}`}></div>
-      <div className={`p-2.5 rounded-lg ${color.replace('bg-', 'bg-opacity-10 text-')} bg-opacity-20 transition-transform group-hover:scale-110`}>
-          <Icon size={20} />
-      </div>
-      <div className="flex-1">
-          <h4 className="text-white font-bold text-xs">{label}</h4>
-          <p className="text-[9px] text-slate-500 line-clamp-1">{desc}</p>
-      </div>
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 text-slate-400">
-          <ArrowRight size={14}/>
-      </div>
-  </Link>
-);
-
-// --- ANA SAYFA ---
-
+// --- MAIN DASHBOARD ---
 export default function EPanelDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0); 
+  const [tickerItems, setTickerItems] = useState<string[]>(["Sistem başlatıldı..."]);
   
-  // TARİH FİLTRESİ
+  // TARİH
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-12
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-  const years = [2024, 2025, 2026, 2027];
 
-  // Patron Metrikleri
-  const [stats, setStats] = useState({
+  // DATA STATE
+  const [stats, setStats] = useState<any>({
     monthlyRevenue: 0, monthlyCost: 0, monthlyProfit: 0, profitMargin: 0, bekleyenAlacak: 0,
-    serviceCount: 0, activeServiceTotal: 0, waiting: 0, processing: 0, ready: 0,
-    activeJobs: [] as any[], 
-    phone: 0, robot: 0, pc: 0, other: 0,
-    storeSoldThisMonth: 0, storeRevenue: 0, storeProfit: 0,
-    storePacking: 0, storeShipped: 0, stockList: [] as any[], totalStockValue: 0,
-    targetRevenue: 150000 
+    serviceCount: 0, waiting: 0, processing: 0, ready: 0,
+    activeJobs: [], 
+    courierWaiting: 0, courierOnWay: 0, 
+    maintenanceDue: 0, targetRevenue: 150000,
+    lowStock: [], weeklyTrend: [0,0,0,0,0,0,0],
+    dailyGoal: 5, dailyFinished: 0, // Günlük Hedef
+    paymentSplit: { cash: 0, card: 0 } // Nakit/Kart
   });
 
-  // Hızlı Teklif Sihirbazı
-  const [quote, setQuote] = useState({ partCost: 0, labor: 0, rate: 36.5 }); 
+  const [quote, setQuote] = useState({ partCost: 0, labor: 0, rate: 36.80 }); 
+  
+  // Mini Todo List State
+  const [todos, setTodos] = useState<string[]>([]);
+  const [newTodo, setNewTodo] = useState("");
 
   useEffect(() => {
     async function fetchData() {
         setLoading(true);
         try {
-            // TARİH ARALIĞINI BELİRLE (Ayın 1'i 00:00 - Ayın sonu 23:59)
             const startDate = new Date(selectedYear, selectedMonth - 1, 1).toISOString();
             const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59).toISOString();
 
-            // 1. SERVİS VERİLERİ (Filtreli)
-            const { data: jobs } = await supabase
-                .from('aura_jobs')
-                .select('*')
-                .gte('created_at', startDate) // Tarih filtresi
-                .lte('created_at', endDate);
-
-            // Aktif işler için tarih filtresi olmaksızın (Kanban için her zaman güncel kalmalı)
-            const { data: activeJobsData } = await supabase.from('aura_jobs').select('*').neq('status', 'Teslim Edildi').neq('status', 'İptal');
-
-            // 2. ÜRÜNLER (Stok değeri anlık hesaplanır, tarih bağımsız)
-            const { data: products } = await supabase.from('urunler').select('*');
+            // 1. JOBS
+            const { data: jobs } = await supabase.from('aura_jobs').select('*').gte('created_at', startDate).lte('created_at', endDate);
+            const { data: activeJobs } = await supabase.from('aura_jobs').select('*').neq('status', 'Teslim Edildi').neq('status', 'İptal').order('created_at', {ascending: false}).limit(5);
             
-            // 3. GİDERLER (Filtreli)
-            const { data: expenses } = await supabase.from('aura_finans').select('*').eq('tur', 'Gider').gte('tarih', startDate).lte('tarih', endDate);
+            // 2. FINANS (Ödeme Yöntemi Analizi İçin)
+            const { data: finances } = await supabase.from('aura_finans').select('*').gte('tarih', startDate).lte('tarih', endDate);
 
-            let totalRevenue = 0, totalCost = 0, totalPending = 0;
-            let sCount = 0, sRevenue = 0;
-            let catPhone = 0, catRobot = 0, catPc = 0, catOther = 0;
-            let mRevenue = 0, mCost = 0, mSoldCount = 0;
-            let activeStockList: any[] = [];
-            let mStockVal = 0, mPacking = 0, mShipped = 0;
-
-            // --- HESAPLAMALAR ---
+            // 3. COURIER
+            const { data: couriers } = await supabase.from('aura_courier').select('status');
             
-            // Servis Hesaplamaları (Seçilen Ay)
+            // 4. ALERTS
+            const todayStr = new Date().toISOString().split('T')[0];
+            const { count: maintenanceCount } = await supabase.from('aura_jobs').select('*', { count: 'exact', head: true }).eq('status', 'Teslim Edildi').lte('next_maintenance_date', todayStr);
+
+            // 5. TICKER
+            const { data: timeline } = await supabase.from('aura_timeline').select('description, created_at').order('created_at', {ascending: false}).limit(10);
+            if(timeline) setTickerItems(timeline.map(t => `${t.description}`));
+
+            // --- CALCULATIONS ---
+            let rev = 0, cost = 0, pending = 0, sCount = 0;
+            let cWaiting = 0, cOnWay = 0;
+            
+            // Son 7 Gün Trendi Hazırla
+            const trend = [0,0,0,0,0,0,0];
+            const last7Days = [...Array(7)].map((_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                return d.toISOString().split('T')[0];
+            }).reverse();
+
+            // Günlük Hedef Sayacı
+            let dailyDone = 0;
+
             if (jobs) {
-                jobs.forEach((job: any) => {
-                    const price = Number(job.price) || Number(job.fiyat) || 0;
-                    const cost = Number(job.cost) || Number(job.parca_ucreti) || 0;
-                    const cat = (job.category || job.device || "").toLowerCase();
+                jobs.forEach((j: any) => {
+                    const p = Number(j.price) || 0; 
+                    const c = Number(j.cost) || 0;
+                    
+                    if(j.status === 'Teslim Edildi') { 
+                        rev += p; cost += c; sCount++; 
+                        
+                        // Günlük Biten İş
+                        if (j.updated_at?.split('T')[0] === todayStr) dailyDone++;
 
-                    // Kategoriler
-                    if (cat.includes("telefon") || cat.includes("iphone")) catPhone++;
-                    else if (cat.includes("süpürge") || cat.includes("robot")) catRobot++;
-                    else if (cat.includes("bilgisayar") || cat.includes("laptop")) catPc++;
-                    else catOther++;
+                        // Trend Grafiği (Son 7 Gün)
+                        const jobDate = j.updated_at?.split('T')[0] || j.created_at.split('T')[0];
+                        const dayIndex = last7Days.indexOf(jobDate);
+                        if (dayIndex !== -1) trend[dayIndex] += p;
+                    } 
+                    else if(j.status !== 'İptal') { pending += p; }
+                });
+            }
 
-                    // Finans
-                    if(job.status !== 'İptal') {
-                        // Eğer teslim edildiyse ciroya ekle, değilse bekleyen alacak
-                        if(job.status === 'Teslim Edildi') {
-                            totalRevenue += price;
-                            totalCost += cost;
-                            sRevenue += price;
-                            sCount++;
-                        } else {
-                            totalPending += price;
-                        }
+            // Finansal Dağılım (Nakit / Kart)
+            let cash = 0, card = 0;
+            if (finances) {
+                finances.forEach((f: any) => {
+                    if (f.tur === 'Gelir') {
+                        const amt = Number(f.tutar) || 0;
+                        if (f.odeme_yontemi === 'Nakit') cash += amt;
+                        else card += amt;
+                    } else if (f.tur === 'Gider') {
+                        cost += Number(f.tutar) || 0;
                     }
                 });
             }
 
-            // Aktif İş Durumları (Kanban için - Tüm Zamanlar)
-            let sWaiting = 0, sProcessing = 0, sReady = 0;
-            if(activeJobsData) {
-                activeJobsData.forEach((job:any) => {
-                    const status = (job.status || "").toLowerCase();
-                    if (status.includes("bekliyor") || status.includes("onay") || status.includes("yeni")) sWaiting++; 
-                    else if (status.includes("işlem") || status.includes("parça")) sProcessing++;
-                    else if (status.includes("hazır")) sReady++;
-                });
-            }
+            if (couriers) couriers.forEach((c: any) => c.status === 'Bekliyor' ? cWaiting++ : c.status === 'Tamamlandı' ? null : cOnWay++);
 
-            // Mağaza / Stok Hesaplamaları
-            if (products) {
-                products.forEach((prod: any) => {
-                    const status = (prod.stok_durumu || "").toLowerCase();
-                    const price = Number(prod.fiyat) || 0;
-                    const cost = Number(prod.maliyet) || 0;
-
-                    // Satılanlar (Burada normalde 'created_at' kontrolü gerekir, şimdilik basit tutuyorum)
-                    if (status.includes("satıldı")) {
-                        // Basitlik için stoktan satılanları bu aya ekliyoruz varsayımı (Geliştirilebilir)
-                        // totalRevenue += price; totalCost += cost; mRevenue += price; mCost += cost; mSoldCount++;
-                    } else if (status.includes("kargo")) {
-                        mShipped++;
-                    } else if (status.includes("opsiyon")) {
-                        mPacking++;
-                    } else {
-                        // Mevcut Stok
-                        mStockVal += price;
-                        if (activeStockList.length < 5) activeStockList.push({ name: prod.ad, price: price });
-                    }
-                });
-            }
-
-            // Giderler (Seçilen Ay)
-            if (expenses) {
-                expenses.forEach((exp: any) => {
-                    totalCost += (Number(exp.tutar) || 0);
-                });
-            }
-            
-            setStats({
-                monthlyRevenue: totalRevenue, monthlyCost: totalCost, monthlyProfit: totalRevenue - totalCost,
-                profitMargin: totalRevenue > 0 ? Math.round(((totalRevenue - totalCost) / totalRevenue) * 100) : 0,
-                bekleyenAlacak: totalPending, serviceCount: sCount,
-                activeServiceTotal: sWaiting + sProcessing + sReady,
-                waiting: sWaiting, processing: sProcessing, ready: sReady,
-                activeJobs: activeJobsData || [], // Kanban tüm aktif işleri gösterir
-                phone: catPhone, robot: catRobot, pc: catPc, other: catOther,
-                storeSoldThisMonth: mSoldCount, storeRevenue: mRevenue, storeProfit: mRevenue - mCost,
-                storePacking: mPacking, storeShipped: mShipped, stockList: activeStockList,
-                totalStockValue: mStockVal, 
-                targetRevenue: 150000 
+            // Aktif İşler
+            let w = 0, pr = 0, r = 0;
+            if(activeJobs) activeJobs.forEach((j:any) => {
+                const s = (j.status||"").toLowerCase();
+                if(s.includes("bekliyor")) w++; else if(s.includes("hazır")) r++; else pr++;
             });
 
-        } catch (error) {
-            console.error("Veri hatası:", error);
-        } finally {
-            setLoading(false);
-        }
+            setStats({
+                monthlyRevenue: rev, monthlyCost: cost, monthlyProfit: rev - cost,
+                profitMargin: rev > 0 ? Math.round(((rev - cost) / rev) * 100) : 0,
+                bekleyenAlacak: pending, serviceCount: sCount,
+                activeJobs: activeJobs || [],
+                waiting: w, processing: pr, ready: r,
+                courierWaiting: cWaiting, courierOnWay: cOnWay,
+                maintenanceDue: maintenanceCount || 0,
+                targetRevenue: 150000,
+                weeklyTrend: trend,
+                dailyGoal: 5, dailyFinished: dailyDone,
+                paymentSplit: { cash, card }
+            });
+
+        } catch (error) { console.error(error); } finally { setLoading(false); }
     }
     fetchData();
   }, [selectedMonth, selectedYear, refreshKey]);
 
+  // Todo İşlemleri
+  const handleAddTodo = (e: any) => {
+      if(e.key === 'Enter' && newTodo) {
+          setTodos([...todos, newTodo]);
+          setNewTodo("");
+      }
+  }
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-12">
+    <div className="min-h-screen pb-12 animate-in fade-in duration-500">
         
-        {/* --- ÜST BAŞLIK & TARİH SEÇİCİ --- */}
-        <div className="flex flex-col md:flex-row justify-between items-end pb-4 border-b border-white/5 gap-4 relative">
-            <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+        <div className="mb-6 -mx-6 -mt-6">
+            <NewsTicker items={tickerItems} />
+        </div>
+
+        {/* --- HEADER --- */}
+        <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-6">
             <div>
-                <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
-                    <Activity className="text-cyan-500 animate-pulse" />
-                    KOMUTA MERKEZİ
+                <h1 className="text-4xl font-black text-white tracking-tighter mb-2 flex items-center gap-3">
+                    <Activity size={32} className="text-cyan-500" />
+                    AURA <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">INTELLIGENCE</span>
                 </h1>
-                <div className="flex items-center gap-2 mt-2">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]"></span>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-                        {months[selectedMonth-1]} {selectedYear} Dönemi
-                    </p>
-                </div>
+                <p className="text-slate-400 text-sm font-medium">Hoş geldin Şef, sistemler %100 operasyonel.</p>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-3 z-10">
-                {/* TARİH SEÇİCİ */}
-                <div className="flex items-center bg-[#1e293b] border border-white/10 rounded-xl p-1">
-                    <div className="flex items-center px-3 border-r border-white/10">
-                        <Calendar size={14} className="text-slate-400 mr-2"/>
-                        <select 
-                            value={selectedMonth} 
-                            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                            className="bg-transparent text-white font-bold text-xs outline-none cursor-pointer py-2 appearance-none"
-                        >
-                            {months.map((m, i) => <option key={i} value={i+1} className="bg-[#161b22] text-white">{m}</option>)}
-                        </select>
-                    </div>
-                    <div className="px-2">
-                        <select 
-                            value={selectedYear} 
-                            onChange={(e) => setSelectedYear(Number(e.target.value))}
-                            className="bg-transparent text-white font-bold text-xs outline-none cursor-pointer py-2 appearance-none"
-                        >
-                            {years.map(y => <option key={y} value={y} className="bg-[#161b22] text-white">{y}</option>)}
-                        </select>
-                    </div>
-                </div>
-
-                <button onClick={() => setRefreshKey(prev => prev + 1)} className="bg-[#1e293b] hover:bg-[#334155] border border-white/10 text-white p-3 rounded-xl transition-all">
-                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/>
-                </button>
-                
-                <Link href="/epanel/satis" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-5 py-3 rounded-xl font-bold text-xs shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all hover:scale-105 flex items-center gap-2 border border-white/10">
-                    <Plus size={16}/> İŞLEM
-                </Link>
+            <div className="flex items-center gap-4 bg-[#1e293b] p-2 rounded-2xl border border-white/5 shadow-xl">
+                 <button onClick={() => setRefreshKey(prev => prev + 1)} className="p-3 bg-[#0f1219] rounded-xl hover:bg-cyan-500 hover:text-white text-slate-400 transition-all"><RefreshCw size={20} className={loading ? 'animate-spin' : ''}/></button>
+                 <div className="px-4 text-right border-l border-white/5">
+                    <div className="text-xs font-bold text-slate-500 uppercase">{months[selectedMonth-1]} {selectedYear}</div>
+                    <div className="text-white font-bold">{new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}</div>
+                 </div>
             </div>
         </div>
 
-        {/* --- KPI KARTLARI (SEÇİLEN AYA GÖRE) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard title="DÖNEM CİROSU" value={`${stats.monthlyRevenue.toLocaleString('tr-TR')} ₺`} subValue={`${stats.serviceCount} İşlem`} icon={DollarSign} color="cyan" trend={`%${stats.profitMargin} Kâr`} />
-            <StatCard title="NET KÂR" value={`${stats.monthlyProfit.toLocaleString('tr-TR')} ₺`} subValue={`Gider: ${stats.monthlyCost.toLocaleString('tr-TR')} ₺`} icon={Wallet} color="emerald" />
-            <StatCard title="BEKLEYEN ALACAK" value={`${stats.bekleyenAlacak.toLocaleString('tr-TR')} ₺`} subValue="Tahsil Edilecek" icon={Clock} color="yellow" />
-            <StatCard title="STOK DEĞERİ" value={`${stats.totalStockValue.toLocaleString('tr-TR')} ₺`} subValue="Raf Değeri" icon={Package} color="purple" />
+        {/* --- KPI --- */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <StatCard title="NET CİRO" value={`${stats.monthlyRevenue.toLocaleString()} ₺`} subValue={`${stats.serviceCount} Cihaz`} icon={DollarSign} color="cyan" trend={`%${stats.profitMargin} Kâr`} />
+            <StatCard title="NET KÂR" value={`${stats.monthlyProfit.toLocaleString()} ₺`} subValue={`Gider: ${stats.monthlyCost.toLocaleString()}`} icon={Wallet} color="emerald" />
+            <StatCard title="BEKLEYEN" value={`${stats.bekleyenAlacak.toLocaleString()} ₺`} subValue="Tahsilat" icon={Clock} color="yellow" />
+            <StatCard title="BAKIM" value={`${stats.maintenanceDue} ADET`} subValue="Alarm Veriyor" icon={CalendarClock} color={stats.maintenanceDue > 0 ? "red" : "emerald"} />
         </div>
 
-        {/* --- ANA PANELLER --- */}
+        {/* --- ANA BENTO GRID --- */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             
-            {/* SOL PANEL (KANBAN & FİNANS) */}
+            {/* SOL KOLON (2/3) */}
             <div className="xl:col-span-2 space-y-6">
                 
-                {/* 1. KANBAN (ATÖLYE) - Her zaman aktif işleri gösterir */}
-                <NeonCard title="ATÖLYE İŞ AKIŞI (CANLI)" icon={Wrench} className="p-0" theme="blue" noPadding>
-                    <div className="p-5 pb-0 grid grid-cols-1 md:grid-cols-3 gap-4 h-[450px]">
-                        {/* Bekleyen */}
-                        <div className="bg-[#0f1219] rounded-xl border border-white/5 flex flex-col overflow-hidden hover:border-red-500/20 transition-colors">
-                            <div className="p-3 bg-red-500/10 border-b border-red-500/10 flex justify-between items-center">
-                                <span className="text-xs font-bold text-red-400 flex items-center gap-2"><AlertTriangle size={14}/> BEKLEYEN</span>
-                                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{stats.waiting}</span>
+                {/* 1. GELİR TRENDİ (YENİ SVG GRAFİK) */}
+                <BentoCard title="GELİR TRENDİ (SON 7 GÜN)" icon={BarChart3} glow="cyan" className="min-h-[280px]">
+                    <div className="flex flex-col h-full justify-between">
+                        <div className="mb-4">
+                            <h2 className="text-3xl font-black text-white">{stats.weeklyTrend.reduce((a:any,b:any)=>a+b,0).toLocaleString()} ₺</h2>
+                            <p className="text-xs text-slate-500">Son 7 günlük toplam işlem hacmi</p>
+                        </div>
+                        <SimpleLineChart data={stats.weeklyTrend} color="#22d3ee" />
+                    </div>
+                </BentoCard>
+
+                {/* 2. ATÖLYE & KURYE DURUMU */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <BentoCard title="ATÖLYE DURUMU" icon={Wrench} glow="blue" action={<Link href="/epanel/atolye" className="text-[10px] text-blue-400 hover:underline">Tümü</Link>}>
+                        <div className="space-y-3 mt-2">
+                            <div className="flex justify-between p-3 bg-red-500/10 rounded-xl border border-red-500/10 items-center">
+                                <span className="text-xs font-bold text-red-400 flex gap-2"><AlertTriangle size={14}/> Bekleyen</span>
+                                <span className="text-white font-black">{stats.waiting}</span>
                             </div>
-                            <div className="p-2 overflow-y-auto custom-scrollbar flex-1 space-y-2">
-                                {stats.activeJobs.filter((j:any) => j.status?.toLowerCase().includes('bekliyor') || j.status?.toLowerCase().includes('yeni')).map(job => (
-                                    <KanbanCard key={job.id} job={job} />
-                                ))}
-                                {stats.waiting === 0 && <div className="text-center text-slate-600 text-[10px] py-10">Kayıt yok.</div>}
+                            <div className="flex justify-between p-3 bg-blue-500/10 rounded-xl border border-blue-500/10 items-center">
+                                <span className="text-xs font-bold text-blue-400 flex gap-2"><Cpu size={14}/> İşlemde</span>
+                                <span className="text-white font-black">{stats.processing}</span>
+                            </div>
+                            <div className="flex justify-between p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/10 items-center">
+                                <span className="text-xs font-bold text-emerald-400 flex gap-2"><CheckCircle2 size={14}/> Hazır</span>
+                                <span className="text-white font-black">{stats.ready}</span>
                             </div>
                         </div>
+                    </BentoCard>
 
-                        {/* İşlemde */}
-                        <div className="bg-[#0f1219] rounded-xl border border-white/5 flex flex-col overflow-hidden hover:border-blue-500/20 transition-colors">
-                            <div className="p-3 bg-blue-500/10 border-b border-blue-500/10 flex justify-between items-center">
-                                <span className="text-xs font-bold text-blue-400 flex items-center gap-2"><Settings size={14}/> İŞLEMDE</span>
-                                <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{stats.processing}</span>
+                    <BentoCard title="KURYE OPERASYON" icon={Bike} glow="orange" action={<Link href="/epanel/kurye-yonetim" className="text-[10px] text-orange-400 hover:underline">Yönet</Link>}>
+                        <div className="flex items-center justify-between h-full px-2">
+                            <div className="text-center group">
+                                <div className="text-3xl font-black text-white group-hover:text-orange-500 transition-colors">{stats.courierWaiting}</div>
+                                <div className="text-[10px] text-slate-500 uppercase font-bold mt-1">Bekleyen</div>
                             </div>
-                            <div className="p-2 overflow-y-auto custom-scrollbar flex-1 space-y-2">
-                                {stats.activeJobs.filter((j:any) => j.status?.toLowerCase().includes('işlem') || j.status?.toLowerCase().includes('parça')).map(job => (
-                                    <KanbanCard key={job.id} job={job} />
-                                ))}
+                            <div className="h-10 w-[1px] bg-white/10"></div>
+                            <div className="text-center group">
+                                <div className="text-3xl font-black text-blue-400 group-hover:text-blue-300 transition-colors">{stats.courierOnWay}</div>
+                                <div className="text-[10px] text-slate-500 uppercase font-bold mt-1">Yolda</div>
+                            </div>
+                            <div className="h-10 w-[1px] bg-white/10"></div>
+                            <div className="text-center">
+                                <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto text-orange-500">
+                                    <Bike size={20}/>
+                                </div>
                             </div>
                         </div>
+                    </BentoCard>
+                </div>
 
-                        {/* Hazır */}
-                        <div className="bg-[#0f1219] rounded-xl border border-white/5 flex flex-col overflow-hidden hover:border-emerald-500/20 transition-colors">
-                            <div className="p-3 bg-emerald-500/10 border-b border-emerald-500/10 flex justify-between items-center">
-                                <span className="text-xs font-bold text-emerald-400 flex items-center gap-2"><CheckCircle2 size={14}/> HAZIR</span>
-                                <span className="bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{stats.ready}</span>
-                            </div>
-                            <div className="p-2 overflow-y-auto custom-scrollbar flex-1 space-y-2">
-                                {stats.activeJobs.filter((j:any) => j.status?.toLowerCase().includes('hazır') || j.status?.toLowerCase().includes('test')).map(job => (
-                                    <KanbanCard key={job.id} job={job} />
+                {/* 3. AKTİF İŞLER LİSTESİ */}
+                <BentoCard title="SON HAREKETLER" icon={Clock} glow="purple">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+                                    <th className="pb-3 pl-2">Takip No</th>
+                                    <th className="pb-3">Müşteri / Cihaz</th>
+                                    <th className="pb-3">Durum</th>
+                                    <th className="pb-3 text-right">Tutar</th>
+                                    <th className="pb-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-sm">
+                                {stats.activeJobs.length === 0 ? <tr><td colSpan={5} className="text-center py-10 text-slate-600 text-xs">Kayıt bulunamadı.</td></tr> : stats.activeJobs.map((job:any) => (
+                                    <tr key={job.id} className="group hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
+                                        <td className="py-3 pl-2 font-mono text-xs text-slate-400">#{job.tracking_code?.split('-')[1]}</td>
+                                        <td className="py-3">
+                                            <div className="font-bold text-white text-xs">{job.customer}</div>
+                                            <div className="text-[10px] text-slate-500">{job.device}</div>
+                                        </td>
+                                        <td className="py-3">
+                                            <span className={`px-2 py-1 rounded text-[9px] font-bold uppercase ${
+                                                job.status === 'Bekliyor' ? 'bg-red-500/10 text-red-400' : 
+                                                job.status === 'Hazır' ? 'bg-emerald-500/10 text-emerald-400' : 
+                                                'bg-blue-500/10 text-blue-400'
+                                            }`}>{job.status}</span>
+                                        </td>
+                                        <td className="py-3 text-right font-mono font-bold text-slate-300 text-xs">
+                                            {job.price > 0 ? `${Number(job.price).toLocaleString()} ₺` : '-'}
+                                        </td>
+                                        <td className="py-3 text-right">
+                                            <Link href={`/epanel/atolye/${job.id}`} className="p-1.5 bg-white/5 rounded hover:bg-purple-500 hover:text-white transition-colors inline-block"><ChevronRight size={14}/></Link>
+                                        </td>
+                                    </tr>
                                 ))}
-                            </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </BentoCard>
+            </div>
+
+            {/* SAĞ KOLON (1/3) */}
+            <div className="space-y-6">
+                
+                {/* GÜNLÜK HEDEF (YENİ) */}
+                <BentoCard title="GÜNLÜK HEDEF" icon={Target} glow="yellow" subTitle={`${stats.dailyFinished} / ${stats.dailyGoal} Cihaz`}>
+                    <div className="flex items-center gap-4 mt-2">
+                        <div className="relative w-16 h-16 flex items-center justify-center">
+                            <svg className="w-full h-full transform -rotate-90">
+                                <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-800" />
+                                <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-yellow-500 transition-all duration-1000" strokeDasharray={175} strokeDashoffset={175 - (Math.min(stats.dailyFinished / stats.dailyGoal, 1) * 175)} />
+                            </svg>
+                            <span className="absolute text-xs font-black text-white">%{Math.round((stats.dailyFinished / stats.dailyGoal) * 100)}</span>
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-[10px] text-slate-400">Hedefe ulaşmak için {Math.max(0, stats.dailyGoal - stats.dailyFinished)} cihaz daha tamamlamalısın.</p>
                         </div>
                     </div>
+                </BentoCard>
 
-                    <div className="grid grid-cols-4 gap-4 p-5 bg-[#0b0e14]">
-                        {[
-                            { label: "Telefon", val: stats.phone, ic: Smartphone, c: "text-purple-400" },
-                            { label: "Robot", val: stats.robot, ic: Zap, c: "text-amber-400" },
-                            { label: "PC", val: stats.pc, ic: Laptop, c: "text-blue-400" },
-                            { label: "Diğer", val: stats.other, ic: Box, c: "text-slate-400" },
-                        ].map((item, i) => (
-                            <div key={i} className="flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-white/[0.02]">
-                                <item.ic size={16} className={`mb-1 ${item.c}`}/>
-                                <span className="text-xs font-bold text-white">{item.val}</span>
-                                <span className="text-[9px] text-slate-500 uppercase">{item.label}</span>
+                {/* FİNANSAL DAĞILIM (YENİ) */}
+                <BentoCard title="KASA DAĞILIMI" icon={Coins} glow="emerald">
+                    <div className="flex gap-2 mt-2">
+                        <div className="flex-1 bg-[#0b0e14] p-3 rounded-xl border border-white/5 flex flex-col items-center justify-center group hover:border-emerald-500/30 transition-colors">
+                            <Banknote className="text-emerald-500 mb-1" size={20}/>
+                            <span className="text-[10px] text-slate-500 uppercase">NAKİT</span>
+                            <span className="text-sm font-bold text-white">{stats.paymentSplit.cash.toLocaleString()}₺</span>
+                        </div>
+                        <div className="flex-1 bg-[#0b0e14] p-3 rounded-xl border border-white/5 flex flex-col items-center justify-center group hover:border-purple-500/30 transition-colors">
+                            <CreditCard className="text-purple-500 mb-1" size={20}/>
+                            <span className="text-[10px] text-slate-500 uppercase">KART</span>
+                            <span className="text-sm font-bold text-white">{stats.paymentSplit.card.toLocaleString()}₺</span>
+                        </div>
+                    </div>
+                </BentoCard>
+
+                {/* HIZLI TEKLİF */}
+                <BentoCard title="HIZLI TEKLİF" icon={Calculator} glow="cyan">
+                     <div className="space-y-3 mt-1">
+                        <div className="flex gap-2">
+                             <input type="number" placeholder="Parça ($)" className="w-1/2 bg-[#050810] border border-white/10 rounded-lg p-2 text-xs text-white outline-none focus:border-cyan-500 transition-colors" onChange={e => setQuote({...quote, partCost: Number(e.target.value)})}/>
+                             <input type="number" placeholder="Kur" value={quote.rate} className="w-1/2 bg-[#050810] border border-white/10 rounded-lg p-2 text-xs text-white outline-none focus:border-cyan-500 transition-colors" onChange={e => setQuote({...quote, rate: Number(e.target.value)})}/>
+                        </div>
+                        <input type="number" placeholder="İşçilik (TL)" className="w-full bg-[#050810] border border-white/10 rounded-lg p-2 text-xs text-white outline-none focus:border-cyan-500 transition-colors" onChange={e => setQuote({...quote, labor: Number(e.target.value)})}/>
+                        <div className="bg-cyan-500/10 border border-cyan-500/20 p-3 rounded-xl flex justify-between items-center">
+                             <span className="text-xs font-bold text-cyan-400">SONUÇ:</span>
+                             <span className="text-lg font-black text-white">{((quote.partCost * quote.rate) + quote.labor).toLocaleString()} ₺</span>
+                        </div>
+                     </div>
+                </BentoCard>
+
+                {/* MINI TODO LIST (YENİ) */}
+                <BentoCard title="HIZLI NOTLAR" icon={CheckSquare} glow="red">
+                    <div className="flex gap-2 mb-3">
+                        <input type="text" placeholder="Not ekle..." className="flex-1 bg-[#050810] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-red-500 transition-colors" value={newTodo} onChange={e=>setNewTodo(e.target.value)} onKeyDown={handleAddTodo} />
+                        <button onClick={() => { if(newTodo) { setTodos([...todos, newTodo]); setNewTodo(""); }}} className="bg-red-500/20 text-red-400 p-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-all"><Plus size={14}/></button>
+                    </div>
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                        {todos.length === 0 && <span className="text-[10px] text-slate-600 italic">Yapılacak iş yok.</span>}
+                        {todos.map((t, i) => (
+                            <div key={i} className="flex justify-between items-center bg-[#0b0e14] p-2 rounded border border-white/5 text-[10px] text-slate-300 group">
+                                <span>{t}</span>
+                                <button onClick={() => setTodos(todos.filter((_, idx) => idx !== i))} className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
                             </div>
                         ))}
                     </div>
-                </NeonCard>
+                </BentoCard>
 
-                {/* 2. FİNANSAL ANALİZ (SEÇİLEN AY) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <NeonCard title="GELİR & GİDER ANALİZİ" icon={PieChart} className="p-5" theme="purple">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-purple-500 rounded-full animate-pulse opacity-20"></div>
-                                <Banknote size={32} className="text-purple-500 relative z-10"/>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-white">Nakit Akışı</h4>
-                                <p className="text-[10px] text-slate-400">{months[selectedMonth-1]} Özeti</p>
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            <FinancialBar label="TOPLAM GELİR (CİRO)" value={stats.monthlyRevenue} total={stats.monthlyRevenue * 1.2} color="bg-cyan-500" />
-                            <FinancialBar label="TOPLAM GİDER" value={stats.monthlyCost} total={stats.monthlyRevenue * 1.2} color="bg-red-500" />
-                            <FinancialBar label="NET KÂR" value={stats.monthlyProfit} total={stats.monthlyRevenue * 1.2} color="bg-emerald-500" />
-                        </div>
-                    </NeonCard>
-
-                    <NeonCard title="AYLIK HEDEF TAKİBİ" icon={Target} className="p-5" theme="amber">
-                        <div className="flex justify-between items-end mb-2">
-                            <span className="text-xs font-bold text-slate-400">Ciro Hedefi</span>
-                            <span className="text-sm font-bold text-white">{stats.targetRevenue.toLocaleString()} ₺</span>
-                        </div>
-                        <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden mb-6 relative border border-white/5">
-                            <div className="absolute h-full bg-gradient-to-r from-orange-600 to-amber-400 transition-all duration-1000" style={{ width: `${Math.min((stats.monthlyRevenue / stats.targetRevenue) * 100, 100)}%` }}></div>
-                            <div className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white drop-shadow-md">%{Math.round((stats.monthlyRevenue / stats.targetRevenue) * 100)} TAMAMLANDI</div>
-                        </div>
-
-                        <div className="p-4 bg-slate-900/50 rounded-xl border border-white/5 text-center">
-                            <p className="text-xs text-slate-400 mb-1">Dönem Notu (Yapay Zeka)</p>
-                            <p className="text-xs text-white font-medium italic">
-                                "{stats.profitMargin > 30 ? "Harika bir dönem! Kârlılık hedefin üzerinde." : "Giderler biraz yüksek, parça maliyetlerine dikkat."}"
-                            </p>
-                        </div>
-                    </NeonCard>
-                </div>
-            </div>
-
-            {/* SAĞ PANEL: HIZLI ERİŞİM VE ARAÇLAR */}
-            <div className="space-y-6">
-                
-                <NeonCard title="HIZLI ERİŞİM KOKPİTİ" icon={LayoutDashboard} className="p-5" theme="cyan">
-                    <div className="grid grid-cols-1 gap-3">
-                        <QuickAction icon={Wrench} label="Servis Kaydı Aç" desc="Yeni cihaz girişi yap" href="/epanel/hizli-kayit" color="bg-cyan-600" />
-                        <QuickAction icon={ShoppingBag} label="Hızlı Satış Yap" desc="Ürün veya hizmet sat" href="/epanel/satis" color="bg-purple-600" />
-                        <QuickAction icon={Package} label="Stok Ekle / Düzenle" desc="Envanter yönetimi" href="/epanel/stok" color="bg-emerald-600" />
-                    </div>
-                </NeonCard>
-
-                {/* HIZLI TEKLİF SİHİRBAZI */}
-                <NeonCard title="HIZLI TEKLİF SİHİRBAZI" icon={Calculator} className="p-5" theme="purple">
-                    <div className="space-y-3">
-                        <div>
-                            <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">Parça Maliyeti ($ USD)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                                <input type="number" value={quote.partCost} onChange={(e) => setQuote({...quote, partCost: Number(e.target.value)})} className="w-full bg-[#050810] border border-white/10 rounded-lg p-2.5 pl-7 text-white text-sm outline-none focus:border-purple-500 transition-colors" placeholder="0" />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">İşçilik (TL)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₺</span>
-                                <input type="number" value={quote.labor} onChange={(e) => setQuote({...quote, labor: Number(e.target.value)})} className="w-full bg-[#050810] border border-white/10 rounded-lg p-2.5 pl-7 text-white text-sm outline-none focus:border-purple-500 transition-colors" placeholder="0" />
-                            </div>
-                        </div>
-                        <div className="pt-3 border-t border-white/5 space-y-2">
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-slate-400">Dolar Kuru:</span>
-                                <input type="number" value={quote.rate} onChange={(e) => setQuote({...quote, rate: Number(e.target.value)})} className="w-16 bg-transparent border-b border-white/10 text-right text-xs text-slate-300 outline-none"/>
-                            </div>
-                            <div className="flex justify-between items-center text-lg font-black text-purple-400 mt-2 bg-purple-500/10 p-2 rounded-lg border border-purple-500/20">
-                                <span>TOPLAM:</span>
-                                <span>{((quote.partCost * quote.rate) + quote.labor).toLocaleString()} ₺</span>
-                            </div>
-                        </div>
-                    </div>
-                </NeonCard>
-
-                <NeonCard title="VİTRİN & DEPO" icon={Package} className="p-5" theme="emerald">
-                    <div>
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-white/5 pb-2 flex justify-between">
-                            <span>VİTRİN ÖZETİ</span>
-                            <Link href="/epanel/magaza" className="text-cyan-500 hover:text-cyan-400 transition-colors">Tümü</Link>
-                        </h4>
-                        <div className="space-y-1.5">
-                            {stats.stockList.length === 0 ? (
-                                <div className="text-center text-xs text-slate-600 py-2">Vitrin boş.</div>
-                            ) : (
-                                stats.stockList.slice(0, 4).map((item, i) => (
-                                    <div key={i} className="flex justify-between items-center text-xs p-2 hover:bg-white/5 rounded transition-colors group cursor-default">
-                                        <span className="text-slate-300 truncate max-w-[140px] flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-500 group-hover:bg-cyan-400 transition-colors"></div>
-                                            {item.name}
-                                        </span>
-                                        <span className="text-slate-500 font-mono font-bold group-hover:text-white transition-colors">{Number(item.price).toLocaleString()} ₺</span>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </NeonCard>
             </div>
         </div>
     </div>

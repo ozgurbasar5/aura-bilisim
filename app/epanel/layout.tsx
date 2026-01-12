@@ -12,7 +12,7 @@ import {
   Activity, Signal, Menu, Bell, ChevronDown, MessageSquare, 
   Package, ShieldCheck, CreditCard, Wallet, User,
   Zap, Terminal, ClipboardList, ShoppingBag, X, Code2, ChevronRight,
-  Building2, Briefcase, Wrench, LifeBuoy, AlertTriangle, Clock, Check
+  Building2, Briefcase, Wrench, LifeBuoy, AlertTriangle, Clock, Check, Bike, Calendar
 } from "lucide-react";
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
@@ -192,6 +192,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   // Bildirim ve Mesaj Sayaçları
   const [webMesajSayisi, setWebMesajSayisi] = useState(0); 
   const [bayiMesajSayisi, setBayiMesajSayisi] = useState(0); 
+  const [kuryeTalepSayisi, setKuryeTalepSayisi] = useState(0);
   
   // %100 ENTEGRE BİLDİRİM SİSTEMİ STATE'LERİ
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -279,6 +280,10 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
 
       const { count: bayiCount } = await supabase.from('bayi_destek').select('*', { count: 'exact', head: true }).eq('durum', 'İnceleniyor');
       setBayiMesajSayisi(bayiCount || 0);
+
+      // YENİ: Kurye Talepleri
+      const { count: courierCount } = await supabase.from('aura_courier').select('*', { count: 'exact', head: true }).eq('status', 'Bekliyor');
+      setKuryeTalepSayisi(courierCount || 0);
   };
 
   // --- %100 ENTEGRE BİLDİRİM SİSTEMİ ---
@@ -296,18 +301,18 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
           link: '/epanel/destek'
       }));
 
-      // 2. Bayi Destek Talepleri
-      const { data: dealerReqs } = await supabase.from('bayi_destek').select('*').eq('durum', 'İnceleniyor').order('created_at', {ascending:false}).limit(3);
-      if(dealerReqs) dealerReqs.forEach(d => newNotifs.push({
-          id: `dealer-${d.id}`,
-          type: 'support_dealer',
-          title: 'Bayi Destek Mesajı',
-          desc: `${d.bayi_adi}: ${d.konu}`,
-          time: new Date(d.created_at),
-          link: '/epanel/bayi-destek'
+      // 2. Kurye Talepleri (YENİ)
+      const { data: courierReqs } = await supabase.from('aura_courier').select('*').eq('status', 'Bekliyor').order('created_at', {ascending:false}).limit(3);
+      if(courierReqs) courierReqs.forEach(c => newNotifs.push({
+          id: `courier-${c.id}`,
+          type: 'courier',
+          title: 'Yeni Kurye Talebi',
+          desc: `${c.name}: ${c.device}`,
+          time: new Date(c.created_at),
+          link: '/epanel/kurye-yonetim'
       }));
 
-      // 3. GECİKEN CİHAZLAR (KRİTİK UYARI) - 3 Günden Eski "Teslim Edilmemiş" İşler
+      // 3. GECİKEN CİHAZLAR (KRİTİK UYARI)
       const threeDaysAgo = new Date();
       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       const { data: lateJobs } = await supabase.from('aura_jobs')
@@ -327,7 +332,6 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
           link: `/epanel/atolye/${j.id}`
       }));
 
-      // Tarihe göre sırala (En yeni en üstte)
       newNotifs.sort((a, b) => b.time.getTime() - a.time.getTime());
       setNotifications(newNotifs);
   };
@@ -395,6 +399,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             
             <NavGroup title="TEKNİK BİRİM" isOpen={isSidebarOpen} />
             <NavItem icon={<ClipboardList size={20}/>} label="Atölye Listesi" href="/epanel/atolye" isOpen={isSidebarOpen} active={pathname.includes('/atolye')} badge={bekleyenSayisi} badgeColor="bg-orange-500 text-black font-bold"/>
+            <NavItem icon={<Calendar size={20}/>} label="Periyodik Bakım" href="/epanel/bakim-takip" isOpen={isSidebarOpen} active={pathname.includes('/bakim-takip')} />
             <NavItem icon={<ShieldCheck size={20}/>} label="Ekspertiz İstasyonu" href="/epanel/ekspertiz" isOpen={isSidebarOpen} active={pathname.includes('/ekspertiz')} />
             <NavItem icon={<Zap size={20}/>} label="Hızlı Kayıt" href="/epanel/hizli-kayit" isOpen={isSidebarOpen} active={pathname.includes('/hizli-kayit')} />
 
@@ -416,24 +421,12 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <div className="my-3 border-t border-white/5 mx-2"></div>
 
             <NavGroup title="KURUMSAL / B2B" isOpen={isSidebarOpen} />
+            <NavItem icon={<Bike size={20}/>} label="Kurye Yönetimi" href="/epanel/kurye-yonetim" isOpen={isSidebarOpen} active={pathname.includes('/kurye-yonetim')} badge={kuryeTalepSayisi} badgeColor="bg-yellow-500 text-black font-bold"/>
             <NavItem icon={<Building2 size={20}/>} label="Bayi Başvuruları" href="/epanel/bayi-basvurulari" isOpen={isSidebarOpen} active={pathname.includes('/bayi-basvurulari')} />
             <NavItem icon={<Briefcase size={20}/>} label="Bayi Yönetimi" href="/epanel/bayiler" isOpen={isSidebarOpen} active={pathname.includes('/bayiler')} />
             
-            <NavItem 
-              icon={<Wrench size={20}/>} 
-              label="Bayi Atölyesi" 
-              href="/epanel/bayi-atolye" 
-              isOpen={isSidebarOpen} 
-              active={pathname.includes('/bayi-atolye')} 
-            />
-
-            <NavItem 
-              icon={<ShoppingBag size={20}/>} 
-              label="Fırsat Ürünleri" 
-              href="/epanel/firsat-urunleri" 
-              isOpen={isSidebarOpen} 
-              active={pathname.includes('/firsat-urunleri')} 
-            />
+            <NavItem icon={<Wrench size={20}/>} label="Bayi Atölyesi" href="/epanel/bayi-atolye" isOpen={isSidebarOpen} active={pathname.includes('/bayi-atolye')} />
+            <NavItem icon={<ShoppingBag size={20}/>} label="Fırsat Ürünleri" href="/epanel/firsat-urunleri" isOpen={isSidebarOpen} active={pathname.includes('/firsat-urunleri')} />
 
             {isAdmin && (
               <>
@@ -530,8 +523,8 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
                                   notifications.map((notif:any) => (
                                       <Link key={notif.id} href={notif.link} onClick={() => setIsNotifOpen(false)} className="block p-3 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors group">
                                           <div className="flex gap-3">
-                                              <div className={`mt-1 min-w-[24px] h-6 rounded-full flex items-center justify-center ${notif.type === 'alert' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                                                  {notif.type === 'alert' ? <AlertTriangle size={12}/> : <MessageSquare size={12}/>}
+                                              <div className={`mt-1 min-w-[24px] h-6 rounded-full flex items-center justify-center ${notif.type === 'alert' ? 'bg-red-500/20 text-red-400' : notif.type === 'courier' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                                  {notif.type === 'alert' ? <AlertTriangle size={12}/> : notif.type === 'courier' ? <Bike size={12}/> : <MessageSquare size={12}/>}
                                               </div>
                                               <div>
                                                   <h5 className={`text-xs font-bold ${notif.type === 'alert' ? 'text-red-400' : 'text-slate-200 group-hover:text-white'}`}>{notif.title}</h5>
