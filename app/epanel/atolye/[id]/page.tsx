@@ -6,7 +6,7 @@ import {
   ArrowLeft, Save, Printer, User, Smartphone, Zap, Laptop, Watch, Box, 
   CheckSquare, ClipboardCheck, History, CreditCard, AlertTriangle, Send, Phone, Globe, MapPin, MessageCircle, Lock,
   Lightbulb, Battery, Fan, Eye, ShieldCheck, Database, Wrench, HardDrive, Wifi, Trash2, Camera, Upload, X, Image as ImageIcon,
-  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight, CheckCircle, Building2, QrCode, Wallet, ScanLine, Activity, Monitor, Cpu, Speaker, Vibrate, Cable, MemoryStick, Mic, Radio, Layers, Package, Check
+  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight, CheckCircle, Building2, QrCode, Wallet, ScanLine, Activity, Monitor, Cpu, Speaker, Vibrate, Cable, MemoryStick, Mic, Radio, Layers, Package, Check, Thermometer, Gamepad2
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
 import { Html5QrcodeScanner } from "html5-qrcode";
@@ -38,37 +38,42 @@ const DEVICE_PARTS_SVG: DevicePart[] = [
     { id: 'screen', name: 'EKRAN / CAM', icon: Monitor, price: 2500, path: "M 5 5 L 295 5 L 295 595 L 5 595 Z M 10 10 L 10 590 L 290 590 L 290 10 Z", fillRule: "evenodd", cx: 150, cy: 300, baseColor: "transparent" },
 ];
 
-// --- KATEGORİ VERİLERİ (GELİŞMİŞ) ---
+// --- MEGA KATEGORİ VERİLERİ (GÜNCELLENMİŞ VE GENİŞLETİLMİŞ) ---
 const CATEGORY_DATA: any = { 
     "Cep Telefonu": { 
-        accessories: ["Kutu", "Şarj Aleti", "Kılıf", "Sim İğnesi"], 
-        preChecks: ["Ekran Kırık", "Kasa Ezik", "Sıvı Teması", "FaceID Arızalı", "Kamera Lens Çizik", "Vida Eksik"], 
-        finalChecks: ["Dokunmatik Testi", "Ön/Arka Kamera", "Şarj Entegresi", "Mikrofon/Hoparlör", "Şebeke/Wifi", "Yakınlık Sensörü", "TrueTone"] 
+        accessories: ["Cihazın Kendisi", "Kutu", "Orijinal Şarj Aleti", "USB Kablo", "Kılıf", "Sim İğnesi", "Fatura", "Kulaklık", "Dönüştürücü", "Garanti Belgesi"], 
+        preChecks: ["Ekran Kırık/Çatlak", "Kasa Ezik/Çizik", "Arka Cam Kırık", "Sıvı Teması Şüphesi", "FaceID/TouchID Çalışmıyor", "Kamera Lens Çizik", "Vida Eksik/Oynanmış", "Şarj Almıyor", "El Feneri Yanmıyor", "Ahize Sesi Az", "Batarya Şişik"], 
+        finalChecks: ["Dokunmatik Hassasiyeti", "Ön Kamera", "Arka Kamera & Odak", "Şarj Entegresi & Akım", "Mikrofon (Alt/Üst)", "Ahize & Hoparlör", "Şebeke & Wifi & BT", "Yakınlık Sensörü", "TrueTone / Ekran Renkleri", "FaceID / Parmak İzi", "NFC / Kablosuz Şarj", "Tuş Takımı Kontrolü"] 
     }, 
     "Robot Süpürge": { 
-        accessories: ["Şarj İstasyonu", "Yan Fırça", "Paspas", "Su Tankı", "Toz Haznesi"], 
-        preChecks: ["Tekerlek Sıkışık", "Lidar Dönmüyor", "Sıvı Teması", "Fan Sesi Yüksek", "Fırça Hatası"], 
-        finalChecks: ["Emiş Gücü Testi", "Haritalama", "Şarj Oluyor", "Su Akıtma Testi", "Sensör Kontrolü", "Wifi Bağlantısı"] 
+        accessories: ["Cihazın Kendisi", "Şarj İstasyonu", "Güç Kablosu", "Yan Fırça", "Ana Fırça", "Paspas (Mop)", "Paspas Standı", "Su Tankı", "Toz Haznesi", "Filtre", "Kumanda"], 
+        preChecks: ["Tekerlek Sıkışık/Zorlanıyor", "Lidar Dönmüyor/Sesli", "Sıvı Teması (Anakart)", "Fan Sesi Yüksek/Islık", "Yan Fırça Dönmüyor", "Ana Fırça Dönmüyor", "Tampon (Bumper) Takılı", "Sensör Camları Çizik", "Şarj Olmuyor Hatası"], 
+        finalChecks: ["Emiş Gücü (Pa) Testi", "Haritalama & Lidar", "Şarj Oluyor & Dock Dönüş", "Su Akıtma (Pompa) Testi", "Düşme Sensörleri", "Wifi Bağlantısı", "Halı Algılama", "Sesli Asistan", "Tekerlek Motor Testi", "Batarya Kapasite Testi"] 
     }, 
     "Bilgisayar": { 
-        accessories: ["Şarj Aleti", "Çanta", "Mouse"], 
-        preChecks: ["Ekran Kırık", "Menteşe Gevşek", "Klavye Eksik", "Kasa Hasarlı", "Sıvı Teması"], 
-        finalChecks: ["Klavye Testi", "Ekran Görüntü", "Ses/Hoparlör", "Wifi/Bluetooth", "Termal Test", "SSD Sağlık", "Fan Devir"] 
+        accessories: ["Cihazın Kendisi", "Orijinal Şarj Aleti", "Güç Kablosu", "Çanta / Kılıf", "Mouse", "HDMI / Çevirici", "Kutu", "Batarya (Harici)"], 
+        preChecks: ["Ekran Kırık/Lekeli", "Menteşe Gevşek/Kırık", "Klavye Tuş Eksik", "Kasa Köşe Ezik", "Sıvı Teması", "Trackpad Basmıyor", "Vida Eksik", "Fan Çok Sesli", "USB Portları Hasarlı"], 
+        finalChecks: ["Klavye (Tüm Tuşlar)", "Ekran & Ölü Piksel", "Ses (Sağ/Sol Hoparlör)", "Wifi & Bluetooth", "Termal Test (Stress)", "SSD Sağlık & Hız", "Fan Devir Kontrolü", "USB & Type-C Portları", "Webcam & Mikrofon", "Batarya Döngüsü", "Menteşe Sertliği"] 
     }, 
     "Tablet": { 
-        accessories: ["Kılıf", "Kalem", "Şarj Aleti"], 
-        preChecks: ["Ekran Çatlak", "Kasa Yamuk", "Butonlar Basmıyor"], 
-        finalChecks: ["Dokunmatik", "Kalem Testi", "Kamera", "Şarj", "Wifi"] 
+        accessories: ["Cihazın Kendisi", "Kılıf", "Akıllı Kalem", "Şarj Aleti", "Kablo", "Klavye Kılıf", "Kutu"], 
+        preChecks: ["Ekran Çatlak", "Kasa Yamuk/Eğik", "Butonlar Basmıyor", "Şarj Soketi Gevşek", "Kamera Lensi Kırık"], 
+        finalChecks: ["Dokunmatik (Multi-touch)", "Kalem (Pencil) Testi", "Ön/Arka Kamera", "Şarj Entegresi", "Wifi & Sim Kart", "Jiroskop (Döndürme)", "Mikrofon & Hoparlör"] 
     }, 
     "Akıllı Saat": { 
-        accessories: ["Kordon", "Şarj Kablosu"], 
-        preChecks: ["Cam Çizik", "Kordon Kopuk", "Sensör Camı Kırık"], 
-        finalChecks: ["Dokunmatik", "Nabız Sensörü", "Titreşim", "Eşleşme Testi"] 
+        accessories: ["Cihazın Kendisi", "Kordon (Alt/Üst)", "Şarj Kablosu / Standı", "Kutu"], 
+        preChecks: ["Cam Çizik/Kırık", "Kordon Kilit Arızalı", "Arka Sensör Camı Kırık", "Digital Crown Dönmüyor", "Tuş Basmıyor"], 
+        finalChecks: ["Dokunmatik Hassasiyeti", "Nabız & Oksijen Sensörü", "Titreşim Motoru", "Telefon Eşleşme", "Mikrofon & Hoparlör", "Su Tahliye Modu", "Şarj Oluyor"] 
     }, 
+    "Oyun Konsolu": { 
+        accessories: ["Konsol", "Güç Kablosu", "HDMI Kablo", "Gamepad (1)", "Gamepad (2)", "USB Kablo"], 
+        preChecks: ["HDMI Portu Bozuk", "CD Okumuyor", "Fan Sesi Aşırı", "Görüntü Vermiyor", "Gamepad Drift Sorunu", "Kasa Hasarlı"], 
+        finalChecks: ["Görüntü & Ses Çıkışı", "Disk Okuyucu Testi", "Wifi/Ethernet", "Isınma Testi", "Gamepad Bağlantısı", "HDD/SSD Sağlık"] 
+    },
     "Diğer": { 
-        accessories: ["Güç Kablosu", "Kumanda"], 
-        preChecks: ["Fiziksel Hasar", "Eksik Parça"], 
-        finalChecks: ["Güç Testi", "Fonksiyon Testi"] 
+        accessories: ["Cihazın Kendisi", "Güç Kablosu", "Kumanda", "Adaptör", "Aksesuar"], 
+        preChecks: ["Fiziksel Hasar", "Eksik Parça", "Açılmıyor", "Ses Gelmiyor"], 
+        finalChecks: ["Güç Testi", "Fonksiyon Testi", "Güvenlik Testi", "Temizlik"] 
     } 
 };
 
@@ -100,6 +105,11 @@ export default function ServisDetaySayfasi() {
   const [paymentMethod, setPaymentMethod] = useState("Nakit");
   const [isVisualDiagnosticOpen, setIsVisualDiagnosticOpen] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+
+  // --- GARANTİ STATE'LERİ (BURADA OLMALI) ---
+  const [warrantyDuration, setWarrantyDuration] = useState("6");
+  const [warrantyScope, setWarrantyScope] = useState("");
+  const [customScope, setCustomScope] = useState("");
 
   // WIKI STATE
   const [isWikiModalOpen, setIsWikiModalOpen] = useState(false);
@@ -139,7 +149,7 @@ export default function ServisDetaySayfasi() {
           const { data: { user } } = await supabase.auth.getUser(); if (user?.email) setCurrentUserEmail(user.email);
           const { data: dealers } = await supabase.from('bayi_basvurulari').select('*').eq('durum', 'Onaylandı'); if(dealers) setDealersList(dealers);
 
-          // Upsell Verilerini Çek ve Ayır (Ürün vs Hizmet)
+          // Upsell Verilerini Çek
           const { data: upsells } = await supabase.from('aura_upsell_products').select('*').eq('is_active', true);
           if (upsells) {
               setAvailableServices(upsells.filter(u => SERVICE_CATEGORIES.includes(u.category) || u.category === 'Hizmet'));
@@ -163,6 +173,10 @@ export default function ServisDetaySayfasi() {
                   if (data.serial_no) checkExpertise(data.serial_no);
                   fetchUsedParts(data.id);
                   fetchTimeline(data.id);
+                  
+                  // Kayıtlı Garanti Bilgilerini Geri Yükle
+                  if(data.warranty_duration) setWarrantyDuration(data.warranty_duration.replace(" Ay", ""));
+                  if(data.warranty_scope) setWarrantyScope(data.warranty_scope);
               }
               setLoading(false);
           }
@@ -293,40 +307,28 @@ export default function ServisDetaySayfasi() {
       logToTimeline("Wiki Kullanıldı", "Arıza kütüphanesinden çözüm uygulandı."); 
   };
 
-  // --- DÜZELTİLMİŞ UPSELL MANTIĞI (ÖNER & SAT) ---
+  // --- UPSELL MANTIĞI ---
   const toggleUpsell = (item: any) => {
-      // 1. Önce "SATILMIŞ" listesini kontrol et
       const currentSold = Array.isArray(formData.sold_upsells) ? [...formData.sold_upsells] : [];
-      const isSold = currentSold.some((i:any) => i.id === item.id);
+      const isSold = currentSold.some((i:any) => i.id == item.id);
       
       if (isSold) {
-          // Eğer zaten satılmışsa, iptal et (iade)
           if(!confirm(`"${item.name}" satışını iptal etmek istiyor musunuz?`)) return;
-          
-          const newSold = currentSold.filter((i:any) => i.id !== item.id);
+          const newSold = currentSold.filter((i:any) => i.id != item.id);
           const newPrice = Math.max(0, Number(formData.price) - Number(item.price));
-          
-          setFormData({
-              ...formData,
-              sold_upsells: newSold,
-              price: newPrice
-          });
+          setFormData({ ...formData, sold_upsells: newSold, price: newPrice });
           return;
       }
 
-      // 2. Satılmamışsa, "Önerilenler" listesini yönet
       const currentRec = Array.isArray(formData.recommended_upsells) ? [...formData.recommended_upsells] : [];
-      const isRec = currentRec.some((i:any) => i.id === item.id);
+      const isRec = currentRec.some((i:any) => i.id == item.id);
       
       let newRec;
       if (isRec) {
-          // Zaten önerilmişse, öneriyi kaldır
-          newRec = currentRec.filter((i:any) => i.id !== item.id);
+          newRec = currentRec.filter((i:any) => i.id != item.id);
       } else {
-          // Önerilmemişse, listeye ekle
           newRec = [...currentRec, item];
       }
-      
       setFormData({...formData, recommended_upsells: newRec});
   };
 
@@ -338,50 +340,68 @@ export default function ServisDetaySayfasi() {
       let report = `Sayın *${formData.customer}*,\n\n`;
       report += `Teknik servisimize *${formData.tracking_code}* referans numarası ile kabul edilen *${formData.device}* cihazınızın işlemleri tamamlanmıştır.\n\n`;
       
-      if (usedParts.length > 0) {
-          report += `🔧 *Yapılan Teknik Müdahaleler:*\nCihazınızda tespit edilen donanım arızaları giderilmiş ve aşağıdaki orijinal bileşenlerin değişimi sağlanmıştır:\n• ${parts}\n\n`;
-      }
-      
-      if (upsells.length > 0) {
-          report += `✨ *Ek Hizmetler ve Aksesuarlar:*\nCihaz performansını artırmak ve korumak amacıyla:\n• ${upsells} eklenmiştir.\n\n`;
-      }
+      if (usedParts.length > 0) report += `🔧 *Yapılan Teknik Müdahaleler:*\n${parts}\n\n`;
+      if (upsells.length > 0) report += `✨ *Ek Hizmetler:*\n${upsells}\n\n`;
 
-      report += `📝 *Teknisyen Notu:*\n${formData.notes || "Genel bakım, temizlik ve performans optimizasyonu yapılmıştır."}\n\n`;
-      report += `📊 *Sonuç:*\nCihazınız tüm kalite kontrol testlerinden (Ekran, Batarya, Şebeke, Sensörler) başarıyla geçmiş olup, fabrika standartlarında performans göstermektedir.\n\n`;
+      report += `📝 *Teknisyen Notu:*\n${formData.notes || "Genel bakım yapıldı."}\n\n`;
+      report += `🛡️ *Garanti:* ${warrantyDuration} Ay (${warrantyScope || "Genel Kapsam"})\n`;
       report += `💰 *Toplam Tutar:* ${formData.price} TL\n\n`;
-      report += `Cihazınızı servisimizden teslim alabilirsiniz.\n\nSaygılarımızla,\n*Aura Bilişim Teknik Servis Ekibi*`;
-      
+      report += `Cihazınızı servisimizden teslim alabilirsiniz.\n\n*Aura Bilişim Teknik Servis*`;
       return report;
   };
 
-  // --- WHATSAPP GÖNDERİMİ ---
   const sendWhatsAppMessage = () => {
       let cleanPhone = (formData.phone || "").replace(/\D/g, ''); 
       if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1); 
       if (cleanPhone.length === 10) cleanPhone = '90' + cleanPhone; 
-      
       const message = generateCorporateReport();
-      
       logToTimeline("WhatsApp Mesajı", "Müşteriye kurumsal durum bildirimi gönderildi."); 
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank"); 
   };
 
+  // --- TESLİMAT & GARANTİ İŞLEMİ (GÜNCELLENDİ) ---
   const handlePaymentAndComplete = async () => {
       setLoading(true);
+
+      // 1. Ödeme
       if (Number(formData.price) > 0) {
-          const { error } = await supabase.from('aura_finans').insert([{ tur: 'Gelir', kategori: 'Servis Hizmeti', tutar: Number(formData.price), odeme_yontemi: paymentMethod, aciklama: `${formData.tracking_code} - ${formData.customer} Servis Ücreti`, tarih: new Date().toISOString().split('T')[0] }]);
+          await supabase.from('aura_finans').insert([{ 
+              tur: 'Gelir', kategori: 'Servis Hizmeti', tutar: Number(formData.price), 
+              odeme_yontemi: paymentMethod, 
+              aciklama: `${formData.tracking_code} - ${formData.customer} Servis Ücreti`, 
+              tarih: new Date().toISOString().split('T')[0] 
+          }]);
       }
       
-      // 6 Ay Sonrasına Bakım Tarihi
-      const today = new Date();
-      today.setMonth(today.getMonth() + 6);
-      const maintenanceDate = today.toISOString().split('T')[0];
+      // 2. Garanti Süresi
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + parseInt(warrantyDuration));
+      
+      const maintenanceDate = new Date();
+      maintenanceDate.setMonth(maintenanceDate.getMonth() + 6);
 
-      await supabase.from('aura_jobs').update({ status: 'Teslim Edildi', updated_at: new Date().toISOString(), next_maintenance_date: maintenanceDate }).eq('id', id);
-      logToTimeline("Teslimat & Ödeme", `Cihaz teslim edildi. ${formData.price} TL tahsil edildi. 6 Ay sonrası için bakım tarihi oluşturuldu.`);
+      let finalScope = warrantyScope;
+      if (warrantyScope === 'custom') finalScope = customScope;
+      if (!finalScope && usedParts.length > 0) finalScope = usedParts.map(p => p.aura_stok?.urun_adi).join(", ");
+      if (!finalScope) finalScope = "Genel İşçilik";
+
+      // 3. Güncelle
+      await supabase.from('aura_jobs').update({ 
+          status: 'Teslim Edildi', 
+          updated_at: new Date().toISOString(), 
+          next_maintenance_date: maintenanceDate.toISOString().split('T')[0],
+          warranty_duration: `${warrantyDuration} Ay`,
+          warranty_scope: finalScope,
+          warranty_end_date: endDate.toISOString().split('T')[0]
+      }).eq('id', id);
+
+      logToTimeline("Teslimat", `Cihaz teslim edildi. ${warrantyDuration} Ay garanti tanımlandı.`);
       setFormData({...formData, status: 'Teslim Edildi'});
-      setIsPaymentModalOpen(false); setLoading(false); alert("İşlem tamamlandı!");
-      if(confirm("Müşteriye bilgilendirme mesajı gönderilsin mi?")) sendWhatsAppMessage();
+      setIsPaymentModalOpen(false); 
+      setLoading(false); 
+      alert("İşlem tamamlandı! Garanti başlatıldı.");
+      
+      if(confirm("Müşteriye garanti mesajı gönderilsin mi?")) sendWhatsAppMessage();
   };
 
   const handleSave = async () => {
@@ -460,7 +480,7 @@ export default function ServisDetaySayfasi() {
        </div>
 
        <div className="grid grid-cols-12 gap-6 print:hidden">
-           {/* SOL: MÜŞTERİ & CİHAZ & UPSELL */}
+           {/* SOL KOLON */}
            <div className="col-span-12 lg:col-span-3 space-y-6">
                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><User size={14} className="text-cyan-500"/> Müşteri</h3>
@@ -484,52 +504,38 @@ export default function ServisDetaySayfasi() {
                    <textarea value={formData.privateNote} onChange={e => setFormData((p:any)=>({...p, privateNote: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-xs h-24 outline-none resize-none focus:border-indigo-500 text-slate-300" placeholder="Sadece yöneticiler ve teknisyenler görebilir..."></textarea>
                </div>
                
-               {/* --- GELİŞTİRİLMİŞ UPSELL & HİZMETLER --- */}
+               {/* --- UPSELL & HİZMETLER --- */}
                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ShoppingBag size={14} className="text-pink-500"/> Fırsat & Hizmet Ekle</h3>
-                   
                    <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
-                       {/* HİZMETLER (ÖNCELİKLİ) */}
                        {availableServices.length > 0 && (
                            <div>
                                <div className="text-[9px] font-bold text-purple-400 mb-2 border-b border-slate-800 pb-1">EK HİZMETLER</div>
                                <div className="grid grid-cols-1 gap-2">
                                    {availableServices.map((item:any) => {
-                                       // DÜZELTME: SATILDI KONTROLÜ (YEŞİL GÖZÜKMESİ İÇİN)
-                                       const isSold = formData.sold_upsells?.some((i:any) => i.id === item.id);
-                                       const isRecommended = formData.recommended_upsells?.some((i:any) => i.id === item.id);
-                                       
+                                       const isSold = formData.sold_upsells?.some((i:any) => i.id == item.id);
+                                       const isRecommended = formData.recommended_upsells?.some((i:any) => i.id == item.id);
                                        return (
                                            <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-green-600 border-green-500 text-white shadow-lg' : isRecommended ? 'bg-purple-900/40 border-purple-500 text-purple-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-purple-500/50'}`}>
-                                               <div className="flex items-center gap-2">
-                                                   {isSold ? <CheckCircle2 size={14}/> : <ShieldCheck size={12}/>} 
-                                                   {item.name}
-                                               </div>
-                                               <span className="font-bold">{isSold ? 'SATILDI' : `${item.price}₺`}</span>
+                                               <div className="flex items-center gap-2">{isSold ? <CheckCircle2 size={14}/> : <ShieldCheck size={12}/>} {item.name}</div>
+                                               <span className="font-bold">{isSold ? 'SATILDI' : (isRecommended ? 'ÖNERİLDİ' : `${item.price}₺`)}</span>
                                            </button>
                                        )
                                    })}
                                </div>
                            </div>
                        )}
-
-                       {/* ÜRÜNLER */}
                        {availableProducts.length > 0 && (
                            <div className="mt-4">
                                <div className="text-[9px] font-bold text-cyan-400 mb-2 border-b border-slate-800 pb-1">AKSESUAR & ÜRÜN</div>
                                <div className="grid grid-cols-1 gap-2">
                                    {availableProducts.map((item:any) => {
-                                       // DÜZELTME: SATILDI KONTROLÜ
-                                       const isSold = formData.sold_upsells?.some((i:any) => i.id === item.id);
-                                       const isRecommended = formData.recommended_upsells?.some((i:any) => i.id === item.id);
-
+                                       const isSold = formData.sold_upsells?.some((i:any) => i.id == item.id);
+                                       const isRecommended = formData.recommended_upsells?.some((i:any) => i.id == item.id);
                                        return (
                                            <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-green-600 border-green-500 text-white shadow-lg' : isRecommended ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-cyan-500/50'}`}>
-                                               <div className="flex items-center gap-2">
-                                                   {isSold ? <CheckCircle2 size={14}/> : <Package size={12}/>} 
-                                                   {item.name}
-                                               </div>
-                                               <span className="font-bold">{isSold ? 'SATILDI' : `${item.price}₺`}</span>
+                                               <div className="flex items-center gap-2">{isSold ? <CheckCircle2 size={14}/> : <Package size={12}/>} {item.name}</div>
+                                               <span className="font-bold">{isSold ? 'SATILDI' : (isRecommended ? 'ÖNERİLDİ' : `${item.price}₺`)}</span>
                                            </button>
                                        )
                                    })}
@@ -537,7 +543,6 @@ export default function ServisDetaySayfasi() {
                            </div>
                        )}
                    </div>
-                   {Array.isArray(formData.recommended_upsells) && formData.recommended_upsells.length > 0 && <div className="text-[10px] text-green-500 text-center mt-3 bg-green-900/20 p-2 rounded border border-green-900/50">Toplam {formData.recommended_upsells.length} ek kalem önerildi.</div>}
                </div>
            </div>
 
@@ -546,47 +551,20 @@ export default function ServisDetaySayfasi() {
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-6 shadow-lg">
                     <div className="space-y-4">
                         <div className="flex gap-4">
-                             <div className="flex-1">
-                                 <label className="text-[10px] text-slate-500 font-bold ml-1">KATEGORİ</label>
-                                 <select 
-                                     value={formData.category} 
-                                     onChange={e => handleCategoryChange(e.target.value)} 
-                                     className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-cyan-500"
-                                 >
-                                     {Object.keys(CATEGORY_DATA).map(c => <option key={c} value={c}>{c}</option>)}
-                                 </select>
-                             </div>
-                             <div className="flex-1">
-                                 <label className="text-[10px] text-slate-500 font-bold ml-1">MARKA / MODEL</label>
-                                 <input type="text" value={formData.device} onChange={e => setFormData((p:any)=>({...p, device: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-cyan-500" placeholder="Model"/>
-                             </div>
+                             <div className="flex-1"><label className="text-[10px] text-slate-500 font-bold ml-1">KATEGORİ</label><select value={formData.category} onChange={e => handleCategoryChange(e.target.value)} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-cyan-500">{Object.keys(CATEGORY_DATA).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                             <div className="flex-1"><label className="text-[10px] text-slate-500 font-bold ml-1">MARKA / MODEL</label><input type="text" value={formData.device} onChange={e => setFormData((p:any)=>({...p, device: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-cyan-500" placeholder="Model"/></div>
                         </div>
-
                         <div className="grid grid-cols-2 gap-4"><div className="relative"><input type="text" value={formData.serialNo} onChange={e => { setFormData((p:any)=>({...p, serialNo: e.target.value})); checkExpertise(e.target.value); }} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-mono uppercase outline-none focus:border-cyan-500" placeholder="IMEI / SERİ NO"/>{(formData.serialNo || "").length > 5 && (<div className="absolute right-1 top-1 bottom-1">{expertiseId ? (<button onClick={() => router.push(`/epanel/ekspertiz/detay/${expertiseId}`)} className="h-full px-3 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><FileText size={12}/> RAPOR VAR</button>) : (<button onClick={() => router.push(`/epanel/ekspertiz?yeni=${formData.serialNo}`)} className="h-full px-3 bg-slate-700 hover:bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><PlusCircle size={12}/> RAPOR EKLE</button>)}</div>)}</div><input type="text" value={formData.password} onChange={e => setFormData((p:any)=>({...p, password: e.target.value}))} className="w-full bg-[#0b0e14] border border-red-900/30 text-red-400 rounded-lg p-3 font-bold outline-none focus:border-red-500" placeholder="Şifre"/></div>
                         <div><div className="flex justify-between items-center mb-1 ml-1"><label className="text-[10px] text-slate-500 font-bold">ŞİKAYET / ARIZA</label><button onClick={() => { setIsWikiModalOpen(true); setWikiSearchTerm(formData.device); handleWikiSearch(); }} className="text-[10px] flex items-center gap-1 text-purple-400 hover:text-purple-300 font-bold bg-purple-900/20 px-2 py-0.5 rounded border border-purple-500/30"><Book size={10}/> Wiki'de Ara</button></div><textarea value={formData.issue} onChange={e => setFormData((p:any)=>({...p, issue: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm h-24 outline-none resize-none focus:border-cyan-500" placeholder="Arıza detayını giriniz..."></textarea></div>
-                        <div className="bg-black/20 p-3 rounded-xl border border-slate-800"><label className="text-[10px] text-cyan-500 font-bold uppercase mb-2 block">Teslim Alınanlar</label><div className="flex flex-wrap gap-2">{catInfo.accessories.map((acc: string) => { const accArray = Array.isArray(formData.accessories) ? formData.accessories : []; const isSelected = accArray.includes(acc); return (<button key={acc} onClick={() => { const curr = isSelected ? accArray.filter((i:any)=>i!==acc) : [...accArray, acc]; setFormData({...formData, accessories: curr}); }} className={`px-2 py-1 rounded border text-[10px] font-bold transition-all ${isSelected ? 'bg-cyan-900/40 border-cyan-500 text-cyan-400 scale-105' : 'bg-[#0b0e14] border-slate-500 hover:border-slate-600'}`}>{acc}</button>); })}</div></div>
+                        <div className="bg-black/20 p-3 rounded-xl border border-slate-800"><label className="text-[10px] text-cyan-500 font-bold uppercase mb-2 block">Teslim Alınanlar</label><div className="flex flex-wrap gap-2">{catInfo.accessories.map((acc: string) => { const accArray = Array.isArray(formData.accessories) ? formData.accessories : []; const isSelected = accArray.includes(acc); return (<button key={acc} onClick={() => toggleArrayItem("accessories", acc)} className={`px-2 py-1 rounded border text-[10px] font-bold transition-all ${isSelected ? 'bg-cyan-900/40 border-cyan-500 text-cyan-400 scale-105' : 'bg-[#0b0e14] border-slate-500 hover:border-slate-600'}`}>{acc}</button>); })}</div></div>
                     </div>
                 </div>
 
-                {/* --- GELİŞTİRİLMİŞ ÖN KONTROL --- */}
+                {/* --- GELİŞMİŞ ÖN KONTROL (WRAP ÖZELLİĞİ EKLENDİ) --- */}
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><AlertTriangle size={14} className="text-orange-500"/> Ön Kontrol (Giriş)</h3>
-                        <span className="text-[9px] text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-700">{formData.category}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        {catInfo.preChecks.map((item: string) => { 
-                            const preArray = Array.isArray(formData.preCheck) ? formData.preCheck : []; 
-                            const isSelected = preArray.includes(item); 
-                            return (
-                                <button key={item} onClick={() => toggleArrayItem("preCheck", item)} className={`relative flex items-center gap-3 p-3 rounded-xl border text-left text-[11px] font-bold transition-all group ${isSelected ? 'bg-red-500/10 border-red-500/50 text-red-400' : 'bg-[#0b0e14] border-slate-800 text-slate-500 hover:border-slate-600'}`}>
-                                    <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-red-500 border-red-500 text-white' : 'border-slate-600 group-hover:border-slate-500'}`}>
-                                        {isSelected && <X size={10} strokeWidth={4}/>}
-                                    </div>
-                                    {item}
-                                </button>
-                            ); 
-                        })}
+                    <div className="flex justify-between items-center mb-4"><h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><AlertTriangle size={14} className="text-orange-500"/> Ön Kontrol (Giriş)</h3><span className="text-[9px] text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-700">{formData.category}</span></div>
+                    <div className="flex flex-wrap gap-2">
+                        {catInfo.preChecks.map((item: string) => { const preArray = Array.isArray(formData.preCheck) ? formData.preCheck : []; const isSelected = preArray.includes(item); return (<button key={item} onClick={() => toggleArrayItem("preCheck", item)} className={`relative flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-[10px] font-bold transition-all group ${isSelected ? 'bg-red-500/10 border-red-500/50 text-red-400' : 'bg-[#0b0e14] border-slate-800 text-slate-500 hover:border-slate-600'}`}><div className={`w-3 h-3 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-red-500 border-red-500 text-white' : 'border-slate-600 group-hover:border-slate-500'}`}>{isSelected && <X size={8} strokeWidth={4}/>}</div>{item}</button>); })}
                     </div>
                 </div>
 
@@ -612,17 +590,17 @@ export default function ServisDetaySayfasi() {
                     {formData.sold_upsells?.length > 0 && <div className="mt-3 p-3 bg-black/20 rounded border border-slate-800"><div className="text-[10px] font-bold text-slate-500 mb-2">EKLENEN HİZMETLER</div><div className="space-y-1">{formData.sold_upsells.map((u:any, i:number) => <div key={i} className="text-xs text-white flex justify-between"><span>{u.name}</span><span className="font-bold">{u.price}₺</span></div>)}</div></div>}
                 </div>
 
-                {/* --- GELİŞTİRİLMİŞ KALİTE KONTROL --- */}
+                {/* --- GELİŞTİRİLMİŞ KALİTE KONTROL (WRAP ÖZELLİĞİ EKLENDİ) --- */}
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                     <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ClipboardCheck size={14} className="text-green-500"/> Kalite Kontrol (Çıkış)</h3>
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="flex flex-wrap gap-2">
                         {catInfo.finalChecks.map((item: string) => {
                             const finalArray = Array.isArray(formData.finalCheck) ? formData.finalCheck : [];
                             const isSelected = finalArray.includes(item);
                             return (
-                                <button key={item} onClick={() => toggleArrayItem("finalCheck", item)} className={`relative flex items-center gap-3 p-3 w-full rounded-xl border text-[11px] font-bold text-left transition-all group ${isSelected ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-[#0b0e14] border-slate-800 text-slate-500 hover:border-slate-600'}`}>
-                                    <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-green-600 border-green-600 text-white' : 'border-slate-600 group-hover:border-slate-500'}`}>
-                                        {isSelected && <Check size={10} strokeWidth={4}/>}
+                                <button key={item} onClick={() => toggleArrayItem("finalCheck", item)} className={`relative flex items-center gap-2 px-3 py-2 rounded-lg border text-[10px] font-bold text-left transition-all group ${isSelected ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-[#0b0e14] border-slate-800 text-slate-500 hover:border-slate-600'}`}>
+                                    <div className={`w-3 h-3 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-green-600 border-green-600 text-white' : 'border-slate-600 group-hover:border-slate-500'}`}>
+                                        {isSelected && <Check size={8} strokeWidth={4}/>}
                                     </div>
                                     {item}
                                 </button>
@@ -639,12 +617,7 @@ export default function ServisDetaySayfasi() {
                     </label>
                     {Array.isArray(formData.images) && formData.images.length > 0 && (
                         <div className="grid grid-cols-4 gap-2 mt-4">
-                            {formData.images.map((img:string, i:number)=>(
-                                <div key={i} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-700">
-                                    <img src={img} className="w-full h-full object-cover"/>
-                                    <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-red-600/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all"><X size={10}/></button>
-                                </div>
-                            ))}
+                            {formData.images.map((img:string, i:number)=>(<div key={i} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-700"><img src={img} className="w-full h-full object-cover"/><button onClick={() => setFormData((prev:any)=>{ const ni=[...prev.images]; ni.splice(i,1); return {...prev, images:ni} })} className="absolute top-1 right-1 bg-red-600/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all"><X size={10}/></button></div>))}
                         </div>
                     )}
                 </div>
@@ -653,14 +626,32 @@ export default function ServisDetaySayfasi() {
 
        {/* MODALLAR */}
        {isPaymentModalOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95">
-                <div className="bg-[#1e293b] rounded-2xl w-full max-w-sm border border-slate-700 shadow-2xl overflow-hidden p-6 text-center">
-                    <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30"><Wallet size={32} className="text-emerald-400"/></div>
-                    <h3 className="text-xl font-bold text-white mb-2">Ödeme Al & Teslim Et</h3>
-                    <p className="text-slate-400 text-xs mb-6">Cihaz teslim edilecek ve ödeme kasaya işlenecektir.</p>
-                    <div className="text-3xl font-black text-white mb-6">{formData.price.toLocaleString('tr-TR')} ₺</div>
-                    <div className="grid grid-cols-2 gap-3 mb-6">{['Nakit', 'Kredi Kartı', 'Havale / EFT', 'Cari Hesaba İşle'].map((m) => (<button key={m} onClick={() => setPaymentMethod(m)} className={`p-3 rounded-xl border text-xs font-bold transition-all ${paymentMethod === m ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg scale-105' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-emerald-500/50'}`}>{m}</button>))}</div>
-                    <div className="flex gap-3"><button onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-3 rounded-xl border border-slate-600 text-slate-300 font-bold text-sm hover:bg-slate-700">İPTAL</button><button onClick={handlePaymentAndComplete} className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg">ONAYLA</button></div>
+            <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in zoom-in-95">
+                <div className="bg-[#1e293b] rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="p-6 bg-slate-900 border-b border-slate-700 text-center">
+                        <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.3)]"><ShieldCheck size={32} className="text-emerald-400"/></div>
+                        <h3 className="text-xl font-black text-white">Teslimat & Garanti</h3>
+                        <p className="text-slate-400 text-xs mt-1">Ödeme alınacak ve garanti süreci başlayacaktır.</p>
+                    </div>
+                    <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">TAHSİLAT TUTARI</label>
+                            <div className="text-3xl font-black text-white bg-[#0b0e14] p-4 rounded-xl border border-slate-700 text-center">{formData.price.toLocaleString('tr-TR')} ₺</div>
+                            <div className="grid grid-cols-2 gap-2 mt-3">{['Nakit', 'Kredi Kartı', 'Havale / EFT', 'Cari'].map((m) => (<button key={m} onClick={() => setPaymentMethod(m)} className={`p-2 rounded-lg text-xs font-bold transition-all border ${paymentMethod === m ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-[#0b0e14] border-slate-700 text-slate-400'}`}>{m}</button>))}</div>
+                        </div>
+                        <div className="h-px bg-slate-700/50"></div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block flex items-center gap-2"><ShieldCheck size={12}/> GARANTİ SÜRESİ</label>
+                            <div className="grid grid-cols-4 gap-2 mb-4">{['0', '3', '6', '12'].map((m) => (<button key={m} onClick={() => setWarrantyDuration(m)} className={`p-2 rounded-lg text-xs font-bold border transition-all ${warrantyDuration === m ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-[#0b0e14] border-slate-700 text-slate-400'}`}>{m === '0' ? 'YOK' : `${m} AY`}</button>))}</div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">KAPSAM</label>
+                            <select className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-sm text-white outline-none mb-2" onChange={(e) => setWarrantyScope(e.target.value)}><option value="">Otomatik (Değişen Parçalar)</option><option value="Tüm Cihaz (Full)">Tüm Cihaz (Full Kapsam)</option><option value="Sadece İşçilik">Sadece İşçilik</option><option value="custom">Özel Yaz...</option></select>
+                            {warrantyScope === 'custom' && (<input type="text" placeholder="Örn: Ekran ve Batarya hariç..." className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-blue-500" onChange={(e) => setCustomScope(e.target.value)}/>)}
+                        </div>
+                    </div>
+                    <div className="p-4 bg-slate-900 border-t border-slate-700 flex gap-3">
+                        <button onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-3 rounded-xl border border-slate-600 text-slate-300 font-bold text-sm hover:bg-slate-800">İPTAL</button>
+                        <button onClick={handlePaymentAndComplete} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold text-sm shadow-lg">ONAYLA & BİTİR</button>
+                    </div>
                 </div>
             </div>
         )}

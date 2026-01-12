@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   Search, CheckCircle2, AlertTriangle, User, MessageCircle, 
-  ShoppingBag, Plus, Wrench, Cpu, Battery, Radio, AlertCircle, Smartphone, Activity, Loader2, Package, ShieldCheck, Camera, Eye, X
+  ShoppingBag, Plus, Wrench, Cpu, Battery, Clock, Radio, AlertCircle, Smartphone, Activity, Loader2, Package, ShieldCheck, Camera, Eye, X
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
 
@@ -267,6 +267,62 @@ function CihazSorgulaContent() {
                         </div>
                       </div>
                     )}
+
+                    {/* --- DİJİTAL GARANTİ SERTİFİKASI (YENİ) --- */}
+{result.status === 'Teslim Edildi' && result.warranty_end_date && (
+    <div className="mt-6 relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-[#0f1219] shadow-[0_0_40px_rgba(16,185,129,0.1)] group">
+        
+        {/* Arka Plan Süsü */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] group-hover:bg-emerald-500/20 transition-all pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-cyan-500"></div>
+
+        <div className="relative z-10 p-8 flex flex-col md:flex-row items-center gap-8">
+            
+            {/* Sol: İkon ve Başlık */}
+            <div className="text-center md:text-left">
+                <div className="inline-flex p-4 rounded-2xl bg-emerald-500/10 text-emerald-400 mb-4 ring-1 ring-emerald-500/20 shadow-lg shadow-emerald-900/20">
+                    <ShieldCheck size={48} strokeWidth={1.5} className="animate-pulse"/>
+                </div>
+                <h3 className="text-2xl font-black text-white tracking-tight">AURA <span className="text-emerald-400">GARANTİ</span></h3>
+                <p className="text-slate-400 text-sm font-medium mt-1">Bu cihaz Aura Bilişim güvencesi altındadır.</p>
+            </div>
+
+            {/* Orta: Dikey Çizgi (Desktop) */}
+            <div className="hidden md:block w-px h-24 bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+
+            {/* Sağ: Detaylar */}
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+                <div className="bg-[#0b0e14] p-4 rounded-xl border border-white/5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">GARANTİ BİTİŞ TARİHİ</p>
+                    <div className="flex items-center gap-2">
+                        <Clock size={18} className="text-emerald-500"/>
+                        <span className="text-xl font-black text-white font-mono">
+                            {new Date(result.warranty_end_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                    </div>
+                    {new Date(result.warranty_end_date) > new Date() ? (
+                        <span className="inline-block mt-2 text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold">● AKTİF</span>
+                    ) : (
+                        <span className="inline-block mt-2 text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded font-bold">● SÜRESİ DOLDU</span>
+                    )}
+                </div>
+
+                <div className="bg-[#0b0e14] p-4 rounded-xl border border-white/5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">GARANTİ KAPSAMI</p>
+                    <div className="flex items-start gap-2">
+                        <CheckCircle2 size={18} className="text-cyan-500 mt-0.5 shrink-0"/>
+                        <span className="text-sm font-bold text-slate-300 leading-tight">
+                            {result.warranty_scope || "Genel İşçilik ve Parça Garantisi"}
+                        </span>
+                    </div>
+                    <p className="text-[10px] text-slate-600 mt-2 italic">* Sıvı teması ve darbe hariçtir.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+)}
+
+
 
                     <a href={`https://wa.me/905396321429?text=Merhaba, SRV-${result.tracking_code} nolu cihazım hakkında görüşmek istiyorum.`} target="_blank" className="flex items-center justify-center gap-2 py-4 bg-[#25D366] hover:bg-[#20bd5a] text-[#0a3319] font-black rounded-xl transition-transform hover:scale-[1.02] shadow-lg shadow-green-500/20"><MessageCircle size={20}/> WHATSAPP İLE GÖRÜŞ</a>
                 </div>
