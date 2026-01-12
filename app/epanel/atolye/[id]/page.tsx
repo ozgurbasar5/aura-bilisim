@@ -294,16 +294,16 @@ export default function ServisDetaySayfasi() {
   };
 
   const toggleUpsell = (item: any) => {
-      const current = Array.isArray(formData.sold_upsells) ? [...formData.sold_upsells] : [];
+      const current = Array.isArray(formData.recommended_upsells) ? [...formData.recommended_upsells] : [];
       const exists = current.find((i:any) => i.id === item.id);
-      let newSold;
+      let newRecommended;
       if (exists) {
-          newSold = current.filter((i:any) => i.id !== item.id);
-          setFormData({...formData, sold_upsells: newSold, price: Number(formData.price) - Number(item.price)});
+          newRecommended = current.filter((i:any) => i.id !== item.id);
       } else {
-          newSold = [...current, item];
-          setFormData({...formData, sold_upsells: newSold, price: Number(formData.price) + Number(item.price)});
+          newRecommended = [...current, item];
       }
+      // Not: Sadece önerilenler listesini güncelliyoruz.
+      setFormData({...formData, recommended_upsells: newRecommended});
   };
 
   // --- OTO-KURUMSAL YAZI ÜRETİCİSİ (YENİ) ---
@@ -369,7 +369,8 @@ export default function ServisDetaySayfasi() {
         problem_description: formData.issue, problem: formData.issue, issue: formData.issue, complaint: formData.issue, technician_note: finalNotes, 
         private_note: JSON.stringify(formData.selectedVisualParts), 
         status: formData.status, price: String(formData.price), cost: Number(formData.cost), tracking_code: formData.tracking_code || `SRV-${Math.floor(10000 + Math.random() * 90000)}`,
-        accessories: JSON.stringify(formData.accessories), accessory: JSON.stringify(formData.accessories), pre_checks: JSON.stringify(formData.preCheck), final_checks: JSON.stringify(formData.finalCheck), images: JSON.stringify(formData.images), recommended_upsells: JSON.stringify(formData.recommended_upsells), sold_upsells: JSON.stringify(formData.sold_upsells),
+        accessories: JSON.stringify(formData.accessories), accessory: JSON.stringify(formData.accessories), pre_checks: JSON.stringify(formData.preCheck), final_checks: JSON.stringify(formData.finalCheck), images: JSON.stringify(formData.images), 
+        recommended_upsells: JSON.stringify(formData.recommended_upsells), sold_upsells: JSON.stringify(formData.sold_upsells),
         tip_id: formData.tip_id, approval_status: formData.approval_status, approval_amount: String(formData.approval_amount), approval_desc: formData.approval_desc, updated_at: new Date().toISOString()
     };
     
@@ -464,9 +465,9 @@ export default function ServisDetaySayfasi() {
                                <div className="text-[9px] font-bold text-purple-400 mb-2 border-b border-slate-800 pb-1">EK HİZMETLER</div>
                                <div className="grid grid-cols-1 gap-2">
                                    {availableServices.map((item:any) => {
-                                       const isSold = formData.sold_upsells?.some((i:any) => i.id === item.id);
+                                       const isRecommended = formData.recommended_upsells?.some((i:any) => i.id === item.id);
                                        return (
-                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-purple-900/40 border-purple-500 text-purple-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-purple-500/50'}`}>
+                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isRecommended ? 'bg-purple-900/40 border-purple-500 text-purple-300 shadow-lg shadow-purple-900/20' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-purple-500/50'}`}>
                                                <div className="flex items-center gap-2"><ShieldCheck size={12}/> {item.name}</div>
                                                <span className="font-bold">{item.price}₺</span>
                                            </button>
@@ -482,9 +483,9 @@ export default function ServisDetaySayfasi() {
                                <div className="text-[9px] font-bold text-cyan-400 mb-2 border-b border-slate-800 pb-1">AKSESUAR & ÜRÜN</div>
                                <div className="grid grid-cols-1 gap-2">
                                    {availableProducts.map((item:any) => {
-                                       const isSold = formData.sold_upsells?.some((i:any) => i.id === item.id);
+                                       const isRecommended = formData.recommended_upsells?.some((i:any) => i.id === item.id);
                                        return (
-                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-cyan-500/50'}`}>
+                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isRecommended ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300 shadow-lg shadow-cyan-900/20' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-cyan-500/50'}`}>
                                                <div className="flex items-center gap-2"><Package size={12}/> {item.name}</div>
                                                <span className="font-bold">{item.price}₺</span>
                                            </button>
@@ -494,17 +495,13 @@ export default function ServisDetaySayfasi() {
                            </div>
                        )}
                    </div>
-                   {Array.isArray(formData.sold_upsells) && formData.sold_upsells.length > 0 && <div className="text-[10px] text-green-500 text-center mt-3 bg-green-900/20 p-2 rounded border border-green-900/50">Toplam {formData.sold_upsells.length} ek kalem eklendi.</div>}
+                   {Array.isArray(formData.recommended_upsells) && formData.recommended_upsells.length > 0 && <div className="text-[10px] text-green-500 text-center mt-3 bg-green-900/20 p-2 rounded border border-green-900/50">Toplam {formData.recommended_upsells.length} ek kalem önerildi.</div>}
                </div>
            </div>
 
            {/* ORTA: CİHAZ & İŞLEM */}
            <div className="col-span-12 lg:col-span-5 space-y-6">
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-6 shadow-lg">
-                    <div className="flex justify-between items-center mb-5">
-                         <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Smartphone size={14} className="text-blue-500"/> Cihaz Kimliği</h3>
-                         <button onClick={() => setIsVisualDiagnosticOpen(true)} className="text-[9px] bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 px-3 py-1.5 rounded-full border border-cyan-500/30 font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-cyan-500/10"><Activity size={12} className="animate-pulse"/> AURA VISUAL DIAGNOSTIC</button>
-                    </div>
                     <div className="space-y-4">
                         <div className="flex gap-4">
                              <div className="flex-1">
@@ -536,9 +533,9 @@ export default function ServisDetaySayfasi() {
                         <span className="text-[9px] text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-700">{formData.category}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                        {catInfo.preChecks.map((item: string) => { 
-                            const preArray = Array.isArray(formData.preCheck) ? formData.preCheck : []; 
-                            const isSelected = preArray.includes(item); 
+                        {catInfo.preChecks.map((item: string) => { 
+                            const preArray = Array.isArray(formData.preCheck) ? formData.preCheck : []; 
+                            const isSelected = preArray.includes(item); 
                             return (
                                 <button key={item} onClick={() => toggleArrayItem("preCheck", item)} className={`relative flex items-center gap-3 p-3 rounded-xl border text-left text-[11px] font-bold transition-all group ${isSelected ? 'bg-red-500/10 border-red-500/50 text-red-400' : 'bg-[#0b0e14] border-slate-800 text-slate-500 hover:border-slate-600'}`}>
                                     <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-red-500 border-red-500 text-white' : 'border-slate-600 group-hover:border-slate-500'}`}>
@@ -546,7 +543,7 @@ export default function ServisDetaySayfasi() {
                                     </div>
                                     {item}
                                 </button>
-                            ); 
+                            ); 
                         })}
                     </div>
                 </div>
