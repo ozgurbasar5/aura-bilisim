@@ -4,11 +4,11 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   Search, CheckCircle2, AlertTriangle, User, MessageCircle, 
-  ShoppingBag, Plus, Wrench, Cpu, Battery, Radio, AlertCircle, X, Smartphone, Activity, Loader2, Package, ShieldCheck
+  ShoppingBag, Plus, Wrench, Cpu, Battery, Radio, AlertCircle, Smartphone, Activity, Loader2, Package, ShieldCheck, Camera, Eye, X
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
 
-// Hizmet kategorilerini tanımla (Teknisyen paneliyle aynı olmalı)
+// Hizmet kategorilerini tanımla
 const SERVICE_CATEGORIES = ["Garanti Uzatma", "Koruma Paketi", "Yazılım Hizmeti", "Bakım Paketi", "Hizmet"];
 
 export default function CihazSorgulaPage() {
@@ -244,6 +244,29 @@ function CihazSorgulaContent() {
                             <div><span className="text-[10px] font-bold text-slate-500 uppercase block mb-2">KALİTE KONTROL</span><div className="flex flex-wrap gap-2">{finalChecks.length > 0 ? finalChecks.map((chk:string, i:number) => (<span key={i} className="px-2 py-1 bg-green-500/10 text-green-400 text-[10px] rounded border border-green-500/20 font-bold flex items-center gap-1"><CheckCircle2 size={10}/> {chk}</span>)) : <span className="text-xs text-slate-600 italic">Test aşamasında</span>}</div></div>
                         </div>
                     </div>
+
+                    {/* --- CİHAZ GÖRSELLERİ (EKLENDİ) --- */}
+                    {images.length > 0 && (
+                      <div className="bg-[#151921] border border-slate-800 rounded-2xl p-6">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+                           <Camera size={14} className="text-cyan-500"/> Cihaz Görselleri
+                        </h3>
+                        <div className="grid grid-cols-4 gap-2">
+                          {images.map((img: string, i: number) => (
+                            <div
+                              key={i}
+                              className="relative group aspect-square rounded-lg overflow-hidden border border-slate-700 cursor-pointer"
+                              onClick={() => setSelectedImage(img)}
+                            >
+                              <img src={img} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                 <Eye size={20} className="text-white"/>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <a href={`https://wa.me/905396321429?text=Merhaba, SRV-${result.tracking_code} nolu cihazım hakkında görüşmek istiyorum.`} target="_blank" className="flex items-center justify-center gap-2 py-4 bg-[#25D366] hover:bg-[#20bd5a] text-[#0a3319] font-black rounded-xl transition-transform hover:scale-[1.02] shadow-lg shadow-green-500/20"><MessageCircle size={20}/> WHATSAPP İLE GÖRÜŞ</a>
                 </div>

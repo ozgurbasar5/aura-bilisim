@@ -72,7 +72,7 @@ const CATEGORY_DATA: any = {
     } 
 };
 
-// Hizmet Kategorileri (Veritabanında category='Hizmet' veya özel bir type ile ayrılabilir)
+// Hizmet Kategorileri
 const SERVICE_CATEGORIES = ["Garanti Uzatma", "Koruma Paketi", "Yazılım Hizmeti", "Bakım Paketi", "Hizmet"];
 
 export default function ServisDetaySayfasi() {
@@ -293,20 +293,44 @@ export default function ServisDetaySayfasi() {
       logToTimeline("Wiki Kullanıldı", "Arıza kütüphanesinden çözüm uygulandı."); 
   };
 
+  // --- DÜZELTİLMİŞ UPSELL MANTIĞI (ÖNER & SAT) ---
   const toggleUpsell = (item: any) => {
-      const current = Array.isArray(formData.recommended_upsells) ? [...formData.recommended_upsells] : [];
-      const exists = current.find((i:any) => i.id === item.id);
-      let newRecommended;
-      if (exists) {
-          newRecommended = current.filter((i:any) => i.id !== item.id);
-      } else {
-          newRecommended = [...current, item];
+      // 1. Önce "SATILMIŞ" listesini kontrol et
+      const currentSold = Array.isArray(formData.sold_upsells) ? [...formData.sold_upsells] : [];
+      const isSold = currentSold.some((i:any) => i.id === item.id);
+      
+      if (isSold) {
+          // Eğer zaten satılmışsa, iptal et (iade)
+          if(!confirm(`"${item.name}" satışını iptal etmek istiyor musunuz?`)) return;
+          
+          const newSold = currentSold.filter((i:any) => i.id !== item.id);
+          const newPrice = Math.max(0, Number(formData.price) - Number(item.price));
+          
+          setFormData({
+              ...formData,
+              sold_upsells: newSold,
+              price: newPrice
+          });
+          return;
       }
-      // Not: Sadece önerilenler listesini güncelliyoruz.
-      setFormData({...formData, recommended_upsells: newRecommended});
+
+      // 2. Satılmamışsa, "Önerilenler" listesini yönet
+      const currentRec = Array.isArray(formData.recommended_upsells) ? [...formData.recommended_upsells] : [];
+      const isRec = currentRec.some((i:any) => i.id === item.id);
+      
+      let newRec;
+      if (isRec) {
+          // Zaten önerilmişse, öneriyi kaldır
+          newRec = currentRec.filter((i:any) => i.id !== item.id);
+      } else {
+          // Önerilmemişse, listeye ekle
+          newRec = [...currentRec, item];
+      }
+      
+      setFormData({...formData, recommended_upsells: newRec});
   };
 
-  // --- OTO-KURUMSAL YAZI ÜRETİCİSİ (YENİ) ---
+  // --- OTO-KURUMSAL YAZI ÜRETİCİSİ ---
   const generateCorporateReport = () => {
       const parts = usedParts.map(p => p.aura_stok?.urun_adi).join(", ");
       const upsells = Array.isArray(formData.sold_upsells) ? formData.sold_upsells.map((u:any) => typeof u === 'object' ? u.name : u).join(", ") : "";
@@ -330,7 +354,7 @@ export default function ServisDetaySayfasi() {
       return report;
   };
 
-  // --- WHATSAPP GÖNDERİMİ (GÜNCELLENMİŞ) ---
+  // --- WHATSAPP GÖNDERİMİ ---
   const sendWhatsAppMessage = () => {
       let cleanPhone = (formData.phone || "").replace(/\D/g, ''); 
       if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1); 
@@ -347,8 +371,14 @@ export default function ServisDetaySayfasi() {
       if (Number(formData.price) > 0) {
           const { error } = await supabase.from('aura_finans').insert([{ tur: 'Gelir', kategori: 'Servis Hizmeti', tutar: Number(formData.price), odeme_yontemi: paymentMethod, aciklama: `${formData.tracking_code} - ${formData.customer} Servis Ücreti`, tarih: new Date().toISOString().split('T')[0] }]);
       }
-      await supabase.from('aura_jobs').update({ status: 'Teslim Edildi', updated_at: new Date().toISOString() }).eq('id', id);
-      logToTimeline("Teslimat & Ödeme", `Cihaz teslim edildi. ${formData.price} TL tahsil edildi.`);
+      
+      // 6 Ay Sonrasına Bakım Tarihi
+      const today = new Date();
+      today.setMonth(today.getMonth() + 6);
+      const maintenanceDate = today.toISOString().split('T')[0];
+
+      await supabase.from('aura_jobs').update({ status: 'Teslim Edildi', updated_at: new Date().toISOString(), next_maintenance_date: maintenanceDate }).eq('id', id);
+      logToTimeline("Teslimat & Ödeme", `Cihaz teslim edildi. ${formData.price} TL tahsil edildi. 6 Ay sonrası için bakım tarihi oluşturuldu.`);
       setFormData({...formData, status: 'Teslim Edildi'});
       setIsPaymentModalOpen(false); setLoading(false); alert("İşlem tamamlandı!");
       if(confirm("Müşteriye bilgilendirme mesajı gönderilsin mi?")) sendWhatsAppMessage();
@@ -465,11 +495,17 @@ export default function ServisDetaySayfasi() {
                                <div className="text-[9px] font-bold text-purple-400 mb-2 border-b border-slate-800 pb-1">EK HİZMETLER</div>
                                <div className="grid grid-cols-1 gap-2">
                                    {availableServices.map((item:any) => {
+                                       // DÜZELTME: SATILDI KONTROLÜ (YEŞİL GÖZÜKMESİ İÇİN)
+                                       const isSold = formData.sold_upsells?.some((i:any) => i.id === item.id);
                                        const isRecommended = formData.recommended_upsells?.some((i:any) => i.id === item.id);
+                                       
                                        return (
-                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isRecommended ? 'bg-purple-900/40 border-purple-500 text-purple-300 shadow-lg shadow-purple-900/20' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-purple-500/50'}`}>
-                                               <div className="flex items-center gap-2"><ShieldCheck size={12}/> {item.name}</div>
-                                               <span className="font-bold">{item.price}₺</span>
+                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-green-600 border-green-500 text-white shadow-lg' : isRecommended ? 'bg-purple-900/40 border-purple-500 text-purple-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-purple-500/50'}`}>
+                                               <div className="flex items-center gap-2">
+                                                   {isSold ? <CheckCircle2 size={14}/> : <ShieldCheck size={12}/>} 
+                                                   {item.name}
+                                               </div>
+                                               <span className="font-bold">{isSold ? 'SATILDI' : `${item.price}₺`}</span>
                                            </button>
                                        )
                                    })}
@@ -483,11 +519,17 @@ export default function ServisDetaySayfasi() {
                                <div className="text-[9px] font-bold text-cyan-400 mb-2 border-b border-slate-800 pb-1">AKSESUAR & ÜRÜN</div>
                                <div className="grid grid-cols-1 gap-2">
                                    {availableProducts.map((item:any) => {
+                                       // DÜZELTME: SATILDI KONTROLÜ
+                                       const isSold = formData.sold_upsells?.some((i:any) => i.id === item.id);
                                        const isRecommended = formData.recommended_upsells?.some((i:any) => i.id === item.id);
+
                                        return (
-                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isRecommended ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300 shadow-lg shadow-cyan-900/20' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-cyan-500/50'}`}>
-                                               <div className="flex items-center gap-2"><Package size={12}/> {item.name}</div>
-                                               <span className="font-bold">{item.price}₺</span>
+                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-green-600 border-green-500 text-white shadow-lg' : isRecommended ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-cyan-500/50'}`}>
+                                               <div className="flex items-center gap-2">
+                                                   {isSold ? <CheckCircle2 size={14}/> : <Package size={12}/>} 
+                                                   {item.name}
+                                               </div>
+                                               <span className="font-bold">{isSold ? 'SATILDI' : `${item.price}₺`}</span>
                                            </button>
                                        )
                                    })}
