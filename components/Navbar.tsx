@@ -13,16 +13,18 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   
-  // DÜZELTME: Eğer epanel sayfasındaysak Navbar'ı GİZLE
-  if (pathname?.startsWith("/epanel")) return null;
-
-  const isActive = (path: string) => pathname === path;
-
+  // 1. ÖNCE HOOK'LAR ÇALIŞMALI
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // 2. SONRA KOŞULLU RETURN YAPILMALI (DÜZELTİLEN KISIM)
+  // Eğer epanel (Yönetim Paneli) içindeysek Navbar'ı gösterme
+  if (pathname?.startsWith("/epanel")) return null;
+
+  const isActive = (path: string) => pathname === path;
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${scrolled ? "bg-[#020617]/95 backdrop-blur-xl border-white/5 h-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" : "bg-[#020617] border-transparent h-24"} print:hidden`}>
