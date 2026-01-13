@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { 
-  ArrowLeft, Save, Printer, User, Smartphone, Zap, Laptop, Watch, Box, 
-  CheckSquare, ClipboardCheck, History, CreditCard, AlertTriangle, Send, Phone, Globe, MapPin, MessageCircle, Lock,
-  Lightbulb, Battery, Fan, Eye, ShieldCheck, Database, Wrench, HardDrive, Wifi, Trash2, Camera, Upload, X, Image as ImageIcon,
-  CheckCircle2, XCircle, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, ChevronRight, CheckCircle, Building2, QrCode, Wallet, ScanLine, Activity, Monitor, Cpu, Speaker, Vibrate, Cable, MemoryStick, Mic, Radio, Layers, Package, Check, Thermometer, Gamepad2
+  ArrowLeft, Save, Printer, User, Zap, Box, 
+  ClipboardCheck, CreditCard, AlertTriangle, MessageCircle, Lock,
+  Battery, Eye, Trash2, Camera, Upload, X,
+  CheckCircle2, ShoppingBag, FileText, PlusCircle, Book, Search, Plus, Clock, PackageMinus, Check, Building2, ScanLine, Activity, Monitor, Cpu, Speaker, Vibrate, Phone, Radio, ShieldCheck, Package
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
 import { Html5QrcodeScanner } from "html5-qrcode";
@@ -18,24 +18,22 @@ interface DevicePart {
     icon: any;
     price: number;
     path: string;
-    cx: number;
-    cy: number;
     baseColor?: string;
     fillRule?: "nonzero" | "evenodd" | "inherit";
 }
 
-// --- ELIT GÖRSEL PARÇALAR ---
+// --- GÖRSEL PARÇALAR ---
 const DEVICE_PARTS_SVG: DevicePart[] = [
-    { id: 'motherboard', name: 'ANAKART', icon: Cpu, price: 4500, path: "M 160 40 L 270 40 L 270 300 L 160 300 L 160 140 L 140 140 L 140 40 Z", cx: 215, cy: 90, baseColor: "#334155" },
-    { id: 'battery', name: 'BATARYA', icon: Battery, price: 900, path: "M 20 130 L 130 130 L 130 460 L 20 460 Z", cx: 75, cy: 295, baseColor: "#1e293b" },
-    { id: 'camera_back', name: 'ARKA KAMERA', icon: Camera, price: 1200, path: "M 190 50 L 260 50 L 260 120 L 190 120 Z", cx: 225, cy: 85, baseColor: "#0f172a" },
-    { id: 'camera_front', name: 'ÖN KAMERA', icon: Eye, price: 800, path: "M 80 20 L 150 20 L 150 50 L 80 50 Z", cx: 115, cy: 35, baseColor: "#000000" },
-    { id: 'charging', name: 'ŞARJ SOKETİ', icon: Zap, price: 600, path: "M 80 540 L 220 540 L 220 590 L 80 590 Z", cx: 150, cy: 565, baseColor: "#475569" },
-    { id: 'taptic', name: 'TİTREŞİM', icon: Vibrate, price: 450, path: "M 20 480 L 100 480 L 100 530 L 20 530 Z", cx: 60, cy: 505, baseColor: "#334155" },
-    { id: 'speaker', name: 'HOPARLÖR', icon: Speaker, price: 500, path: "M 130 480 L 270 480 L 270 530 L 130 530 Z", cx: 200, cy: 505, baseColor: "#334155" },
-    { id: 'earpiece', name: 'AHİZE', icon: Phone, price: 300, path: "M 100 5 L 200 5 L 200 15 L 100 15 Z", cx: 150, cy: 10, baseColor: "#64748b" },
-    { id: 'wireless_charging', name: 'KABLOSUZ ŞARJ', icon: Radio, price: 400, path: "M 150 200 m -50 0 a 50 50 0 1 0 100 0 a 50 50 0 1 0 -100 0 M 150 215 m -35 0 a 35 35 0 1 0 70 0 a 35 35 0 1 0 -70 0", fillRule: "evenodd", cx: 150, cy: 200, baseColor: "#94a3b8" },
-    { id: 'screen', name: 'EKRAN / CAM', icon: Monitor, price: 2500, path: "M 5 5 L 295 5 L 295 595 L 5 595 Z M 10 10 L 10 590 L 290 590 L 290 10 Z", fillRule: "evenodd", cx: 150, cy: 300, baseColor: "transparent" },
+    { id: 'motherboard', name: 'ANAKART', icon: Cpu, price: 4500, path: "M 160 40 L 270 40 L 270 300 L 160 300 L 160 140 L 140 140 L 140 40 Z", baseColor: "#334155" },
+    { id: 'battery', name: 'BATARYA', icon: Battery, price: 900, path: "M 20 130 L 130 130 L 130 460 L 20 460 Z", baseColor: "#1e293b" },
+    { id: 'camera_back', name: 'ARKA KAMERA', icon: Camera, price: 1200, path: "M 190 50 L 260 50 L 260 120 L 190 120 Z", baseColor: "#0f172a" },
+    { id: 'camera_front', name: 'ÖN KAMERA', icon: Eye, price: 800, path: "M 80 20 L 150 20 L 150 50 L 80 50 Z", baseColor: "#000000" },
+    { id: 'charging', name: 'ŞARJ SOKETİ', icon: Zap, price: 600, path: "M 80 540 L 220 540 L 220 590 L 80 590 Z", baseColor: "#475569" },
+    { id: 'taptic', name: 'TİTREŞİM', icon: Vibrate, price: 450, path: "M 20 480 L 100 480 L 100 530 L 20 530 Z", baseColor: "#334155" },
+    { id: 'speaker', name: 'HOPARLÖR', icon: Speaker, price: 500, path: "M 130 480 L 270 480 L 270 530 L 130 530 Z", baseColor: "#334155" },
+    { id: 'earpiece', name: 'AHİZE', icon: Phone, price: 300, path: "M 100 5 L 200 5 L 200 15 L 100 15 Z", baseColor: "#64748b" },
+    { id: 'wireless_charging', name: 'KABLOSUZ ŞARJ', icon: Radio, price: 400, path: "M 150 200 m -50 0 a 50 50 0 1 0 100 0 a 50 50 0 1 0 -100 0 M 150 215 m -35 0 a 35 35 0 1 0 70 0 a 35 35 0 1 0 -70 0", fillRule: "evenodd", baseColor: "#94a3b8" },
+    { id: 'screen', name: 'EKRAN / CAM', icon: Monitor, price: 2500, path: "M 5 5 L 295 5 L 295 595 L 5 595 Z M 10 10 L 10 590 L 290 590 L 290 10 Z", fillRule: "evenodd", baseColor: "transparent" },
 ];
 
 const CATEGORY_DATA: any = { 
@@ -53,17 +51,17 @@ const CATEGORY_DATA: any = {
         accessories: ["Cihazın Kendisi", "Orijinal Şarj Aleti", "Güç Kablosu", "Çanta / Kılıf", "Mouse", "HDMI / Çevirici", "Kutu", "Batarya (Harici)"], 
         preChecks: ["Ekran Kırık/Lekeli", "Menteşe Gevşek/Kırık", "Klavye Tuş Eksik", "Kasa Köşe Ezik", "Sıvı Teması", "Trackpad Basmıyor", "Vida Eksik", "Fan Çok Sesli", "USB Portları Hasarlı"], 
         finalChecks: ["Klavye (Tüm Tuşlar)", "Ekran & Ölü Piksel", "Ses (Sağ/Sol Hoparlör)", "Wifi & Bluetooth", "Termal Test (Stress)", "SSD Sağlık & Hız", "Fan Devir Kontrolü", "USB & Type-C Portları", "Webcam & Mikrofon", "Batarya Döngüsü", "Menteşe Sertliği"] 
-    }, 
+    },
     "Tablet": { 
         accessories: ["Cihazın Kendisi", "Kılıf", "Akıllı Kalem", "Şarj Aleti", "Kablo", "Klavye Kılıf", "Kutu"], 
         preChecks: ["Ekran Çatlak", "Kasa Yamuk/Eğik", "Butonlar Basmıyor", "Şarj Soketi Gevşek", "Kamera Lensi Kırık"], 
         finalChecks: ["Dokunmatik (Multi-touch)", "Kalem (Pencil) Testi", "Ön/Arka Kamera", "Şarj Entegresi", "Wifi & Sim Kart", "Jiroskop (Döndürme)", "Mikrofon & Hoparlör"] 
-    }, 
+    },
     "Akıllı Saat": { 
         accessories: ["Cihazın Kendisi", "Kordon (Alt/Üst)", "Şarj Kablosu / Standı", "Kutu"], 
         preChecks: ["Cam Çizik/Kırık", "Kordon Kilit Arızalı", "Arka Sensör Camı Kırık", "Digital Crown Dönmüyor", "Tuş Basmıyor"], 
         finalChecks: ["Dokunmatik Hassasiyeti", "Nabız & Oksijen Sensörü", "Titreşim Motoru", "Telefon Eşleşme", "Mikrofon & Hoparlör", "Su Tahliye Modu", "Şarj Oluyor"] 
-    }, 
+    },
     "Oyun Konsolu": { 
         accessories: ["Konsol", "Güç Kablosu", "HDMI Kablo", "Gamepad (1)", "Gamepad (2)", "USB Kablo"], 
         preChecks: ["HDMI Portu Bozuk", "CD Okumuyor", "Fan Sesi Aşırı", "Görüntü Vermiyor", "Gamepad Drift Sorunu", "Kasa Hasarlı"], 
@@ -156,6 +154,22 @@ export default function ServisDetaySayfasi() {
           } else {
               const { data } = await supabase.from('aura_jobs').select('*').eq('id', id).single();
               if (data) {
+                  // --- KRİTİK: private_note içindeki Metin ve JSON verisini ayır ---
+                  let cleanPrivateNote = "";
+                  let visualParts = [];
+                  if (data.private_note && data.private_note.includes("|||")) {
+                      const parts = data.private_note.split("|||");
+                      cleanPrivateNote = parts[0];
+                      visualParts = parseArray(parts[1]);
+                  } else if (data.private_note && data.private_note.startsWith("[")) {
+                      // Eğer eski format (sadece JSON) ise
+                      visualParts = parseArray(data.private_note);
+                      cleanPrivateNote = "";
+                  } else {
+                      // Sadece metin ise
+                      cleanPrivateNote = data.private_note || "";
+                  }
+
                   setFormData({
                       ...data,
                       price: Number(data.price), cost: Number(data.cost),
@@ -163,7 +177,10 @@ export default function ServisDetaySayfasi() {
                       accessories: parseArray(data.accessories), preCheck: parseArray(data.pre_checks),
                       finalCheck: parseArray(data.final_checks), images: parseArray(data.images),
                       recommended_upsells: parseArray(data.recommended_upsells), sold_upsells: parseArray(data.sold_upsells),
-                      selectedVisualParts: parseArray(data.private_note).filter((p:any) => p.id) 
+                      serialNo: data.serial_no || "",
+                      notes: data.technician_note || "", // Rapor buraya
+                      privateNote: cleanPrivateNote, // Özel Not buraya
+                      selectedVisualParts: visualParts // Görsel seçimler buraya
                   });
                   if (data.serial_no) checkExpertise(data.serial_no);
                   fetchUsedParts(data.id);
@@ -196,6 +213,7 @@ export default function ServisDetaySayfasi() {
   };
 
   const checkExpertise = async (imei: string) => {
+      if (!imei) { setExpertiseId(null); return; }
       const { data } = await supabase.from('aura_expertise').select('id').eq('serial_no', imei).single();
       if (data) setExpertiseId(data.id); else setExpertiseId(null);
   };
@@ -214,7 +232,13 @@ export default function ServisDetaySayfasi() {
   };
 
   const fetchUsedParts = async (jobId: string) => {
-      const { data } = await supabase.from('aura_servis_parcalari').select(`*, aura_stok(urun_adi)`).eq('job_id', String(jobId)); 
+      // İlişkili veri çekme (Stok Adını almak için)
+      // DİKKAT: Stok tablosu ile ilişki (foreign key) kurulu olmalı.
+      const { data, error } = await supabase.from('aura_servis_parcalari')
+        .select(`*, aura_stok(urun_adi)`)
+        .eq('job_id', String(jobId)); 
+      
+      if(error) console.error("Parça çekme hatası:", error);
       if(data) setUsedParts(data);
   };
 
@@ -229,27 +253,51 @@ export default function ServisDetaySayfasi() {
       if(id === 'yeni') { alert("Önce servisi kaydetmelisiniz."); return; }
       if(!confirm(`${part.urun_adi} stoktan düşülecek. Onaylıyor musunuz?`)) return;
 
-      await supabase.from('aura_servis_parcalari').insert([{ job_id: id, stok_id: part.id, adet: 1, alis_fiyati_anlik: part.alis_fiyati, satis_fiyati_anlik: part.satis_fiyati }]);
-      await supabase.from('aura_stok').update({ stok_adedi: part.stok_adedi - 1 }).eq('id', part.id);
-      
-      const newCost = Number(formData.cost) + Number(part.alis_fiyati);
-      const newPrice = Number(formData.price) + Number(part.satis_fiyati);
-      const newNotes = formData.notes ? formData.notes + `\n[PARÇA] ${part.urun_adi}` : `[PARÇA] ${part.urun_adi}`;
+      try {
+          // 1. İlişki tablosuna ekle
+          const { error: insertError } = await supabase.from('aura_servis_parcalari').insert([{ 
+              job_id: id, 
+              stok_id: part.id, 
+              adet: 1, 
+              alis_fiyati_anlik: part.alis_fiyati, 
+              satis_fiyati_anlik: part.satis_fiyati 
+          }]);
+          if(insertError) throw insertError;
 
-      await supabase.from('aura_jobs').update({ price: String(newPrice), cost: newCost, technician_note: newNotes }).eq('id', id);
-      setFormData({ ...formData, price: newPrice, cost: newCost, notes: newNotes });
-      logToTimeline("Parça Kullanıldı", `${part.urun_adi} stoktan düşüldü.`);
-      fetchUsedParts(id); setIsStockModalOpen(false);
+          // 2. Stoktan düş
+          await supabase.from('aura_stok').update({ stok_adedi: part.stok_adedi - 1 }).eq('id', part.id);
+          
+          // 3. Fiyat güncelle
+          const newCost = Number(formData.cost) + Number(part.alis_fiyati);
+          const newPrice = Number(formData.price) + Number(part.satis_fiyati);
+          
+          await supabase.from('aura_jobs').update({ price: String(newPrice), cost: newCost }).eq('id', id);
+          
+          setFormData({ ...formData, price: newPrice, cost: newCost });
+          logToTimeline("Parça Kullanıldı", `${part.urun_adi} stoktan düşüldü.`);
+          
+          // Listeyi yenile
+          await fetchUsedParts(id); 
+          setIsStockModalOpen(false);
+          alert("Parça eklendi!");
+
+      } catch (err:any) {
+          console.error(err);
+          alert("Parça eklenirken hata oluştu: " + err.message);
+      }
   };
 
   const removePartFromJob = async (partRelId: number, partStokId: number, alis: number, satis: number, adet: number) => {
       if(!confirm(`İptal edilsin mi?`)) return;
       await supabase.from('aura_servis_parcalari').delete().eq('id', partRelId);
+      
       const { data: currStock } = await supabase.from('aura_stok').select('stok_adedi').eq('id', partStokId).single();
       if(currStock) await supabase.from('aura_stok').update({ stok_adedi: currStock.stok_adedi + adet }).eq('id', partStokId);
+      
       const newCost = Number(formData.cost) - (alis * adet);
       const newPrice = Number(formData.price) - (satis * adet);
       await supabase.from('aura_jobs').update({ price: String(newPrice), cost: newCost }).eq('id', id);
+      
       setFormData({ ...formData, price: newPrice, cost: newCost });
       logToTimeline("Parça İptali", `Parça kullanımı iptal edildi.`);
       fetchUsedParts(id);
@@ -296,28 +344,14 @@ export default function ServisDetaySayfasi() {
       logToTimeline("Wiki Kullanıldı", "Arıza kütüphanesinden çözüm uygulandı."); 
   };
 
-  // --- UPSELL MANTIĞI (DÜZELTİLDİ: Sadece Öneri Listesine Ekler/Çıkarır) ---
   const toggleUpsell = (item: any) => {
-      // Satılan ürünlerde varsa dokunma (Faturalaşmış olabilir)
       const isSold = formData.sold_upsells?.some((i:any) => i.id == item.id);
-      if (isSold) {
-          alert("Bu ürün zaten müşteri tarafından onaylanmış ve satılmıştır. İptal işlemi için müşteri onayı gerekir.");
-          return;
-      }
-
+      if (isSold) { alert("Bu ürün zaten satıldı."); return; }
       const currentRec = Array.isArray(formData.recommended_upsells) ? [...formData.recommended_upsells] : [];
       const isRec = currentRec.some((i:any) => i.id == item.id);
-      
       let newRec;
-      if (isRec) {
-          // Varsa çıkar (Öneriyi iptal et)
-          newRec = currentRec.filter((i:any) => i.id != item.id);
-      } else {
-          // Yoksa ekle (Müşteriye öner)
-          newRec = [...currentRec, item];
-      }
-      
-      // SADECE ÖNERİ LİSTESİNİ GÜNCELLİYORUZ. FİYATA DOKUNMUYORUZ.
+      if (isRec) { newRec = currentRec.filter((i:any) => i.id != item.id); } 
+      else { newRec = [...currentRec, item]; }
       setFormData({...formData, recommended_upsells: newRec});
   };
 
@@ -355,26 +389,19 @@ export default function ServisDetaySayfasi() {
               tarih: new Date().toISOString().split('T')[0] 
           }]);
       }
-      
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + parseInt(warrantyDuration));
-      
       const maintenanceDate = new Date();
       maintenanceDate.setMonth(maintenanceDate.getMonth() + 6);
-
       let finalScope = warrantyScope;
       if (warrantyScope === 'custom') finalScope = customScope;
       if (!finalScope && usedParts.length > 0) finalScope = usedParts.map(p => p.aura_stok?.urun_adi).join(", ");
       if (!finalScope) finalScope = "Genel İşçilik";
 
       await supabase.from('aura_jobs').update({ 
-          status: 'Teslim Edildi', 
-          payment_status: 'paid',
-          updated_at: new Date().toISOString(), 
+          status: 'Teslim Edildi', payment_status: 'paid', updated_at: new Date().toISOString(), 
           next_maintenance_date: maintenanceDate.toISOString().split('T')[0],
-          warranty_duration: `${warrantyDuration} Ay`,
-          warranty_scope: finalScope,
-          warranty_end_date: endDate.toISOString().split('T')[0]
+          warranty_duration: `${warrantyDuration} Ay`, warranty_scope: finalScope, warranty_end_date: endDate.toISOString().split('T')[0]
       }).eq('id', id);
 
       logToTimeline("Teslimat", `Cihaz teslim edildi. ${warrantyDuration} Ay garanti tanımlandı. Ödeme alındı.`);
@@ -389,22 +416,39 @@ export default function ServisDetaySayfasi() {
     if (!formData.customer) { alert("Müşteri adı zorunlu!"); return; }
     setLoading(true);
     
-    const visualNotes = formData.selectedVisualParts?.map((p:any) => `[DIAGNOSTIC] ${p.name} (${p.type}) - ${p.finalPrice}₺`).join('\n');
-    const finalNotes = visualNotes ? (formData.notes + "\n" + visualNotes) : formData.notes;
+    // --- ÖNEMLİ: Özel Not ile Görsel Verisini Birleştir ---
+    // Ayraç: ||| (Böylece okurken geri ayırabiliriz)
+    const combinedPrivateNote = (formData.privateNote || "") + "|||" + JSON.stringify(formData.selectedVisualParts || []);
 
     const payload = {
-        customer: formData.customer, customer_email: formData.email, customer_name: formData.customer, phone: formData.phone, address: formData.address, customer_type: formData.customerType,
-        device_name: formData.device, device: formData.device, model: formData.device, 
-        brand: formData.category, category: formData.category,
-        serial_no: formData.serialNo, serial_number: formData.serialNo, imei: formData.serialNo,
-        password: formData.password, screen_password: formData.password, pattern_password: formData.password, passcode: formData.password,
-        problem_description: formData.issue, problem: formData.issue, issue: formData.issue, complaint: formData.issue, technician_note: finalNotes, 
-        private_note: JSON.stringify(formData.selectedVisualParts), 
-        status: formData.status, price: String(formData.price), cost: Number(formData.cost), tracking_code: formData.tracking_code || `SRV-${Math.floor(10000 + Math.random() * 90000)}`,
+        customer: formData.customer,
+        email: formData.email, 
+        phone: formData.phone, 
+        address: formData.address, 
+        customer_type: formData.customerType,
+        device: formData.device, 
+        category: formData.category,
+        serial_no: formData.serialNo, 
+        password: formData.password,
+        issue: formData.issue, 
+        technician_note: formData.notes, // Rapor Buraya
+        private_note: combinedPrivateNote, // Özel Not + Görsel Çizim Buraya
+        status: formData.status, 
+        price: String(formData.price), 
+        cost: Number(formData.cost), 
+        tracking_code: formData.tracking_code || `SRV-${Math.floor(10000 + Math.random() * 90000)}`,
         payment_status: formData.payment_status,
-        accessories: JSON.stringify(formData.accessories), accessory: JSON.stringify(formData.accessories), pre_checks: JSON.stringify(formData.preCheck), final_checks: JSON.stringify(formData.finalCheck), images: JSON.stringify(formData.images), 
-        recommended_upsells: JSON.stringify(formData.recommended_upsells), sold_upsells: JSON.stringify(formData.sold_upsells),
-        tip_id: formData.tip_id, approval_status: formData.approval_status, approval_amount: String(formData.approval_amount), approval_desc: formData.approval_desc, updated_at: new Date().toISOString()
+        accessories: JSON.stringify(formData.accessories), 
+        pre_checks: JSON.stringify(formData.preCheck), 
+        final_checks: JSON.stringify(formData.finalCheck), 
+        images: JSON.stringify(formData.images), 
+        recommended_upsells: JSON.stringify(formData.recommended_upsells), 
+        sold_upsells: JSON.stringify(formData.sold_upsells),
+        tip_id: formData.tip_id, 
+        approval_status: formData.approval_status, 
+        approval_amount: String(formData.approval_amount), 
+        approval_desc: formData.approval_desc, 
+        updated_at: new Date().toISOString()
     };
     
     let res;
@@ -415,7 +459,8 @@ export default function ServisDetaySayfasi() {
     if (!res.error) { 
         alert("Kaydedildi!"); 
         if (id === 'yeni' && res.data) router.push(`/epanel/atolye/${res.data[0].id}`); 
-        else window.location.reload();
+        // DİKKAT: Sayfa yenilemeyi kaldırdık ki veri anlık kalsın, kullanıcı isterse yeniler
+        // else window.location.reload(); 
     } else { 
         console.error(res.error); 
         alert("Hata: " + res.error.message); 
@@ -441,32 +486,18 @@ export default function ServisDetaySayfasi() {
     }
     setFormData({ ...formData, images: newImages }); logToTimeline("Fotoğraf Yüklendi", `${files.length} adet yeni fotoğraf eklendi.`); setUploading(false);
   };
-  const removeImage = (index: number) => { const newImages = Array.isArray(formData.images) ? [...formData.images] : []; newImages.splice(index, 1); setFormData({ ...formData, images: newImages }); };
   
-  // --- GÜVENLİ SİLME (ÖNCE BAĞLI KAYITLARI SİLER) ---
+  // --- GÜVENLİ SİLME ---
   const handleDelete = async () => { 
-      if(!confirm("DİKKAT: Bu kayıt ve ilgili tüm parçalar, notlar kalıcı olarak silinecek. Emin misiniz?")) return; 
+      if(!confirm("DİKKAT: Bu kayıt silinecek. Emin misiniz?")) return; 
       setLoading(true); 
-      
       try {
-          // 1. Önce bağlı parçaları sil (Foreign Key hatasını önlemek için)
           await supabase.from('aura_servis_parcalari').delete().eq('job_id', id);
-          
-          // 2. Timeline kayıtlarını sil
           await supabase.from('aura_timeline').delete().eq('job_id', id);
-          
-          // 3. Ana kaydı sil
           const { error } = await supabase.from('aura_jobs').delete().eq('id', id);
-          
           if (error) throw error;
-          
-          alert("Kayıt başarıyla silindi."); 
-          router.push('/epanel/atolye'); 
-      } catch (err: any) {
-          console.error(err);
-          alert("Silme başarısız: " + err.message);
-          setLoading(false);
-      }
+          alert("Kayıt silindi."); router.push('/epanel/atolye'); 
+      } catch (err: any) { alert("Hata: " + err.message); setLoading(false); }
   };
 
   const toggleArrayItem = (field: string, item: string) => { setFormData((prev: any) => { const current = Array.isArray(prev[field]) ? prev[field] : []; const updated = current.includes(item) ? current.filter((i: string) => i !== item) : [...current, item]; return { ...prev, [field]: updated }; }); };
@@ -507,14 +538,14 @@ export default function ServisDetaySayfasi() {
                        <input type="text" value={formData.phone} onChange={e => setFormData((p:any)=>({...p, phone: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-mono" placeholder="Telefon"/>
                        <textarea value={formData.address} onChange={e => setFormData((p:any)=>({...p, address: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-xs h-20 outline-none resize-none" placeholder="Adres..."></textarea>
                        <div className="pt-2 border-t border-slate-800 space-y-2">
-                            <select value={formData.status} onChange={e => setFormData((p:any)=>({...p, status: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white"><option>Bekliyor</option><option>İşlemde</option><option>Parça Bekliyor</option><option>Onay Bekliyor</option><option>Hazır</option><option>Teslim Edildi</option></select>
-                            
-                            <select value={formData.payment_status} onChange={e => setFormData((p:any)=>({...p, payment_status: e.target.value}))} className={`w-full border rounded-lg p-2.5 text-sm font-bold outline-none ${formData.payment_status === 'paid' ? 'bg-emerald-900/30 border-emerald-700 text-emerald-400' : 'bg-red-900/30 border-red-700 text-red-400'}`}>
-                                <option value="unpaid">Ödenmedi ❌</option>
-                                <option value="paid">Ödendi ✅</option>
-                            </select>
+                           <select value={formData.status} onChange={e => setFormData((p:any)=>({...p, status: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white"><option>Bekliyor</option><option>İşlemde</option><option>Parça Bekliyor</option><option>Onay Bekliyor</option><option>Hazır</option><option>Teslim Edildi</option></select>
+                           
+                           <select value={formData.payment_status} onChange={e => setFormData((p:any)=>({...p, payment_status: e.target.value}))} className={`w-full border rounded-lg p-2.5 text-sm font-bold outline-none ${formData.payment_status === 'paid' ? 'bg-emerald-900/30 border-emerald-700 text-emerald-400' : 'bg-red-900/30 border-red-700 text-red-400'}`}>
+                               <option value="unpaid">Ödenmedi ❌</option>
+                               <option value="paid">Ödendi ✅</option>
+                           </select>
 
-                            <div className="flex gap-2"><div className="flex-1"><label className="text-[9px] text-green-500 font-bold">FİYAT</label><input type="number" value={formData.price} onChange={e => setFormData((p:any)=>({...p, price: Number(e.target.value)}))} className="w-full bg-[#0b0e14] border border-green-900/50 text-green-400 font-bold text-right p-2 rounded-lg"/></div><div className="flex-1"><label className="text-[9px] text-red-500 font-bold">MALİYET</label><input type="number" value={formData.cost} onChange={e => setFormData((p:any)=>({...p, cost: Number(e.target.value)}))} className="w-full bg-[#0b0e14] border border-red-900/50 text-red-400 font-bold text-right p-2 rounded-lg"/></div></div>
+                           <div className="flex gap-2"><div className="flex-1"><label className="text-[9px] text-green-500 font-bold">FİYAT</label><input type="number" value={formData.price} onChange={e => setFormData((p:any)=>({...p, price: Number(e.target.value)}))} className="w-full bg-[#0b0e14] border border-green-900/50 text-green-400 font-bold text-right p-2 rounded-lg"/></div><div className="flex-1"><label className="text-[9px] text-red-500 font-bold">MALİYET</label><input type="number" value={formData.cost} onChange={e => setFormData((p:any)=>({...p, cost: Number(e.target.value)}))} className="w-full bg-[#0b0e14] border border-red-900/50 text-red-400 font-bold text-right p-2 rounded-lg"/></div></div>
                        </div>
                        {formData.approval_status === 'none' && <button onClick={() => setApprovalModalOpen(true)} className="w-full py-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg font-bold text-xs flex justify-center gap-2"><Zap size={14}/> EKSTRA ONAY İSTE</button>}
                        {formData.approval_status === 'pending' && <div className="text-center text-xs text-yellow-500 bg-yellow-500/10 p-2 rounded border border-yellow-500/30 animate-pulse">ONAY BEKLENİYOR (+{formData.approval_amount}₺)</div>}
@@ -577,7 +608,7 @@ export default function ServisDetaySayfasi() {
                              <div className="flex-1"><label className="text-[10px] text-slate-500 font-bold ml-1">KATEGORİ</label><select value={formData.category} onChange={e => handleCategoryChange(e.target.value)} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-cyan-500">{Object.keys(CATEGORY_DATA).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                              <div className="flex-1"><label className="text-[10px] text-slate-500 font-bold ml-1">MARKA / MODEL</label><input type="text" value={formData.device} onChange={e => setFormData((p:any)=>({...p, device: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-cyan-500" placeholder="Model"/></div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4"><div className="relative"><input type="text" value={formData.serialNo} onChange={e => { setFormData((p:any)=>({...p, serialNo: e.target.value})); checkExpertise(e.target.value); }} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-mono uppercase outline-none focus:border-cyan-500" placeholder="IMEI / SERİ NO"/>{(formData.serialNo || "").length > 5 && (<div className="absolute right-1 top-1 bottom-1">{expertiseId ? (<button onClick={() => router.push(`/epanel/ekspertiz/detay/${expertiseId}`)} className="h-full px-3 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><FileText size={12}/> RAPOR VAR</button>) : (<button onClick={() => router.push(`/epanel/ekspertiz?yeni=${formData.serialNo}`)} className="h-full px-3 bg-slate-700 hover:bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><PlusCircle size={12}/> RAPOR EKLE</button>)}</div>)}</div><input type="text" value={formData.password} onChange={e => setFormData((p:any)=>({...p, password: e.target.value}))} className="w-full bg-[#0b0e14] border border-red-900/30 text-red-400 rounded-lg p-3 font-bold outline-none focus:border-red-500" placeholder="Şifre"/></div>
+                        <div className="grid grid-cols-2 gap-4"><div className="relative"><input type="text" value={formData.serialNo} onChange={e => { const val = e.target.value; setFormData((p:any)=>({...p, serialNo: val})); checkExpertise(val); }} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-mono uppercase outline-none focus:border-cyan-500" placeholder="IMEI / SERİ NO"/>{(formData.serialNo || "").length > 5 && (<div className="absolute right-1 top-1 bottom-1">{expertiseId ? (<button onClick={() => router.push(`/epanel/ekspertiz/detay/${expertiseId}`)} className="h-full px-3 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><FileText size={12}/> RAPOR VAR</button>) : (<button onClick={() => router.push(`/epanel/ekspertiz?yeni=${formData.serialNo}`)} className="h-full px-3 bg-slate-700 hover:bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><PlusCircle size={12}/> RAPOR EKLE</button>)}</div>)}</div><input type="text" value={formData.password} onChange={e => setFormData((p:any)=>({...p, password: e.target.value}))} className="w-full bg-[#0b0e14] border border-red-900/30 text-red-400 rounded-lg p-3 font-bold outline-none focus:border-red-500" placeholder="Şifre"/></div>
                         <div><div className="flex justify-between items-center mb-1 ml-1"><label className="text-[10px] text-slate-500 font-bold">ŞİKAYET / ARIZA</label><button onClick={() => { setIsWikiModalOpen(true); setWikiSearchTerm(formData.device); handleWikiSearch(); }} className="text-[10px] flex items-center gap-1 text-purple-400 hover:text-purple-300 font-bold bg-purple-900/20 px-2 py-0.5 rounded border border-purple-500/30"><Book size={10}/> Wiki'de Ara</button></div><textarea value={formData.issue} onChange={e => setFormData((p:any)=>({...p, issue: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm h-24 outline-none resize-none focus:border-cyan-500" placeholder="Arıza detayını giriniz..."></textarea></div>
                         <div className="bg-black/20 p-3 rounded-xl border border-slate-800"><label className="text-[10px] text-cyan-500 font-bold uppercase mb-2 block">Teslim Alınanlar</label><div className="flex flex-wrap gap-2">{catInfo.accessories.map((acc: string) => { const accArray = Array.isArray(formData.accessories) ? formData.accessories : []; const isSelected = accArray.includes(acc); return (<button key={acc} onClick={() => toggleArrayItem("accessories", acc)} className={`px-2 py-1 rounded border text-[10px] font-bold transition-all ${isSelected ? 'bg-cyan-900/40 border-cyan-500 text-cyan-400 scale-105' : 'bg-[#0b0e14] border-slate-500 hover:border-slate-600'}`}>{acc}</button>); })}</div></div>
                     </div>

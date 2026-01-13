@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
@@ -11,13 +11,13 @@ import {
   LayoutDashboard, LogOut, Search, Calculator, StickyNote, Users, 
   Activity, Signal, Menu, Bell, ChevronDown, MessageSquare, 
   Package, ShieldCheck, CreditCard, Wallet, User,
-  Zap, Terminal, ClipboardList, ShoppingBag, X, Code2, ChevronRight,
-  Building2, Briefcase, Wrench, LifeBuoy, AlertTriangle, Clock, Check, Bike, Calendar
+  Zap, Terminal, ClipboardList, ShoppingBag, X, Code2,
+  Building2, Briefcase, LifeBuoy, AlertTriangle, Clock, Check, Bike, Calendar, ChevronRight
 } from "lucide-react";
 import { getWorkshopFromStorage } from "@/utils/storage"; 
 
-// --- 1. MATRIX EFEKTİ ---
-const MatrixRain = () => {
+// --- 1. MATRIX EFEKTİ (Optimize Edildi) ---
+const MatrixRain = React.memo(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -59,10 +59,12 @@ const MatrixRain = () => {
   }, []);
 
   return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full -z-20 opacity-[0.06] pointer-events-none print:hidden" />;
-};
+});
+
+MatrixRain.displayName = "MatrixRain";
 
 // --- 2. TERMINAL MODÜLÜ ---
-const AuraTerminal = ({ isOpen, onClose, user }: any) => {
+const AuraTerminal = ({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => void, user: string }) => {
     const [input, setInput] = useState("");
     const [logs, setLogs] = useState<string[]>([
         "AURA OS v7.0 Sistem Başlatıldı...",
@@ -73,15 +75,15 @@ const AuraTerminal = ({ isOpen, onClose, user }: any) => {
     ]);
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs]);
+    useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs, isOpen]);
 
-    const handleCommand = (e: any) => {
+    const handleCommand = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             const cmd = input.trim().toLowerCase();
             const newLogs = [...logs, `> ${input}`];
             
             if (cmd === 'help') {
-                newLogs.push("KOMUTLAR: clear, date, status, system, close");
+                newLogs.push("KOMUTLAR: clear, date, status, system, close, calc [işlem]");
             } else if (cmd === 'clear') {
                 setLogs(["Ekran temizlendi."]);
                 setInput("");
@@ -90,8 +92,11 @@ const AuraTerminal = ({ isOpen, onClose, user }: any) => {
                 newLogs.push(`Tarih: ${new Date().toLocaleString('tr-TR')}`);
             } else if (cmd === 'status') {
                 newLogs.push("SİSTEM DURUMU: %100 Çalışıyor. Ping: 24ms. Sunucu: Online.");
+            } else if (cmd === 'system') {
+                newLogs.push("OS: AuraPro v7.0 | Çekirdek: Next.js 14 | DB: Supabase");
             } else if (cmd.startsWith('calc ')) {
                 try {
+                    // eslint-disable-next-line no-eval
                     const result = eval(cmd.replace('calc ', ''));
                     newLogs.push(`Sonuç: ${result}`);
                 } catch {
@@ -228,8 +233,8 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
         setIsAdmin(profile?.rol === 'admin' || ADMIN_EMAILS.includes(session.user.email || ""));
 
         setAuthorized(true); 
-        checkCounts(); // Global Sayaçlar
-        checkNotifications(); // %100 Entegre Bildirimler
+        checkCounts(); 
+        checkNotifications(); 
         fetchDolar();
         const savedNote = localStorage.getItem("teknisyen_notu");
         if (savedNote) setMyNote(savedNote);
@@ -243,7 +248,15 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   }, [router]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) { setShowResultBox(false); }
+        if (notifRef.current && !notifRef.current.contains(event.target as Node)) { setIsNotifOpen(false); }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => { window.removeEventListener('keydown', handleKeyDown); document.removeEventListener('mousedown', handleClickOutside); };
+  }, []);
+
+  const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); searchInputRef.current?.focus(); }
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') { e.preventDefault(); setShowTerminal(prev => !prev); }
       if (e.key === 'Escape') { 
@@ -251,15 +264,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
           setIsNotifOpen(false); setShowUserMenu(false); setIsSettingsOpen(false); 
           setShowTerminal(false);
       }
-    };
-    const handleClickOutside = (event: MouseEvent) => {
-        if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) { setShowResultBox(false); }
-        if (notifRef.current && !notifRef.current.contains(event.target as Node)) { setIsNotifOpen(false); }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => { window.removeEventListener('keydown', handleKeyDown); document.removeEventListener('mousedown', handleClickOutside); };
-  }, []);
+  };
 
   const fetchDolar = async () => {
     try { const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=TRY'); const data = await res.json(); setDolarKuru(data.rates.TRY); } catch { setDolarKuru(35.95); }
@@ -336,19 +341,55 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
       setNotifications(newNotifs);
   };
 
-  const handleGlobalSearch = async (e: any) => {
+  // --- GELİŞTİRİLMİŞ ARAMA SİSTEMİ (DÜZELTİLDİ: IMEI, TAKİP NO, İSİM) ---
+  const handleGlobalSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value;
     setSearchTerm(term);
-    if (term.length < 2) { setSearchResults([]); setShowResultBox(false); return; }
     
-    setIsSearching(true); setShowResultBox(true);
-    const { data: dbJobs } = await supabase.from('aura_jobs').select('id, customer, device, status, serial_no').or(`customer.ilike.%${term}%,device.ilike.%${term}%,phone.ilike.%${term}%,serial_no.ilike.%${term}%`).limit(5);
-    const mappedJobs = (dbJobs || []).map((j: any) => ({ ...j, type: 'service' }));
-    const { data: products } = await supabase.from('urunler').select('id, ad, fiyat, stok_durumu').ilike('ad', `%${term}%`).limit(5);
-    const mappedProducts = (products || []).map((p: any) => ({ ...p, type: 'product' }));
+    if (term.length < 2) { 
+        setSearchResults([]); 
+        setShowResultBox(false); 
+        return; 
+    }
+    
+    setIsSearching(true); 
+    setShowResultBox(true);
+    
+    try {
+        // 1. SERVİS İŞLERİ ARAMA (Takip No, IMEI, Müşteri, Cihaz)
+        const { data: dbJobs } = await supabase
+            .from('aura_jobs')
+            .select('id, customer, device, status, tracking_code, serial_no')
+            .or(`customer.ilike.%${term}%,device.ilike.%${term}%,tracking_code.ilike.%${term}%,serial_no.ilike.%${term}%`)
+            .limit(5);
+        
+        const mappedJobs = (dbJobs || []).map((j: any) => ({ 
+            ...j, 
+            type: 'service', 
+            label: j.customer || "Bilinmeyen Müşteri", 
+            sub: `${j.device} • ${j.tracking_code || j.serial_no || "Kod Yok"}` 
+        }));
+        
+        // 2. ÜRÜN ARAMA
+        const { data: products } = await supabase
+            .from('urunler')
+            .select('id, ad, fiyat, stok_durumu')
+            .ilike('ad', `%${term}%`)
+            .limit(5);
+            
+        const mappedProducts = (products || []).map((p: any) => ({ 
+            ...p, 
+            type: 'product', 
+            label: p.ad, 
+            sub: `${p.fiyat}₺ • Stok: ${p.stok_durumu}` 
+        }));
 
-    setSearchResults([...mappedJobs, ...mappedProducts]);
-    setIsSearching(false);
+        setSearchResults([...mappedJobs, ...mappedProducts]);
+    } catch (error) {
+        console.error("Arama hatası:", error);
+    } finally {
+        setIsSearching(false);
+    }
   };
 
   const goToResult = (item: any) => { 
@@ -359,7 +400,20 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   
   const cikisYap = async () => { await supabase.auth.signOut(); window.location.reload(); };
   const saveNote = (val: string) => { setMyNote(val); localStorage.setItem("teknisyen_notu", val); };
-  const handleCalc = (val: string) => { if (val === 'C') setCalcDisplay(""); else if (val === '=') { try { setCalcDisplay(eval(calcDisplay).toString()); } catch { setCalcDisplay("ERR"); } } else setCalcDisplay(calcDisplay + val); };
+  
+  const handleCalc = (val: string) => { 
+      if (val === 'C') setCalcDisplay(""); 
+      else if (val === '=') { 
+          try { 
+              // eslint-disable-next-line no-eval
+              setCalcDisplay(eval(calcDisplay).toString()); 
+          } catch { 
+              setCalcDisplay("ERR"); 
+          } 
+      } else { 
+          setCalcDisplay(calcDisplay + val); 
+      } 
+  };
 
   if (loadingCheck || !authorized) {
     return <div className="min-h-screen bg-[#020617] flex items-center justify-center text-white font-mono animate-pulse">SİSTEM YÜKLENİYOR...</div>;
@@ -425,7 +479,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             <NavItem icon={<Building2 size={20}/>} label="Bayi Başvuruları" href="/epanel/bayi-basvurulari" isOpen={isSidebarOpen} active={pathname.includes('/bayi-basvurulari')} />
             <NavItem icon={<Briefcase size={20}/>} label="Bayi Yönetimi" href="/epanel/bayiler" isOpen={isSidebarOpen} active={pathname.includes('/bayiler')} />
             
-            <NavItem icon={<Wrench size={20}/>} label="Bayi Atölyesi" href="/epanel/bayi-atolye" isOpen={isSidebarOpen} active={pathname.includes('/bayi-atolye')} />
+            
             <NavItem icon={<ShoppingBag size={20}/>} label="Fırsat Ürünleri" href="/epanel/firsat-urunleri" isOpen={isSidebarOpen} active={pathname.includes('/firsat-urunleri')} />
 
             {isAdmin && (
@@ -436,12 +490,18 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
             )}
         </nav>
 
-        {/* ALT USER KARTI */}
+        {/* ALT USER KARTI (PROFIL RESMI SORUNU ÇÖZÜLDÜ: CACHE BUSTER EKLENDİ) */}
         <div className="p-4 border-t border-white/5 bg-[#050810] relative shrink-0">
            <button onClick={() => isSidebarOpen && setShowUserMenu(!showUserMenu)} className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all border border-transparent ${showUserMenu ? 'bg-white/5 border-white/10' : 'hover:bg-white/5 hover:border-white/5'}`}>
                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 flex items-center justify-center text-white font-black text-xs relative overflow-hidden">
                    {currentUserFull?.avatar_url ? (
-                       <img src={currentUserFull.avatar_url} alt="Profil" className="w-full h-full object-cover" />
+                       <img 
+                         // Cache Buster eklendi: ?t=...
+                         src={`${currentUserFull.avatar_url}?t=${new Date().getTime()}`} 
+                         alt="Profil" 
+                         className="w-full h-full object-cover" 
+                         onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/150"; }}
+                       />
                    ) : (
                        <span>{userEmail.charAt(0).toUpperCase()}</span>
                    )}
@@ -477,14 +537,36 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
               <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2.5 text-slate-400 hover:text-cyan-400 transition-colors rounded-xl hover:bg-cyan-500/10 border border-transparent">
                   <Menu size={20} />
               </button>
+              
+              {/* ARAMA BARI (SORUN ÇÖZÜLDÜ: TAKİP NO, IMEI, İSİM) */}
               <div className="relative group w-full max-w-2xl" ref={searchContainerRef}>
                   <div className="absolute inset-0 bg-cyan-500/5 rounded-xl blur-sm group-focus-within:opacity-100 opacity-0 transition-opacity duration-500"></div>
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={16} />
-                  <input ref={searchInputRef} type="text" value={searchTerm} onChange={handleGlobalSearch} onKeyDown={(e) => e.key === 'Enter' && searchResults.length > 0 && goToResult(searchResults[0])} placeholder="Veritabanında Ara..." className="relative w-full bg-[#050810] border border-white/10 rounded-xl py-2.5 pl-11 pr-14 text-sm text-white focus:border-cyan-500/50 outline-none shadow-inner" />
+                  <input ref={searchInputRef} type="text" value={searchTerm} onChange={handleGlobalSearch} onKeyDown={(e) => e.key === 'Enter' && searchResults.length > 0 && goToResult(searchResults[0])} placeholder="Ara: İsim, Takip No, IMEI..." className="relative w-full bg-[#050810] border border-white/10 rounded-xl py-2.5 pl-11 pr-14 text-sm text-white focus:border-cyan-500/50 outline-none shadow-inner" />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1 pointer-events-none">
                     <span className="text-[9px] bg-[#1e293b] text-slate-400 px-1.5 py-0.5 rounded border border-white/5 font-mono font-bold">CTRL</span>
                     <span className="text-[9px] bg-[#1e293b] text-slate-400 px-1.5 py-0.5 rounded border border-white/5 font-mono font-bold">K</span>
                   </div>
+
+                  {/* Arama Sonuç Kutusu (GÖRÜNÜM İYİLEŞTİRİLDİ, Z-INDEX 9999) */}
+                  {showResultBox && searchResults.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#1e293b] border border-white/10 rounded-xl shadow-2xl z-[9999] overflow-hidden animate-in fade-in slide-in-from-top-2">
+                          {searchResults.map((item, i) => (
+                              <button key={i} onClick={() => goToResult(item)} className="w-full text-left p-4 hover:bg-white/5 border-b border-white/5 flex justify-between items-center group transition-colors">
+                                  <div className="flex flex-col gap-0.5">
+                                      <span className="text-sm font-bold text-white group-hover:text-cyan-400">{item.label}</span>
+                                      <span className="text-[11px] text-slate-400">{item.sub}</span>
+                                  </div>
+                                  <ChevronRight size={16} className="text-slate-600 group-hover:text-white"/>
+                              </button>
+                          ))}
+                      </div>
+                  )}
+                  {showResultBox && searchTerm.length >= 2 && searchResults.length === 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#1e293b] border border-white/10 rounded-xl shadow-2xl z-[9999] p-4 text-center text-slate-500 text-xs italic">
+                          Sonuç bulunamadı.
+                      </div>
+                  )}
               </div>
            </div>
            
@@ -508,7 +590,7 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
                   </button>
 
                   {isNotifOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-80 bg-[#1e293b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                      <div className="absolute right-0 top-full mt-2 w-80 bg-[#1e293b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[9999] animate-in fade-in zoom-in-95 duration-200">
                           <div className="p-3 border-b border-white/5 flex justify-between items-center bg-[#151921]">
                               <h4 className="text-xs font-bold text-white uppercase tracking-widest">BİLDİRİMLER</h4>
                               <button onClick={() => setNotifications([])} className="text-[10px] text-slate-400 hover:text-white transition-colors">Tümünü Okundu Say</button>

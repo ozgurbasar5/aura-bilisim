@@ -1,16 +1,16 @@
 "use client";
 
-// HATA ÇÖZÜMÜ: 'revalidate' satırı silindi.
-// 'force-dynamic' tek başına yeterlidir ve build hatasını önler.
+// Cache İptali
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   Search, CheckCircle2, AlertTriangle, User, MessageCircle, 
-  ShoppingBag, Plus, Wrench, Cpu, Battery, Clock, Radio, AlertCircle, Smartphone, Activity, Loader2, Package, ShieldCheck, Camera, Eye, X, Printer, CreditCard, FileText, QrCode, Home
+  ShoppingBag, Plus, Wrench, Cpu, Battery, Clock, Radio, AlertCircle, Smartphone, Activity, Loader2, Package, ShieldCheck, Camera, Eye, X, Printer, CreditCard, Star, Send
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
+import confetti from 'canvas-confetti'; // Konfeti kütüphanesi
 
 // --- FİRMA BİLGİLERİ ---
 const COMPANY_INFO = {
@@ -33,10 +33,10 @@ export default function CihazSorgulaPage() {
     );
 }
 
-// --- 3D TELEFON ŞEMASI (Blueprint V5) ---
+// --- 3D TELEFON ŞEMASI (Vektörel) ---
 const ExplodedPhone = ({ status }: { status: string }) => {
     const s = status?.toLowerCase() || "";
-    const isFixed = s.includes('hazır') || s.includes('teslim') || s.includes('tamam');
+    const isFixed = s.includes('hazır') || s.includes('teslim') || s.includes('tamam') || s.includes('bitti');
     const isWaiting = s.includes('parça') || s.includes('onay') || s.includes('bekle');
     
     const colors = {
@@ -110,6 +110,12 @@ function CihazSorgulaContent() {
   const [error, setError] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // Değerlendirme State'leri
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
   const parseData = (data: any) => { if (!data) return []; if (Array.isArray(data)) return data; try { return JSON.parse(data); } catch { return []; } };
   const maskName = (name: string) => { if (!name) return "***"; return name.split(" ").map(p => p.length > 2 ? p[0] + p[1] + "*".repeat(p.length - 2) : p[0] + "*").join(" "); };
   
@@ -133,6 +139,59 @@ function CihazSorgulaContent() {
     if (urlCode) { setSearchInput(urlCode); performSearch(urlCode); }
   }, [urlCode]);
 
+  // KONFETİ EFEKTİ
+  useEffect(() => {
+    if (result) {
+        const isDone = checkStatus(result.status, 'Hazır') || checkStatus(result.status, 'Teslim');
+        if (isDone) {
+            // Küçük bir gecikme ile patlat
+            setTimeout(() => {
+                const duration = 3 * 1000;
+                const animationEnd = Date.now() + duration;
+                const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+                const random = (min: number, max: number) => Math.random() * (max - min) + min;
+
+                const interval: any = setInterval(function() {
+                    const timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+
+                    const particleCount = 50 * (timeLeft / duration);
+                    confetti({ ...defaults, particleCount, origin: { x: random(0.1, 0.3), y: Math.random() - 0.2 } });
+                    confetti({ ...defaults, particleCount, origin: { x: random(0.7, 0.9), y: Math.random() - 0.2 } });
+                }, 250);
+            }, 500);
+        }
+    }
+  }, [result]);
+
+  // DEĞERLENDİRME GÖNDER
+  const handleReviewSubmit = async () => {
+      if(rating === 0) { alert("Lütfen puan veriniz."); return; }
+      
+      try {
+        const { error } = await supabase.from('aura_reviews').insert([{
+            job_id: result.id,
+            tracking_code: result.tracking_code,
+            customer_name: result.customer_name,
+            rating: rating,
+            comment: comment
+        }]);
+
+        if(error) throw error;
+        setReviewSubmitted(true);
+        // Konfeti patlat
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+      } catch (err:any) {
+          console.error(err);
+          alert("Yorum gönderilirken hata oluştu.");
+      }
+  };
+
   const performSearch = async (val: string) => {
     if (!val) return; 
     setLoading(true); setResult(null); setError(""); 
@@ -149,27 +208,27 @@ function CihazSorgulaContent() {
     try {
         const { data, error } = await supabase.from('aura_jobs').select('*').in('tracking_code', uniqueCandidates).maybeSingle();
         if (error) throw error;
-        if (data) setResult(data); else setError("Kayıt bulunamadı. Lütfen takip numarasını kontrol ediniz."); 
+        if (data) {
+            setResult(data);
+            // Zaten yorum yapılmış mı kontrol et
+            const { data: existingReview } = await supabase.from('aura_reviews').select('*').eq('job_id', data.id).single();
+            if(existingReview) setReviewSubmitted(true);
+        } else {
+            setError("Kayıt bulunamadı. Lütfen takip numarasını kontrol ediniz."); 
+        }
     } catch (err: any) { console.error(err); setError("Bağlantı hatası."); } 
     finally { setLoading(false); }
   };
 
   const handleManualSearch = (e: React.FormEvent) => { e.preventDefault(); performSearch(searchInput); };
   
-  // --- UPSELL SATIN ALMA (Önerilenden Çıkar -> Satılana Ekle) ---
   const handleBuyUpsell = async (item: any) => {
       if(!confirm(`${item.name} eklemek istiyor musunuz?`)) return; 
       setLoading(true);
-      
       const newPrice = Number(result.price) + Number(item.price);
-      
-      // Mevcut listeleri al
       const currentRec = parseData(result.recommended_upsells);
       const currentSold = parseData(result.sold_upsells);
-      
-      // Önerilenlerden çıkar
       const newRec = currentRec.filter((i:any) => i.id !== item.id);
-      // Satılanlara ekle
       const newSold = [...currentSold, item];
 
       const { error } = await supabase.from('aura_jobs').update({ 
@@ -179,7 +238,6 @@ function CihazSorgulaContent() {
       }).eq('id', result.id);
 
       if(!error) {
-          // Arayüzü güncelle
           setResult({ 
               ...result, 
               price: newPrice, 
@@ -190,7 +248,6 @@ function CihazSorgulaContent() {
       setLoading(false);
   };
 
-  // --- MÜŞTERİ ONAYI ---
   const handleClientApproval = async (decision: 'approved' | 'rejected') => {
       if (!confirm("Emin misiniz?")) return; setLoading(true);
       const newStatus = decision === 'approved' ? 'İşlemde' : 'İptal/Reddedildi';
@@ -205,11 +262,8 @@ function CihazSorgulaContent() {
   const accessories = result ? parseData(result.accessories || result.accessory) : [];
   const finalChecks = result ? parseData(result.final_checks) : [];
   const images = result ? parseData(result.images) : [];
-  
-  // Upsell Ayrıştırma
   const recUpsells = result ? parseData(result.recommended_upsells) : [];
   const soldUpsells = result ? parseData(result.sold_upsells) : [];
-  
   const recServices = recUpsells.filter((i:any) => SERVICE_CATEGORIES.includes(i.category) || i.category === 'Hizmet' || i.category === 'Servis');
   const recProducts = recUpsells.filter((i:any) => !SERVICE_CATEGORIES.includes(i.category) && i.category !== 'Hizmet' && i.category !== 'Servis');
 
@@ -231,7 +285,6 @@ function CihazSorgulaContent() {
         }
       `}</style>
 
-      {/* Arka Plan */}
       <div className="fixed inset-0 pointer-events-none z-0 no-print">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:48px_48px]"></div>
           <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[120px]"></div>
@@ -251,7 +304,6 @@ function CihazSorgulaContent() {
         {result && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-8 duration-700">
                 
-                {/* SOL: Cihaz Şeması & Durum */}
                 <div className="lg:col-span-5 space-y-6 no-print">
                     <ExplodedPhone status={result.status} />
                     
@@ -277,10 +329,7 @@ function CihazSorgulaContent() {
                     </div>
                 </div>
 
-                {/* SAĞ: Detaylar & Rapor */}
                 <div className="lg:col-span-7 space-y-6">
-                    
-                    {/* ANA BAŞLIK KARTI */}
                     <div className="bg-[#0F1623]/80 backdrop-blur-md border border-slate-800 rounded-3xl p-8 shadow-xl relative overflow-hidden no-print">
                         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start gap-4">
                             <div>
@@ -302,7 +351,60 @@ function CihazSorgulaContent() {
                         </div>
                     </div>
 
-                    {/* UPSELL (EK HİZMET VE ÜRÜNLER) - MÜŞTERİ ONAY EKRANI */}
+                    {/* MÜŞTERİ YORUM ALANI (SADECE TESLİM EDİLDİYSE) */}
+                    {checkStatus(result.status, "Teslim") && (
+                        <div className="bg-gradient-to-br from-indigo-900/10 to-blue-900/10 border border-indigo-500/20 rounded-3xl p-6 no-print animate-in slide-in-from-bottom-6">
+                            {reviewSubmitted ? (
+                                <div className="text-center py-6">
+                                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/50">
+                                        <CheckCircle2 size={32} className="text-green-500"/>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white mb-2">Değerli Yorumunuz İçin Teşekkürler!</h3>
+                                    <p className="text-slate-400 text-sm">Geri bildiriminiz bizim için çok kıymetli.</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Star className="text-yellow-400 fill-yellow-400"/> Hizmetimizi Değerlendirin</h3>
+                                    <div className="flex flex-col items-center mb-6">
+                                        <div className="flex gap-2 mb-4">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <button
+                                                    key={star}
+                                                    onMouseEnter={() => setHoverRating(star)}
+                                                    onMouseLeave={() => setHoverRating(0)}
+                                                    onClick={() => setRating(star)}
+                                                    className="transition-transform hover:scale-110 focus:outline-none"
+                                                >
+                                                    <Star 
+                                                        size={32} 
+                                                        className={`${(hoverRating || rating) >= star ? 'text-yellow-400 fill-yellow-400' : 'text-slate-700 fill-slate-800'} transition-colors`}
+                                                    />
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                                            {rating === 5 ? "Mükemmel! 😍" : rating === 4 ? "Çok İyi 😊" : rating === 3 ? "İyi 🙂" : rating === 2 ? "Geliştirilmeli 😐" : rating === 1 ? "Kötü 😔" : "Puanlayın"}
+                                        </p>
+                                    </div>
+                                    <textarea
+                                        value={comment}
+                                        onChange={(e) => setComment(e.target.value)}
+                                        className="w-full bg-[#151921] border border-slate-700 rounded-xl p-4 text-white text-sm outline-none focus:border-indigo-500 resize-none h-24 mb-4"
+                                        placeholder="Deneyiminizi buraya yazabilirsiniz..."
+                                    />
+                                    <button 
+                                        onClick={handleReviewSubmit}
+                                        disabled={rating === 0}
+                                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2"
+                                    >
+                                        <Send size={18}/> GÖNDER
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* UPSELL (EK HİZMET VE ÜRÜNLER) */}
                     {(recServices.length > 0 || recProducts.length > 0) && (
                         <div className="bg-gradient-to-br from-purple-900/10 to-indigo-900/10 border border-purple-500/20 rounded-2xl p-6 no-print animate-in slide-in-from-bottom-4">
                             <h3 className="text-xs font-bold text-purple-400 uppercase mb-4 flex items-center gap-2"><ShoppingBag size={14}/> Size Özel Öneriler</h3>
@@ -337,7 +439,6 @@ function CihazSorgulaContent() {
                         </div>
                     )}
 
-                    {/* SATILAN EK HİZMETLER (YESİL LİSTE) */}
                     {soldUpsells.length > 0 && (
                         <div className="bg-green-900/10 border border-green-500/20 rounded-2xl p-4 no-print">
                             <h3 className="text-xs font-bold text-green-400 uppercase mb-2 flex items-center gap-2"><CheckCircle2 size={14}/> Onaylanan Ek Hizmetler</h3>
@@ -352,7 +453,6 @@ function CihazSorgulaContent() {
                         </div>
                     )}
 
-                    {/* ONAY BEKLEYEN İŞLEM VARSA */}
                     {result.approval_status === 'pending' && (
                         <div className="bg-yellow-950/20 border border-yellow-500/30 rounded-2xl p-6 relative overflow-hidden group no-print">
                              <div className="absolute inset-0 bg-yellow-500/5 group-hover:bg-yellow-500/10 transition-colors"></div>
@@ -367,7 +467,6 @@ function CihazSorgulaContent() {
                         </div>
                     )}
 
-                    {/* İŞLEM NOTLARI */}
                     <div className="bg-[#151921] border border-slate-800 rounded-2xl p-6 no-print">
                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-4 flex items-center gap-2"><Wrench size={14} className="text-purple-500"/> Yapılan İşlemler & Notlar</h3>
                         <div className="bg-[#0b0e14] rounded-xl p-4 border border-slate-700">
@@ -379,7 +478,6 @@ function CihazSorgulaContent() {
                         </div>
                     </div>
 
-                    {/* GÖRSELLER */}
                     {images.length > 0 && (
                         <div className="bg-[#151921] border border-slate-800 rounded-2xl p-6 no-print">
                             <h3 className="text-xs font-bold text-slate-400 uppercase mb-4 flex items-center gap-2"><Camera size={14} className="text-cyan-500"/> Cihaz Görselleri</h3>
@@ -394,7 +492,6 @@ function CihazSorgulaContent() {
                         </div>
                     )}
 
-                    {/* DİJİTAL GARANTİ (PREMIUM) */}
                     {result.status === 'Teslim Edildi' && result.warranty_end_date && (
                         <div className="mt-6 relative overflow-hidden rounded-3xl border border-yellow-500/30 bg-[#0f1219] shadow-[0_0_40px_rgba(234,179,8,0.1)] group no-print">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-yellow-500/10 to-transparent rounded-full blur-[80px] pointer-events-none"></div>
