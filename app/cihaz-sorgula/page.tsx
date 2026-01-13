@@ -1,7 +1,8 @@
 "use client";
 
+// HATA ÇÖZÜMÜ: 'revalidate' satırı silindi.
+// 'force-dynamic' tek başına yeterlidir ve build hatasını önler.
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -434,136 +435,35 @@ function CihazSorgulaContent() {
                         </a>
                     </div>
                 </div>
-            </div>
-        )}
-
-        {selectedImage && (<div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in fixed-overlays no-print" onClick={() => setSelectedImage(null)}><img src={selectedImage} className="max-w-full max-h-[90vh] rounded-xl shadow-2xl border border-white/10"/><button className="absolute top-6 right-6 text-white bg-black/50 p-2 rounded-full"><X size={24}/></button></div>)}
-
-        {/* --- YAZDIRILABİLİR ALAN (GİZLİ - SADECE YAZICIDA GÖRÜNÜR) --- */}
-        {result && (
-            <div className="hidden print-only print-container text-black">
-                <div>
-                    {/* Header */}
+                
+                {/* --- PRINT ONLY --- */}
+                <div className="hidden print-only print-container text-black">
                     <div className="print-header flex justify-between items-start">
                         <div className="flex items-center gap-4">
-                            {/* LOGO */}
                             <img src={COMPANY_INFO.logoUrl} alt="Logo" className="h-16 object-contain" />
                             <div>
                                 <h1 className="text-2xl font-black text-cyan-800 uppercase tracking-tight">{COMPANY_INFO.name}</h1>
                                 <p className="text-xs text-gray-500 font-bold">{COMPANY_INFO.slogan}</p>
-                                <div className="text-[10px] text-gray-500 mt-1 space-x-2">
-                                    <span>📞 {COMPANY_INFO.phone}</span>
-                                    <span>🌐 {COMPANY_INFO.web}</span>
-                                </div>
+                                <div className="text-[10px] text-gray-500 mt-1 space-x-2"><span>📞 {COMPANY_INFO.phone}</span><span>🌐 {COMPANY_INFO.web}</span></div>
                             </div>
                         </div>
                         <div className="text-right">
-                            <div className="text-sm font-bold bg-gray-100 px-4 py-2 rounded border border-gray-300">
-                                SERVİS FORMU<br/>
-                                <span className="text-lg font-black text-black">NO: {result.tracking_code}</span>
-                            </div>
-                            <div className="text-[10px] text-gray-500 mt-2">
-                                Tarih: {new Date().toLocaleDateString('tr-TR')}
-                            </div>
+                            <div className="text-sm font-bold bg-gray-100 px-4 py-2 rounded border border-gray-300">SERVİS FORMU<br/><span className="text-lg font-black text-black">NO: {result.tracking_code}</span></div>
+                            <div className="text-[10px] text-gray-500 mt-2">Tarih: {new Date().toLocaleDateString('tr-TR')}</div>
                         </div>
                     </div>
-
-                    {/* Müşteri ve Cihaz */}
                     <div className="grid grid-cols-2 gap-6 mb-6">
-                        <div className="print-box">
-                            <h3 className="text-xs font-bold uppercase border-b border-gray-300 pb-1 mb-2 text-gray-700">MÜŞTERİ BİLGİLERİ</h3>
-                            <table className="w-full text-xs">
-                                <tbody>
-                                    <tr><td className="font-bold py-1 w-20">Ad Soyad:</td><td>{result.customer_name}</td></tr>
-                                    <tr><td className="font-bold py-1">Telefon:</td><td>{result.phone}</td></tr>
-                                    <tr><td className="font-bold py-1 align-top">Adres:</td><td>{result.address || "-"}</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="print-box">
-                            <h3 className="text-xs font-bold uppercase border-b border-gray-300 pb-1 mb-2 text-gray-700">CİHAZ BİLGİLERİ</h3>
-                            <table className="w-full text-xs">
-                                <tbody>
-                                    <tr><td className="font-bold py-1 w-20">Cihaz:</td><td>{result.device_name}</td></tr>
-                                    <tr><td className="font-bold py-1">Marka:</td><td>{result.brand || result.category}</td></tr>
-                                    <tr><td className="font-bold py-1">Seri No:</td><td>{result.serial_no || "-"}</td></tr>
-                                    <tr><td className="font-bold py-1">Aksesuar:</td><td>{accessories.join(", ")}</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <div className="print-box"><h3 className="text-xs font-bold uppercase border-b border-gray-300 pb-1 mb-2 text-gray-700">MÜŞTERİ BİLGİLERİ</h3><table className="w-full text-xs"><tbody><tr><td className="font-bold py-1 w-20">Ad Soyad:</td><td>{result.customer_name}</td></tr><tr><td className="font-bold py-1">Telefon:</td><td>{result.phone}</td></tr><tr><td className="font-bold py-1 align-top">Adres:</td><td>{result.address || "-"}</td></tr></tbody></table></div>
+                        <div className="print-box"><h3 className="text-xs font-bold uppercase border-b border-gray-300 pb-1 mb-2 text-gray-700">CİHAZ BİLGİLERİ</h3><table className="w-full text-xs"><tbody><tr><td className="font-bold py-1 w-20">Cihaz:</td><td>{result.device_name}</td></tr><tr><td className="font-bold py-1">Marka:</td><td>{result.brand || result.category}</td></tr><tr><td className="font-bold py-1">Seri No:</td><td>{result.serial_no || "-"}</td></tr><tr><td className="font-bold py-1">Aksesuar:</td><td>{accessories.join(", ")}</td></tr></tbody></table></div>
                     </div>
-
-                    {/* Arıza ve İşlem */}
-                    <div className="print-box mb-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <h4 className="font-bold text-xs uppercase text-gray-700 mb-1">BİLDİRİLEN ARIZA / ŞİKAYET</h4>
-                                <p className="text-xs text-gray-900 italic min-h-[40px]">{result.problem_description || "-"}</p>
-                            </div>
-                            <div className="border-l border-gray-200 pl-4">
-                                <h4 className="font-bold text-xs uppercase text-gray-700 mb-1">TEKNİSYEN RAPORU</h4>
-                                <p className="text-xs text-gray-900 font-medium whitespace-pre-line">{result.technician_note || "İşlem devam ediyor."}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Mali Durum */}
-                    <div className="mb-6">
-                        <table className="w-full text-xs border-collapse border border-gray-300">
-                            <thead>
-                                <tr className="bg-gray-100">
-                                    <th className="border border-gray-300 p-2 text-left">HİZMET / PARÇA</th>
-                                    <th className="border border-gray-300 p-2 text-right w-32">TUTAR</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td className="border border-gray-300 p-2 font-bold">Teknik Servis Hizmeti ve Parça Bedeli Toplamı</td>
-                                    <td className="border border-gray-300 p-2 text-right font-bold">{Number(result.price).toLocaleString()} ₺</td>
-                                </tr>
-                            </tbody>
-                            <tfoot>
-                                <tr className="bg-gray-50">
-                                    <td className="border border-gray-300 p-2 text-right font-bold">GENEL TOPLAM:</td>
-                                    <td className="border border-gray-300 p-2 text-right font-black text-lg">{Number(result.price).toLocaleString()} ₺</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-
-                    {/* Garanti Bilgisi (Varsa) */}
-                    {result.status === 'Teslim Edildi' && (
-                        <div className="border-2 border-dashed border-gray-300 p-4 rounded-lg mb-6 bg-gray-50">
-                            <h4 className="font-bold text-sm text-center mb-2">GARANTİ SERTİFİKASI</h4>
-                            <div className="flex justify-between text-xs">
-                                <div><strong>Süre:</strong> {result.warranty_duration || "-"}</div>
-                                <div><strong>Bitiş:</strong> {result.warranty_end_date ? new Date(result.warranty_end_date).toLocaleDateString() : "-"}</div>
-                                <div><strong>Kapsam:</strong> {result.warranty_scope || "Genel"}</div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Footer / İmza */}
-                <div className="print-footer">
-                    <div className="grid grid-cols-2 gap-10 mb-4">
-                        <div className="text-center">
-                            <p className="font-bold text-xs mb-8">TESLİM EDEN (MÜŞTERİ)</p>
-                            <div className="border-b border-black w-3/4 mx-auto"></div>
-                            <p className="text-[10px] mt-1">{result.customer_name}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="font-bold text-xs mb-8">TESLİM ALAN (SERVİS YETKİLİSİ)</p>
-                            <div className="border-b border-black w-3/4 mx-auto"></div>
-                            <p className="text-[10px] mt-1">{COMPANY_INFO.name}</p>
-                        </div>
-                    </div>
-                    <p className="text-center text-gray-500 italic">
-                        * Cihaz teslim alındıktan sonra 3 ay içerisinde alınmayan cihazlardan firmamız sorumlu değildir. Sıvı temaslı cihazlara garanti verilmez. Veri yedeği müşteriye aittir.
-                    </p>
+                    <div className="print-box mb-6"><div className="grid grid-cols-2 gap-4"><div><h4 className="font-bold text-xs uppercase text-gray-700 mb-1">BİLDİRİLEN ARIZA / ŞİKAYET</h4><p className="text-xs text-gray-900 italic min-h-[40px]">{result.problem_description || "-"}</p></div><div className="border-l border-gray-200 pl-4"><h4 className="font-bold text-xs uppercase text-gray-700 mb-1">TEKNİSYEN RAPORU</h4><p className="text-xs text-gray-900 font-medium whitespace-pre-line">{result.technician_note || "İşlem devam ediyor."}</p></div></div></div>
+                    <div className="mb-6"><table className="w-full text-xs border-collapse border border-gray-300"><thead><tr className="bg-gray-100"><th className="border border-gray-300 p-2 text-left">HİZMET / PARÇA</th><th className="border border-gray-300 p-2 text-right w-32">TUTAR</th></tr></thead><tbody><tr><td className="border border-gray-300 p-2 font-bold">Teknik Servis Hizmeti ve Parça Bedeli Toplamı</td><td className="border border-gray-300 p-2 text-right font-bold">{Number(result.price).toLocaleString()} ₺</td></tr></tbody><tfoot><tr className="bg-gray-50"><td className="border border-gray-300 p-2 text-right font-bold">GENEL TOPLAM:</td><td className="border border-gray-300 p-2 text-right font-black text-lg">{Number(result.price).toLocaleString()} ₺</td></tr></tfoot></table></div>
+                    {result.status === 'Teslim Edildi' && (<div className="border-2 border-dashed border-gray-300 p-4 rounded-lg mb-6 bg-gray-50"><h4 className="font-bold text-sm text-center mb-2">GARANTİ SERTİFİKASI</h4><div className="flex justify-between text-xs"><div><strong>Süre:</strong> {result.warranty_duration || "-"}</div><div><strong>Bitiş:</strong> {result.warranty_end_date ? new Date(result.warranty_end_date).toLocaleDateString() : "-"}</div><div><strong>Kapsam:</strong> {result.warranty_scope || "Genel"}</div></div></div>)}
+                    <div className="print-footer"><div className="grid grid-cols-2 gap-10 mb-4"><div className="text-center"><p className="font-bold text-xs mb-8">TESLİM EDEN (MÜŞTERİ)</p><div className="border-b border-black w-3/4 mx-auto"></div><p className="text-[10px] mt-1">{result.customer_name}</p></div><div className="text-center"><p className="font-bold text-xs mb-8">TESLİM ALAN (SERVİS YETKİLİSİ)</p><div className="border-b border-black w-3/4 mx-auto"></div><p className="text-[10px] mt-1">{COMPANY_INFO.name}</p></div></div><p className="text-center text-gray-500 italic">* Cihaz teslim alındıktan sonra 3 ay içerisinde alınmayan cihazlardan firmamız sorumlu değildir. Sıvı temaslı cihazlara garanti verilmez. Veri yedeği müşteriye aittir.</p></div>
                 </div>
             </div>
         )}
+        {selectedImage && (<div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in fixed-overlays no-print" onClick={() => setSelectedImage(null)}><img src={selectedImage} className="max-w-full max-h-[90vh] rounded-xl shadow-2xl border border-white/10"/><button className="absolute top-6 right-6 text-white bg-black/50 p-2 rounded-full"><X size={24}/></button></div>)}
       </div>
     </div>
   );
