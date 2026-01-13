@@ -38,7 +38,6 @@ const DEVICE_PARTS_SVG: DevicePart[] = [
     { id: 'screen', name: 'EKRAN / CAM', icon: Monitor, price: 2500, path: "M 5 5 L 295 5 L 295 595 L 5 595 Z M 10 10 L 10 590 L 290 590 L 290 10 Z", fillRule: "evenodd", cx: 150, cy: 300, baseColor: "transparent" },
 ];
 
-// --- MEGA KATEGORİ VERİLERİ (GÜNCELLENMİŞ VE GENİŞLETİLMİŞ) ---
 const CATEGORY_DATA: any = { 
     "Cep Telefonu": { 
         accessories: ["Cihazın Kendisi", "Kutu", "Orijinal Şarj Aleti", "USB Kablo", "Kılıf", "Sim İğnesi", "Fatura", "Kulaklık", "Dönüştürücü", "Garanti Belgesi"], 
@@ -77,7 +76,6 @@ const CATEGORY_DATA: any = {
     } 
 };
 
-// Hizmet Kategorileri
 const SERVICE_CATEGORIES = ["Garanti Uzatma", "Koruma Paketi", "Yazılım Hizmeti", "Bakım Paketi", "Hizmet"];
 
 export default function ServisDetaySayfasi() {
@@ -106,29 +104,26 @@ export default function ServisDetaySayfasi() {
   const [isVisualDiagnosticOpen, setIsVisualDiagnosticOpen] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
 
-  // --- GARANTİ STATE'LERİ (BURADA OLMALI) ---
   const [warrantyDuration, setWarrantyDuration] = useState("6");
   const [warrantyScope, setWarrantyScope] = useState("");
   const [customScope, setCustomScope] = useState("");
 
-  // WIKI STATE
   const [isWikiModalOpen, setIsWikiModalOpen] = useState(false);
   const [wikiSearchTerm, setWikiSearchTerm] = useState("");
   const [wikiResults, setWikiResults] = useState<any[]>([]);
   const [wikiViewMode, setWikiViewMode] = useState<'search' | 'add'>('search');
   const [newWikiEntry, setNewWikiEntry] = useState({ title: "", problem: "", solution: "" });
 
-  // DATA
   const [usedParts, setUsedParts] = useState<any[]>([]); 
   const [timelineLogs, setTimelineLogs] = useState<any[]>([]);
 
-  // FORM
   const [formData, setFormData] = useState<any>({
     id: 0, customerType: "Son Kullanıcı", customer: "", email: "", phone: "", address: "",
     category: "Cep Telefonu", device: "", serialNo: "", password: "",
     issue: "", privateNote: "", notes: "", 
     accessories: [], preCheck: [], finalCheck: [],
     status: "Bekliyor", price: 0, cost: 0, 
+    payment_status: "unpaid",
     date: new Date().toLocaleDateString('tr-TR'),
     tracking_code: "", tip_id: "", images: [],
     approval_status: 'none', approval_amount: 0, approval_desc: '',
@@ -149,7 +144,6 @@ export default function ServisDetaySayfasi() {
           const { data: { user } } = await supabase.auth.getUser(); if (user?.email) setCurrentUserEmail(user.email);
           const { data: dealers } = await supabase.from('bayi_basvurulari').select('*').eq('durum', 'Onaylandı'); if(dealers) setDealersList(dealers);
 
-          // Upsell Verilerini Çek
           const { data: upsells } = await supabase.from('aura_upsell_products').select('*').eq('is_active', true);
           if (upsells) {
               setAvailableServices(upsells.filter(u => SERVICE_CATEGORIES.includes(u.category) || u.category === 'Hizmet'));
@@ -165,6 +159,7 @@ export default function ServisDetaySayfasi() {
                   setFormData({
                       ...data,
                       price: Number(data.price), cost: Number(data.cost),
+                      payment_status: data.payment_status || "unpaid",
                       accessories: parseArray(data.accessories), preCheck: parseArray(data.pre_checks),
                       finalCheck: parseArray(data.final_checks), images: parseArray(data.images),
                       recommended_upsells: parseArray(data.recommended_upsells), sold_upsells: parseArray(data.sold_upsells),
@@ -174,7 +169,6 @@ export default function ServisDetaySayfasi() {
                   fetchUsedParts(data.id);
                   fetchTimeline(data.id);
                   
-                  // Kayıtlı Garanti Bilgilerini Geri Yükle
                   if(data.warranty_duration) setWarrantyDuration(data.warranty_duration.replace(" Ay", ""));
                   if(data.warranty_scope) setWarrantyScope(data.warranty_scope);
               }
@@ -184,7 +178,6 @@ export default function ServisDetaySayfasi() {
       init();
   }, [id]);
 
-  // --- BARKOD ---
   useEffect(() => {
       if (showScanner && isStockModalOpen) {
           const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
@@ -196,7 +189,6 @@ export default function ServisDetaySayfasi() {
       }
   }, [showScanner, isStockModalOpen]);
 
-  // --- İŞLEMLER ---
   const handleDealerChange = (selectedDealerName: string) => {
       const dealer = dealersList.find(d => d.sirket_adi === selectedDealerName);
       if (dealer) setFormData({ ...formData, customer: dealer.sirket_adi, email: dealer.email, phone: dealer.telefon, address: dealer.adres });
@@ -263,7 +255,6 @@ export default function ServisDetaySayfasi() {
       fetchUsedParts(id);
   };
 
-  // --- VISUAL DIAGNOSTIC ---
   const handleVisualPartClick = (partId: string) => {
       if(partId === 'screen') return; 
       const part = DEVICE_PARTS_SVG.find(p => p.id === partId);
@@ -284,11 +275,9 @@ export default function ServisDetaySayfasi() {
 
       const totalVisualPrice = newParts.reduce((acc:number, p:any) => acc + p.finalPrice, 0);
       const visualDiff = (exists ? -exists.finalPrice : newParts[newParts.length-1]?.finalPrice || 0);
-      
       setFormData({ ...formData, selectedVisualParts: newParts, price: formData.price + visualDiff });
   };
 
-  // --- WIKI ---
   const handleWikiSearch = async () => { 
       if (!wikiSearchTerm) return; 
       const { data } = await supabase.from('aura_wiki').select('*').ilike('title', `%${wikiSearchTerm}%`).limit(5); 
@@ -307,16 +296,12 @@ export default function ServisDetaySayfasi() {
       logToTimeline("Wiki Kullanıldı", "Arıza kütüphanesinden çözüm uygulandı."); 
   };
 
-  // --- UPSELL MANTIĞI ---
+  // --- UPSELL MANTIĞI (DÜZELTİLDİ: Sadece Öneri Listesine Ekler/Çıkarır) ---
   const toggleUpsell = (item: any) => {
-      const currentSold = Array.isArray(formData.sold_upsells) ? [...formData.sold_upsells] : [];
-      const isSold = currentSold.some((i:any) => i.id == item.id);
-      
+      // Satılan ürünlerde varsa dokunma (Faturalaşmış olabilir)
+      const isSold = formData.sold_upsells?.some((i:any) => i.id == item.id);
       if (isSold) {
-          if(!confirm(`"${item.name}" satışını iptal etmek istiyor musunuz?`)) return;
-          const newSold = currentSold.filter((i:any) => i.id != item.id);
-          const newPrice = Math.max(0, Number(formData.price) - Number(item.price));
-          setFormData({ ...formData, sold_upsells: newSold, price: newPrice });
+          alert("Bu ürün zaten müşteri tarafından onaylanmış ve satılmıştır. İptal işlemi için müşteri onayı gerekir.");
           return;
       }
 
@@ -325,24 +310,25 @@ export default function ServisDetaySayfasi() {
       
       let newRec;
       if (isRec) {
+          // Varsa çıkar (Öneriyi iptal et)
           newRec = currentRec.filter((i:any) => i.id != item.id);
       } else {
+          // Yoksa ekle (Müşteriye öner)
           newRec = [...currentRec, item];
       }
+      
+      // SADECE ÖNERİ LİSTESİNİ GÜNCELLİYORUZ. FİYATA DOKUNMUYORUZ.
       setFormData({...formData, recommended_upsells: newRec});
   };
 
-  // --- OTO-KURUMSAL YAZI ÜRETİCİSİ ---
   const generateCorporateReport = () => {
       const parts = usedParts.map(p => p.aura_stok?.urun_adi).join(", ");
       const upsells = Array.isArray(formData.sold_upsells) ? formData.sold_upsells.map((u:any) => typeof u === 'object' ? u.name : u).join(", ") : "";
       
       let report = `Sayın *${formData.customer}*,\n\n`;
       report += `Teknik servisimize *${formData.tracking_code}* referans numarası ile kabul edilen *${formData.device}* cihazınızın işlemleri tamamlanmıştır.\n\n`;
-      
       if (usedParts.length > 0) report += `🔧 *Yapılan Teknik Müdahaleler:*\n${parts}\n\n`;
       if (upsells.length > 0) report += `✨ *Ek Hizmetler:*\n${upsells}\n\n`;
-
       report += `📝 *Teknisyen Notu:*\n${formData.notes || "Genel bakım yapıldı."}\n\n`;
       report += `🛡️ *Garanti:* ${warrantyDuration} Ay (${warrantyScope || "Genel Kapsam"})\n`;
       report += `💰 *Toplam Tutar:* ${formData.price} TL\n\n`;
@@ -359,11 +345,8 @@ export default function ServisDetaySayfasi() {
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank"); 
   };
 
-  // --- TESLİMAT & GARANTİ İŞLEMİ (GÜNCELLENDİ) ---
   const handlePaymentAndComplete = async () => {
       setLoading(true);
-
-      // 1. Ödeme
       if (Number(formData.price) > 0) {
           await supabase.from('aura_finans').insert([{ 
               tur: 'Gelir', kategori: 'Servis Hizmeti', tutar: Number(formData.price), 
@@ -373,7 +356,6 @@ export default function ServisDetaySayfasi() {
           }]);
       }
       
-      // 2. Garanti Süresi
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + parseInt(warrantyDuration));
       
@@ -385,9 +367,9 @@ export default function ServisDetaySayfasi() {
       if (!finalScope && usedParts.length > 0) finalScope = usedParts.map(p => p.aura_stok?.urun_adi).join(", ");
       if (!finalScope) finalScope = "Genel İşçilik";
 
-      // 3. Güncelle
       await supabase.from('aura_jobs').update({ 
           status: 'Teslim Edildi', 
+          payment_status: 'paid',
           updated_at: new Date().toISOString(), 
           next_maintenance_date: maintenanceDate.toISOString().split('T')[0],
           warranty_duration: `${warrantyDuration} Ay`,
@@ -395,12 +377,11 @@ export default function ServisDetaySayfasi() {
           warranty_end_date: endDate.toISOString().split('T')[0]
       }).eq('id', id);
 
-      logToTimeline("Teslimat", `Cihaz teslim edildi. ${warrantyDuration} Ay garanti tanımlandı.`);
-      setFormData({...formData, status: 'Teslim Edildi'});
+      logToTimeline("Teslimat", `Cihaz teslim edildi. ${warrantyDuration} Ay garanti tanımlandı. Ödeme alındı.`);
+      setFormData({...formData, status: 'Teslim Edildi', payment_status: 'paid'});
       setIsPaymentModalOpen(false); 
       setLoading(false); 
       alert("İşlem tamamlandı! Garanti başlatıldı.");
-      
       if(confirm("Müşteriye garanti mesajı gönderilsin mi?")) sendWhatsAppMessage();
   };
 
@@ -413,12 +394,14 @@ export default function ServisDetaySayfasi() {
 
     const payload = {
         customer: formData.customer, customer_email: formData.email, customer_name: formData.customer, phone: formData.phone, address: formData.address, customer_type: formData.customerType,
-        device_name: formData.device, device: formData.device, model: formData.device, brand: formData.category, category: formData.category,
+        device_name: formData.device, device: formData.device, model: formData.device, 
+        brand: formData.category, category: formData.category,
         serial_no: formData.serialNo, serial_number: formData.serialNo, imei: formData.serialNo,
         password: formData.password, screen_password: formData.password, pattern_password: formData.password, passcode: formData.password,
         problem_description: formData.issue, problem: formData.issue, issue: formData.issue, complaint: formData.issue, technician_note: finalNotes, 
         private_note: JSON.stringify(formData.selectedVisualParts), 
         status: formData.status, price: String(formData.price), cost: Number(formData.cost), tracking_code: formData.tracking_code || `SRV-${Math.floor(10000 + Math.random() * 90000)}`,
+        payment_status: formData.payment_status,
         accessories: JSON.stringify(formData.accessories), accessory: JSON.stringify(formData.accessories), pre_checks: JSON.stringify(formData.preCheck), final_checks: JSON.stringify(formData.finalCheck), images: JSON.stringify(formData.images), 
         recommended_upsells: JSON.stringify(formData.recommended_upsells), sold_upsells: JSON.stringify(formData.sold_upsells),
         tip_id: formData.tip_id, approval_status: formData.approval_status, approval_amount: String(formData.approval_amount), approval_desc: formData.approval_desc, updated_at: new Date().toISOString()
@@ -427,8 +410,16 @@ export default function ServisDetaySayfasi() {
     let res;
     if (id === 'yeni') res = await supabase.from('aura_jobs').insert([payload]).select();
     else { res = await supabase.from('aura_jobs').update(payload).eq('id', id); logToTimeline("Kayıt Güncellendi", `Durum: ${formData.status}`); }
+    
     setLoading(false);
-    if (!res.error) { alert("Kaydedildi!"); if (id === 'yeni' && res.data) router.push(`/epanel/atolye/${res.data[0].id}`); } else { alert("Hata: " + res.error.message); }
+    if (!res.error) { 
+        alert("Kaydedildi!"); 
+        if (id === 'yeni' && res.data) router.push(`/epanel/atolye/${res.data[0].id}`); 
+        else window.location.reload();
+    } else { 
+        console.error(res.error); 
+        alert("Hata: " + res.error.message); 
+    }
   };
 
   const sendApprovalRequest = async () => {
@@ -451,7 +442,33 @@ export default function ServisDetaySayfasi() {
     setFormData({ ...formData, images: newImages }); logToTimeline("Fotoğraf Yüklendi", `${files.length} adet yeni fotoğraf eklendi.`); setUploading(false);
   };
   const removeImage = (index: number) => { const newImages = Array.isArray(formData.images) ? [...formData.images] : []; newImages.splice(index, 1); setFormData({ ...formData, images: newImages }); };
-  const handleDelete = async () => { if(!confirm("Silmek istiyor musunuz?")) return; setLoading(true); const { error } = await supabase.from('aura_jobs').delete().eq('id', id); if (error) { alert("Hata: " + error.message); setLoading(false); } else { alert("Silindi."); router.push('/epanel/atolye'); } };
+  
+  // --- GÜVENLİ SİLME (ÖNCE BAĞLI KAYITLARI SİLER) ---
+  const handleDelete = async () => { 
+      if(!confirm("DİKKAT: Bu kayıt ve ilgili tüm parçalar, notlar kalıcı olarak silinecek. Emin misiniz?")) return; 
+      setLoading(true); 
+      
+      try {
+          // 1. Önce bağlı parçaları sil (Foreign Key hatasını önlemek için)
+          await supabase.from('aura_servis_parcalari').delete().eq('job_id', id);
+          
+          // 2. Timeline kayıtlarını sil
+          await supabase.from('aura_timeline').delete().eq('job_id', id);
+          
+          // 3. Ana kaydı sil
+          const { error } = await supabase.from('aura_jobs').delete().eq('id', id);
+          
+          if (error) throw error;
+          
+          alert("Kayıt başarıyla silindi."); 
+          router.push('/epanel/atolye'); 
+      } catch (err: any) {
+          console.error(err);
+          alert("Silme başarısız: " + err.message);
+          setLoading(false);
+      }
+  };
+
   const toggleArrayItem = (field: string, item: string) => { setFormData((prev: any) => { const current = Array.isArray(prev[field]) ? prev[field] : []; const updated = current.includes(item) ? current.filter((i: string) => i !== item) : [...current, item]; return { ...prev, [field]: updated }; }); };
 
   const catInfo = getCategoryInfo(formData.category);
@@ -491,6 +508,12 @@ export default function ServisDetaySayfasi() {
                        <textarea value={formData.address} onChange={e => setFormData((p:any)=>({...p, address: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-xs h-20 outline-none resize-none" placeholder="Adres..."></textarea>
                        <div className="pt-2 border-t border-slate-800 space-y-2">
                             <select value={formData.status} onChange={e => setFormData((p:any)=>({...p, status: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white"><option>Bekliyor</option><option>İşlemde</option><option>Parça Bekliyor</option><option>Onay Bekliyor</option><option>Hazır</option><option>Teslim Edildi</option></select>
+                            
+                            <select value={formData.payment_status} onChange={e => setFormData((p:any)=>({...p, payment_status: e.target.value}))} className={`w-full border rounded-lg p-2.5 text-sm font-bold outline-none ${formData.payment_status === 'paid' ? 'bg-emerald-900/30 border-emerald-700 text-emerald-400' : 'bg-red-900/30 border-red-700 text-red-400'}`}>
+                                <option value="unpaid">Ödenmedi ❌</option>
+                                <option value="paid">Ödendi ✅</option>
+                            </select>
+
                             <div className="flex gap-2"><div className="flex-1"><label className="text-[9px] text-green-500 font-bold">FİYAT</label><input type="number" value={formData.price} onChange={e => setFormData((p:any)=>({...p, price: Number(e.target.value)}))} className="w-full bg-[#0b0e14] border border-green-900/50 text-green-400 font-bold text-right p-2 rounded-lg"/></div><div className="flex-1"><label className="text-[9px] text-red-500 font-bold">MALİYET</label><input type="number" value={formData.cost} onChange={e => setFormData((p:any)=>({...p, cost: Number(e.target.value)}))} className="w-full bg-[#0b0e14] border border-red-900/50 text-red-400 font-bold text-right p-2 rounded-lg"/></div></div>
                        </div>
                        {formData.approval_status === 'none' && <button onClick={() => setApprovalModalOpen(true)} className="w-full py-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg font-bold text-xs flex justify-center gap-2"><Zap size={14}/> EKSTRA ONAY İSTE</button>}
@@ -516,7 +539,7 @@ export default function ServisDetaySayfasi() {
                                        const isSold = formData.sold_upsells?.some((i:any) => i.id == item.id);
                                        const isRecommended = formData.recommended_upsells?.some((i:any) => i.id == item.id);
                                        return (
-                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-green-600 border-green-500 text-white shadow-lg' : isRecommended ? 'bg-purple-900/40 border-purple-500 text-purple-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-purple-500/50'}`}>
+                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-green-600 border-green-500 text-white shadow-lg cursor-not-allowed' : isRecommended ? 'bg-purple-900/40 border-purple-500 text-purple-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-purple-500/50'}`}>
                                                <div className="flex items-center gap-2">{isSold ? <CheckCircle2 size={14}/> : <ShieldCheck size={12}/>} {item.name}</div>
                                                <span className="font-bold">{isSold ? 'SATILDI' : (isRecommended ? 'ÖNERİLDİ' : `${item.price}₺`)}</span>
                                            </button>
@@ -533,7 +556,7 @@ export default function ServisDetaySayfasi() {
                                        const isSold = formData.sold_upsells?.some((i:any) => i.id == item.id);
                                        const isRecommended = formData.recommended_upsells?.some((i:any) => i.id == item.id);
                                        return (
-                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-green-600 border-green-500 text-white shadow-lg' : isRecommended ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-cyan-500/50'}`}>
+                                           <button key={item.id} onClick={() => toggleUpsell(item)} className={`w-full flex justify-between items-center p-2 rounded border transition-all text-xs ${isSold ? 'bg-green-600 border-green-500 text-white shadow-lg cursor-not-allowed' : isRecommended ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300' : 'bg-[#0b0e14] border-slate-700 text-slate-400 hover:border-cyan-500/50'}`}>
                                                <div className="flex items-center gap-2">{isSold ? <CheckCircle2 size={14}/> : <Package size={12}/>} {item.name}</div>
                                                <span className="font-bold">{isSold ? 'SATILDI' : (isRecommended ? 'ÖNERİLDİ' : `${item.price}₺`)}</span>
                                            </button>
@@ -560,7 +583,7 @@ export default function ServisDetaySayfasi() {
                     </div>
                 </div>
 
-                {/* --- GELİŞMİŞ ÖN KONTROL (WRAP ÖZELLİĞİ EKLENDİ) --- */}
+                {/* --- GELİŞMİŞ ÖN KONTROL --- */}
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                     <div className="flex justify-between items-center mb-4"><h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><AlertTriangle size={14} className="text-orange-500"/> Ön Kontrol (Giriş)</h3><span className="text-[9px] text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-700">{formData.category}</span></div>
                     <div className="flex flex-wrap gap-2">
@@ -590,7 +613,7 @@ export default function ServisDetaySayfasi() {
                     {formData.sold_upsells?.length > 0 && <div className="mt-3 p-3 bg-black/20 rounded border border-slate-800"><div className="text-[10px] font-bold text-slate-500 mb-2">EKLENEN HİZMETLER</div><div className="space-y-1">{formData.sold_upsells.map((u:any, i:number) => <div key={i} className="text-xs text-white flex justify-between"><span>{u.name}</span><span className="font-bold">{u.price}₺</span></div>)}</div></div>}
                 </div>
 
-                {/* --- GELİŞTİRİLMİŞ KALİTE KONTROL (WRAP ÖZELLİĞİ EKLENDİ) --- */}
+                {/* --- GELİŞTİRİLMİŞ KALİTE KONTROL --- */}
                 <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">
                     <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ClipboardCheck size={14} className="text-green-500"/> Kalite Kontrol (Çıkış)</h3>
                     <div className="flex flex-wrap gap-2">

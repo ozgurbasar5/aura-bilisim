@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 import { 
   Package, Search, Plus, Trash2, Edit, 
-  Calendar, Tag, User, Barcode, DollarSign, X, TrendingUp, History, Wrench, Printer, FileSpreadsheet
+  Calendar, Tag, User, Barcode, DollarSign, X, TrendingUp, History, Wrench, Printer, FileSpreadsheet, Grid3X3 
 } from "lucide-react";
 import JsBarcode from "jsbarcode";
-import * as XLSX from "xlsx"; // Excel kütüphanesi eklendi
+import * as XLSX from "xlsx"; 
 
 export default function StokYonetimi() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stocks, setStocks] = useState<any[]>([]);
   const [filterText, setFilterText] = useState("");
@@ -122,7 +124,6 @@ export default function StokYonetimi() {
         return;
     }
 
-    // 1. Veriyi Excel formatına hazırla (Başlıkları Türkçeleştir)
     const excelData = filteredStocks.map(item => ({
         "Stok Kodu": item.stok_kodu || "-",
         "Ürün Adı": item.urun_adi,
@@ -137,30 +138,9 @@ export default function StokYonetimi() {
         "Kayıt Tarihi": new Date(item.created_at).toLocaleDateString('tr-TR')
     }));
 
-    // 2. Çalışma sayfası oluştur
     const worksheet = XLSX.utils.json_to_sheet(excelData);
-
-    // Sütun genişliklerini ayarla
-    const colWidths = [
-        { wch: 15 }, // Stok Kodu
-        { wch: 40 }, // Ürün Adı
-        { wch: 15 }, // Kategori
-        { wch: 20 }, // Tedarikçi
-        { wch: 10 }, // Adet
-        { wch: 15 }, // Alış
-        { wch: 15 }, // Satış
-        { wch: 15 }, // Toplam Maliyet
-        { wch: 15 }, // Toplam Satış
-        { wch: 12 }, // Tarih
-        { wch: 12 }  // Kayıt
-    ];
-    worksheet['!cols'] = colWidths;
-
-    // 3. Çalışma kitabı oluştur ve sayfayı ekle
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Stok Listesi");
-
-    // 4. Dosyayı indir
     XLSX.writeFile(workbook, `Aura_Stok_Listesi_${new Date().toLocaleDateString('tr-TR')}.xlsx`);
   };
 
@@ -233,6 +213,9 @@ export default function StokYonetimi() {
                 <input type="text" value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Parça adı, stok kodu veya tedarikçi ara..." className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-sm text-white outline-none focus:border-yellow-500 transition-colors"/>
             </div>
             <div className="flex gap-3 w-full md:w-auto">
+                <button onClick={() => router.push('/epanel/stok/sanal-cekmece')} className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 border border-indigo-500/50">
+                    <Grid3X3 size={18}/> SANAL ÇEKMECE
+                </button>
                 <button onClick={exportToExcel} className="flex-1 md:flex-none bg-green-700 hover:bg-green-600 text-white px-5 py-2.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 border border-green-600/50">
                     <FileSpreadsheet size={18}/> EXCEL AKTAR
                 </button>
