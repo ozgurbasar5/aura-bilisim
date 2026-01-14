@@ -43,6 +43,8 @@ import HeroVisuals from "@/components/HeroVisuals";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 
+
+
 // -----------------------------------------------------------------------------
 // 1. BİLEŞEN: CANLI SERVİS İSTİHBARATI (LIVE LOGS)
 // -----------------------------------------------------------------------------
@@ -120,12 +122,181 @@ function LiveLogs() {
   );
 }
 
+// --- 2. X-RAY DIAGNOSTICS (YENİ MODÜL) ---
+function XrayDiagnostics() {
+  const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
+
+  const deviceData = {
+    name: "iPhone 14 Pro Max",
+    modelCode: "A2894 (EMC 8240)",
+    parts: [
+      {
+        id: "logic-board",
+        label: "A16 Bionic Anakart",
+        shortDesc: "Cihazın beyni. CPU, GPU ve Neural Engine.",
+        fullDesc: "TSMC 4nm süreciyle üretilen 6 çekirdekli CPU. Sandwich PCB yapısı.",
+        specs: [
+          { key: "Çipset", val: "Apple A16 Bionic" },
+          { key: "Mimari", val: "Sandwich PCB" },
+          { key: "Onarım", val: "BGA Reballing" },
+        ],
+        svgPath: "M 180 40 H 280 V 160 H 220 V 280 H 120 V 200 H 180 V 40 Z",
+        centerX: 220, centerY: 100
+      },
+      {
+        id: "battery",
+        label: "Li-Ion Batarya",
+        shortDesc: "4323 mAh kapasiteli güç kaynağı.",
+        fullDesc: "Yüksek yoğunluklu Lityum-İyon polimer batarya. %100 sağlık kalibrasyonu.",
+        specs: [
+          { key: "Kapasite", val: "4323 mAh" },
+          { key: "Voltaj", val: "3.85V DC" },
+          { key: "Onarım", val: "Hücre Değişimi" },
+        ],
+        svgPath: "M 30 80 H 160 V 280 H 30 V 80 Z M 160 200 H 200 V 280 H 160 V 200 Z",
+        centerX: 95, centerY: 180
+      },
+      {
+        id: "truedepth",
+        label: "TrueDepth (FaceID)",
+        shortDesc: "Yüz tanıma sensör dizisi.",
+        fullDesc: "Dot Projector ve Kızılötesi kamera içeren modül.",
+        specs: [
+          { key: "Sensörler", val: "IR + Dot Proj." },
+          { key: "Hassasiyet", val: "Mikron Seviyesi" },
+        ],
+        svgPath: "M 120 10 H 200 V 35 H 120 V 10 Z",
+        centerX: 160, centerY: 22.5
+      },
+      {
+        id: "camera-rear",
+        label: "Pro Kamera",
+        shortDesc: "48MP Ana, Ultra Geniş ve Telefoto.",
+        fullDesc: "Sensör kaydırmalı OIS içeren üçlü lens bloğu.",
+        specs: [
+          { key: "Ana Sensör", val: "48MP" },
+          { key: "OIS", val: "Sensor-Shift 2" },
+        ],
+        svgPath: "M 20 40 H 100 V 140 H 20 V 40 Z",
+        centerX: 60, centerY: 90
+      }
+    ]
+  };
+
+  const selectedPartData = selectedPartId ? deviceData.parts.find(p => p.id === selectedPartId) : null;
+
+  return (
+    <section className="py-24 bg-[#020408] relative overflow-hidden border-t border-white/5">
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#22d3ee0a_1px,transparent_1px),linear-gradient(to_bottom,#22d3ee0a_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none opacity-30"></div>
+      
+      <div className="container mx-auto px-6 relative z-10">
+        <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/30 border border-cyan-500/20 text-cyan-400 text-xs font-bold tracking-widest uppercase mb-4 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                <Scan size={14} className="animate-pulse"/> X-RAY DIAGNOSTICS v3.0
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight">
+                Cihazın <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 filter drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">Anatomisi</span>
+            </h2>
+            <p className="text-slate-400 mt-6 max-w-2xl mx-auto text-sm md:text-lg font-light leading-relaxed">
+                Laboratuvarımızdaki mühendislik yaklaşımını keşfedin. Cihazınızın iç dünyasına interaktif bir bakış atın.
+            </p>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-12 items-start">
+            
+            {/* SOL TARAF: X-RAY SVG */}
+            <div className="flex-1 w-full relative group outline-none px-4">
+                <div className="relative w-full max-w-[320px] mx-auto aspect-[9/16] bg-[#050810] rounded-[3rem] border-4 border-[#1e293b] shadow-[0_0_50px_rgba(6,182,212,0.1)] overflow-hidden transition-all duration-500 group-hover:border-cyan-500/30 group-hover:shadow-[0_0_80px_rgba(6,182,212,0.2)]">
+                    <div className="absolute top-0 left-0 w-full h-[2px] bg-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.8)] z-20 animate-scanline opacity-70 pointer-events-none"></div>
+                    <svg className="absolute inset-0 w-full h-full z-10" viewBox="0 0 320 568" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <pattern id="blueprint-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#22d3ee" strokeWidth="0.5" opacity="0.1"/>
+                            </pattern>
+                            <linearGradient id="selected-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="rgba(6, 182, 212, 0.4)" />
+                                <stop offset="100%" stopColor="rgba(34, 211, 238, 0.1)" />
+                            </linearGradient>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#blueprint-grid)" />
+                        <rect x="10" y="10" width="300" height="548" rx="35" fill="none" stroke="#334155" strokeWidth="3" opacity="0.5"/>
+                        {deviceData.parts.map((part) => {
+                            const isSelected = selectedPartId === part.id;
+                            return (
+                                <g key={part.id} onClick={() => setSelectedPartId(isSelected ? null : part.id)} className="cursor-pointer group/part transition-all duration-300">
+                                    <path d={part.svgPath} fill={isSelected ? "url(#selected-gradient)" : "transparent"} stroke={isSelected ? "#22d3ee" : "#475569"} strokeWidth={isSelected ? "2" : "1.5"} className={`transition-all duration-300 ${isSelected ? 'filter drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'group-hover/part:stroke-cyan-400 group-hover/part:fill-cyan-500/10'}`} strokeDasharray={isSelected ? "none" : "5,5"}/>
+                                    {!isSelected && (<circle cx={part.centerX} cy={part.centerY} r="4" fill="#22d3ee" className="opacity-0 group-hover/part:opacity-100 transition-opacity animate-pulse" />)}
+                                    {isSelected && (<g transform={`translate(${part.centerX - 12}, ${part.centerY - 12})`}><circle cx="12" cy="12" r="16" fill="#06b6d4" fillOpacity="0.2" className="animate-pulse" /><Microscope size={24} className="text-cyan-400" /></g>)}
+                                </g>
+                            );
+                        })}
+                    </svg>
+                    <div className="absolute bottom-6 left-0 w-full text-center pointer-events-none">
+                        <span className="text-[10px] font-mono text-cyan-500/60 tracking-widest uppercase">MODEL: {deviceData.name}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* SAĞ TARAF: DETAYLI BİLGİ PANELİ */}
+            <div className="flex-1 w-full">
+                <div className={`h-full bg-[#0a0e17]/80 backdrop-blur-xl border rounded-3xl p-8 relative overflow-hidden transition-all duration-500 ${selectedPartData ? 'border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)]' : 'border-white/10'}`}>
+                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,rgba(6,182,212,0.05)_50%,transparent_52%)] bg-[size:20px_20px] pointer-events-none"></div>
+                    {selectedPartData ? (
+                        <div className="relative z-10 h-full flex flex-col animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="flex items-start justify-between mb-6 pb-6 border-b border-cyan-500/20">
+                                <div><h3 className="text-2xl md:text-3xl font-black text-white leading-tight">{selectedPartData.label}</h3></div>
+                                <Cpu size={32} className="text-cyan-500/50" />
+                            </div>
+                            <div className="mb-8">
+                                <p className="text-white text-lg font-medium mb-2">{selectedPartData.shortDesc}</p>
+                                <p className="text-slate-400 text-sm leading-relaxed">{selectedPartData.fullDesc}</p>
+                            </div>
+                            <div className="bg-[#0f1420] rounded-xl border border-white/5 p-4 mb-6">
+                                <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2"><Terminal size={16} className="text-cyan-400"/> Teknik Veriler</h4>
+                                <div className="space-y-3">
+                                    {selectedPartData.specs.map((spec, i) => (
+                                        <div key={i} className="flex justify-between items-center text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                                            <span className="text-slate-500 font-mono">{spec.key}:</span>
+                                            <span className="text-cyan-50 font-bold">{spec.val}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                             <div className="mt-auto pt-4">
+                                <Link href="/onarim-talebi" className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-cyan-500/25 group">
+                                    <Wrench size={18} className="group-hover:rotate-12 transition-transform"/> Onarım Talep Et
+                                </Link>
+                             </div>
+                        </div>
+                    ) : (
+                        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-500 min-h-[300px]">
+                             <div className="w-24 h-24 bg-cyan-950/30 rounded-full flex items-center justify-center mb-6 border border-cyan-500/20 relative">
+                                <div className="absolute inset-0 bg-cyan-500/20 rounded-full animate-ping-slow opacity-50"></div>
+                                <Scan size={40} className="text-cyan-400" />
+                             </div>
+                             <h3 className="text-2xl font-bold text-white mb-3">Sistem Hazır</h3>
+                             <p className="text-slate-400 max-w-sm leading-relaxed mb-6">Analiz etmek istediğiniz donanım bileşeninin üzerine gelin veya tıklayın.</p>
+                             <div className="flex gap-2 text-xs font-mono text-slate-500 bg-[#0f1420] px-4 py-2 rounded-lg border border-white/5">
+                                 <Activity size={14} className="text-cyan-500 animate-pulse"/> AWAITING_USER_INPUT...
+                             </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // -----------------------------------------------------------------------------
 // 2. BİLEŞEN: GELİŞMİŞ CİHAZ ANATOMİSİ (TELEFON & ROBOT)
 // -----------------------------------------------------------------------------
 function DeviceAnatomy() {
   const [activeTab, setActiveTab] = useState<'phone' | 'robot'>('phone');
   const [activePart, setActivePart] = useState<string | null>(null);
+
+  
 
   // Telefon Parçaları Verisi
   const phoneParts = [
@@ -1423,6 +1594,9 @@ export default function Home() {
 
       {/* --- THERMAL VISION --- */}
       <ThermalVision />
+
+      {/* X-RAY DIAGNOSTICS (YENİ) */}
+      <XrayDiagnostics />
 
       {/* --- AURA STORE VİTRİNİ --- */}
       <section className="py-28 relative overflow-hidden bg-[#050810]">
