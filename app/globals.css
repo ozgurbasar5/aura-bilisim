@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* --- MOBİL UYUM DÜZELTMESİ (EKLE) --- */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
   --cyan-glow: 0 0 10px rgba(6, 182, 212, 0.5), 0 0 20px rgba(6, 182, 212, 0.3);
   --glass-bg: rgba(30, 41, 59, 0.4);
@@ -16,7 +26,7 @@ body {
     radial-gradient(circle at 50% 0%, #1e293b 0%, transparent 70%),
     linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
   background-size: 100% 100%, 100% 40px;
-  overflow-x: hidden;
+  /* overflow-x: hidden; <-- Yukarıdaki html, body bloğuna taşıdık */
 }
 
 /* --- HOLOGRAFİK KART EFEKTİ --- */

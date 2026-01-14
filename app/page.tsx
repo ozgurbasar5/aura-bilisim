@@ -205,12 +205,11 @@ function DeviceAnatomy() {
         </div>
 
         {/* SAĞ: İnteraktif Vektörel Görsel */}
-        <div className="flex-1 relative flex justify-center w-full">
+        <div className="flex-1 relative flex justify-center w-full px-4">
             {/* Arka Plan Glow */}
             <div className={`absolute inset-0 blur-[120px] rounded-full pointer-events-none transition-colors duration-700 ${activeTab === 'phone' ? 'bg-cyan-900/20' : 'bg-purple-900/20'}`}></div>
-            
-            <div className="relative w-[320px] h-[520px] bg-[#020408] rounded-[3rem] border-4 border-[#1e293b] shadow-2xl overflow-hidden select-none group transition-all duration-500">
-                
+       {/* mx-auto eklendi ve w-[320px] yerine w-full max-w-[320px] yapıldı */}
+<div className="relative w-full max-w-[320px] h-[520px] bg-[#020408] rounded-[3rem] border-4 border-[#1e293b] shadow-2xl overflow-hidden select-none group transition-all duration-500 mx-auto">
                 {/* LAZER TARAMA EFEKTİ */}
                 <div className={`absolute top-0 left-0 w-full h-[2px] shadow-[0_0_20px] z-10 animate-scanline opacity-50 ${activeTab === 'phone' ? 'bg-cyan-400 shadow-cyan-400' : 'bg-purple-400 shadow-purple-400'}`}></div>
                 
@@ -492,10 +491,11 @@ function BeforeAfter() {
 
   return (
     <section className="py-24 bg-[#020611] relative overflow-hidden border-t border-white/5">
-      <div className="container mx-auto px-6">
+      {/* GÜNCELLENEN SATIR: px-6 yerine px-4 yapıldı */}
+      <div className="container mx-auto px-4">
+        
         <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black text-white">Onarım <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">Öncesi ve Sonrası</span></h2>
-            <p className="text-slate-400 mt-4 max-w-lg mx-auto">Arızalı bir cihazın laboratuvarımızdan nasıl çıktığını teknik şema üzerinde simüle edin. Sürgüyü kaydırın.</p>
+            {/* ... Başlık kodları buraya ... */}
         </div>
 
         <div 
@@ -1198,9 +1198,8 @@ export default function Home() {
     return gradients[index % gradients.length];
   };
 
-  return (
-    <div className="relative bg-[#020617] text-white font-sans selection:bg-cyan-500/30 min-h-screen overflow-x-hidden">
-      
+ return (
+    <div className="relative bg-[#020617] text-white font-sans selection:bg-cyan-500/30 min-h-screen w-full overflow-x-hidden">
       {/* NAVBAR - TAMAMI GÜNCELLENMİŞ VERSİYON */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${scrolled ? "bg-[#020617]/95 backdrop-blur-xl border-white/5 h-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" : "bg-[#020617] border-transparent h-24"} print:hidden`}>
         <div className="container mx-auto px-6 h-full flex items-center justify-between">
@@ -1313,8 +1312,7 @@ export default function Home() {
       </nav>
       {/* ARKA PLAN DEKORASYON */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0"></div>
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-cyan-600/15 rounded-full blur-[150px] pointer-events-none z-0 animate-pulse-slow"></div>
-
+     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[800px] h-[500px] md:h-[600px] bg-cyan-600/15 rounded-full blur-[100px] md:blur-[150px] pointer-events-none z-0 animate-pulse-slow"></div>
       {/* HERO SECTION */}
       <section className="relative pt-44 pb-20 z-10 overflow-hidden">
         <div className="container mx-auto px-6 text-center relative">
@@ -1353,8 +1351,7 @@ export default function Home() {
 
       {/* MARKALAR (Infinite Scroll) */}
       <section className="relative py-24 bg-[#010205] border-b border-white/5 overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-900/20 blur-[100px] rounded-full pointer-events-none"></div>
-        <div className="container mx-auto px-6 relative z-10 text-center mb-12">
+<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[600px] h-[300px] bg-indigo-900/20 blur-[100px] rounded-full pointer-events-none"></div>        <div className="container mx-auto px-6 relative z-10 text-center mb-12">
             <span className="text-cyan-500 font-bold tracking-widest text-xs uppercase mb-2 block">Global Partners</span>
             <h2 className="text-3xl md:text-5xl font-black text-white mb-6">Hizmet Verilen <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">Teknoloji Devleri</span></h2>
             <p className="text-slate-400 max-w-xl mx-auto mb-8">Dünyanın önde gelen teknoloji markalarının tüm modellerine laboratuvar standartlarında müdahale ediyoruz.</p>

@@ -23,9 +23,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr">
-      {/* inter.className kısmını sildik, diğer stiller duruyor */}
-      <body className="bg-[#020617] text-white antialiased min-h-screen selection:bg-cyan-500/30">
+    // DÜZELTME: html'e overflow-x-hidden eklendi
+    <html lang="tr" className="overflow-x-hidden">
+      {/* DÜZELTME: body'e overflow-x-hidden, w-full ve relative eklendi */}
+      <body className="bg-[#020617] text-white antialiased min-h-screen selection:bg-cyan-500/30 overflow-x-hidden w-full relative">
         {/* Navbar burada olduğu için her sayfada çıkacak */}
         <Navbar />
         
