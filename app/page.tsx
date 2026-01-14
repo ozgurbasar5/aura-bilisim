@@ -13,12 +13,12 @@ import {
   // Donanım ve Cihazlar
   Smartphone, Laptop, Tablet, Watch, Monitor, HardDrive, 
   Cpu, CircuitBoard, Battery, BatteryCharging, Fan, 
-  MousePointer2, Bot,
+  MousePointer2, Bot, Database, Usb, Cable, Speaker, Radio, Droplet, Server,
   
   // Teknik ve Servis
   Wrench, Hammer, Zap, Signal, Wifi, Activity, 
   Microscope, Layers, Scan, Move, Power, Terminal, 
-  FileSearch, ShieldCheck, ShieldAlert,
+  FileSearch, ShieldCheck, ShieldAlert, Disc, Component,
   
   // Ticaret ve Mağaza
   ShoppingBag, Package, Tag, CreditCard,
@@ -31,8 +31,9 @@ import {
   Home as HomeIcon, LifeBuoy, Phone, MessageCircle, Send,
   
   // Sistem
-  BarChart3, Thermometer, Droplets, GripVertical,
+  BarChart3, Thermometer, Droplets, GripVertical, Gauge, Box, Trash2,
 
+  
   
   
   // YENİ EKLENEN
@@ -42,6 +43,7 @@ import HeroVisuals from "@/components/HeroVisuals";
 
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
+import HizmetlerPage from "./hizmetler/page";
 
 
 
@@ -122,167 +124,526 @@ function LiveLogs() {
   );
 }
 
-// --- 2. X-RAY DIAGNOSTICS (YENİ MODÜL) ---
-function XrayDiagnostics() {
-  const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
+// -----------------------------------------------------------------------------
+// BİLEŞEN: DEVICE ANATOMY (VERTICAL ROBOT STACK & PREFACE TYPOGRAPHY)
+// -----------------------------------------------------------------------------
+function DeviceAnatomy() {
+  const [activeDevice, setActiveDevice] = useState<'phone' | 'robot' | 'laptop' | 'desktop'>('phone');
+  const [selectedPartId, setSelectedPartId] = useState<string | null>("logic");
 
+  useEffect(() => {
+    if (activeDevice === 'phone') setSelectedPartId('logic');
+    else if (activeDevice === 'robot') setSelectedPartId('mainboard_top');
+    else if (activeDevice === 'laptop') setSelectedPartId('gpu_lap');
+    else setSelectedPartId('loop_desk');
+  }, [activeDevice]);
+
+  const getThemeColor = () => {
+    switch(activeDevice) {
+      case 'phone': return '#22d3ee'; // Cyan
+      case 'robot': return '#a855f7'; // Purple
+      case 'laptop': return '#f59e0b'; // Amber
+      case 'desktop': return '#ef4444'; // Red
+      default: return '#22d3ee';
+    }
+  };
+  
+  const accentColor = getThemeColor();
+
+  // --- ULTRA DETAYLI VEKTÖREL VERİLER ---
   const deviceData = {
-    name: "iPhone 14 Pro Max",
-    modelCode: "A2894 (EMC 8240)",
-    parts: [
-      {
-        id: "logic-board",
-        label: "A16 Bionic Anakart",
-        shortDesc: "Cihazın beyni. CPU, GPU ve Neural Engine.",
-        fullDesc: "TSMC 4nm süreciyle üretilen 6 çekirdekli CPU. Sandwich PCB yapısı.",
-        specs: [
-          { key: "Çipset", val: "Apple A16 Bionic" },
-          { key: "Mimari", val: "Sandwich PCB" },
-          { key: "Onarım", val: "BGA Reballing" },
-        ],
-        svgPath: "M 180 40 H 280 V 160 H 220 V 280 H 120 V 200 H 180 V 40 Z",
-        centerX: 220, centerY: 100
-      },
-      {
-        id: "battery",
-        label: "Li-Ion Batarya",
-        shortDesc: "4323 mAh kapasiteli güç kaynağı.",
-        fullDesc: "Yüksek yoğunluklu Lityum-İyon polimer batarya. %100 sağlık kalibrasyonu.",
-        specs: [
-          { key: "Kapasite", val: "4323 mAh" },
-          { key: "Voltaj", val: "3.85V DC" },
-          { key: "Onarım", val: "Hücre Değişimi" },
-        ],
-        svgPath: "M 30 80 H 160 V 280 H 30 V 80 Z M 160 200 H 200 V 280 H 160 V 200 Z",
-        centerX: 95, centerY: 180
-      },
-      {
-        id: "truedepth",
-        label: "TrueDepth (FaceID)",
-        shortDesc: "Yüz tanıma sensör dizisi.",
-        fullDesc: "Dot Projector ve Kızılötesi kamera içeren modül.",
-        specs: [
-          { key: "Sensörler", val: "IR + Dot Proj." },
-          { key: "Hassasiyet", val: "Mikron Seviyesi" },
-        ],
-        svgPath: "M 120 10 H 200 V 35 H 120 V 10 Z",
-        centerX: 160, centerY: 22.5
-      },
-      {
-        id: "camera-rear",
-        label: "Pro Kamera",
-        shortDesc: "48MP Ana, Ultra Geniş ve Telefoto.",
-        fullDesc: "Sensör kaydırmalı OIS içeren üçlü lens bloğu.",
-        specs: [
-          { key: "Ana Sensör", val: "48MP" },
-          { key: "OIS", val: "Sensor-Shift 2" },
-        ],
-        svgPath: "M 20 40 H 100 V 140 H 20 V 40 Z",
-        centerX: 60, centerY: 90
+    phone: {
+      title: "AKILLI TELEFON (PRO MİMARİ)",
+      viewBox: "-40 -40 500 960", 
+      parts: [
+        {
+          id: "camera",
+          label: "Optik Görüntüleme Matrisi",
+          subtitle: "HASSAS ONARIM GEREKTİRİR",
+          desc: "Sensör kaydırmalı OIS ve çoklu lens dizilimi. Mikron seviyesinde kalibrasyon gerektiren hassas modül.",
+          specs: [{ label: "Hassasiyet", value: "Mikron" }, { label: "Kalibrasyon", value: "Zorunlu" }],
+          icon: Microscope,
+          path: "M 40 60 H 200 V 230 H 40 V 60 Z", 
+          detail: [
+            "M 85 105 m -35 0 a 35,35 0 1,0 70,0 a 35,35 0 1,0 -70,0 M 85 105 m -25 0 a 25,25 0 1,0 50,0 a 25,25 0 1,0 -50,0",
+            "M 85 185 m -35 0 a 35,35 0 1,0 70,0 a 35,35 0 1,0 -70,0 M 75 175 H 95 V 195 H 75 Z",
+            "M 160 145 m -30 0 a 30,30 0 1,0 60,0 a 30,30 0 1,0 -60,0 M 160 145 m -15 0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0",
+            "M 170 85 m -12 0 a 12,12 0 1,0 24,0 a 12,12 0 1,0 -24,0 M 165 82 H 175 M 165 88 H 175",
+            "M 120 230 V 250 H 180 M 160 230 V 240 H 190"
+          ]
+        },
+        {
+          id: "logic",
+          label: "Ana Mantık Kartı (PCB)",
+          subtitle: "SİSTEMİN BEYNİ",
+          desc: "Binlerce mikro bileşenden oluşan, çok katmanlı ve yüksek yoğunluklu anakart. İleri seviye lehimleme uzmanlığı gerektirir.",
+          specs: [{ label: "Onarım", value: "Mikro-Lehim" }, { label: "Yoğunluk", value: "Ultra Yüksek" }],
+          icon: Cpu,
+          path: "M 210 60 H 380 V 600 H 220 V 250 H 50 V 250 H 210 V 60 Z",
+          detail: [
+            "M 230 80 H 360 V 200 H 230 V 80 Z",
+            "M 230 260 H 360 V 380 H 230 V 260 Z",
+            "M 230 400 H 310 V 580 H 230 V 400 Z",
+            "M 240 90 H 250 V 100 H 240 Z M 260 90 H 270 V 100 H 260 Z M 280 90 H 290 V 100 H 280 Z",
+            "M 240 110 H 280 V 120 H 240 Z M 300 110 H 340 V 120 H 300 Z", 
+            "M 235 270 H 245 V 280 H 235 Z M 255 270 H 265 V 280 H 255 Z M 275 270 H 285 V 280 H 275 Z",
+            "M 235 410 H 255 V 430 H 235 Z M 235 450 H 255 V 470 H 235 Z",
+            "M 220 210 H 360 M 220 220 H 360 M 220 230 H 360 M 320 400 V 580 M 340 400 V 580",
+            "M 60 260 H 200 M 60 275 H 200"
+          ]
+        },
+        {
+          id: "battery",
+          label: "Güç Yönetim Hücresi",
+          subtitle: "TEHLİKELİ BİLEŞEN",
+          desc: "Entegre BMS (Batarya Yönetim Sistemi) devresi ve MagSafe bobini. Yanlış müdahale risk oluşturur, uzmanlık şarttır.",
+          specs: [{ label: "Güvenlik", value: "Kritik" }, { label: "Değişim", value: "Uzman" }],
+          icon: BatteryCharging,
+          path: "M 40 290 H 200 V 700 H 40 V 290 Z M 210 610 H 380 V 700 H 210 V 610 Z",
+          detail: [
+            "M 60 250 H 180 V 290 H 60 V 250 Z", 
+            "M 70 260 H 90 V 280 H 70 Z M 100 260 H 120 V 280 H 100 Z M 130 260 H 170 V 280 H 130 Z",
+            "M 120 475 m -55 0 a 55,55 0 1,0 110,0 a 55,55 0 1,0 -110,0",
+            "M 120 475 m -40 0 a 40,40 0 1,0 80,0 a 40,40 0 1,0 -80,0",
+            "M 120 475 m -25 0 a 25,25 0 1,0 50,0 a 25,25 0 1,0 -50,0",
+            "M 120 250 V 230 M 140 250 V 230",
+            "M 45 310 H 55 M 185 310 H 195 M 45 680 H 55 M 365 680 H 375"
+          ]
+        },
+        {
+          id: "taptic",
+          label: "Haptik ve Akustik Ünite",
+          subtitle: "ALT DONANIM",
+          desc: "Taptic Engine'in hassas mekaniği ve hoparlörün akustik yalıtımı. Şarj portu ve mikrofon entegrasyonu.",
+          specs: [{ label: "Mekanik", value: "Hassas" }, { label: "Yalıtım", value: "Akustik" }],
+          icon: Speaker,
+          path: "M 40 720 H 380 V 880 H 40 V 720 Z",
+          detail: [
+            "M 50 730 H 180 V 850 H 50 V 730 Z", 
+            "M 60 745 H 170 M 60 770 H 170 M 60 795 H 170",
+            "M 115 770 m -15 0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0",
+            "M 200 730 H 370 V 850 H 200 V 730 Z",
+            "M 260 790 m -35 0 a 35,35 0 1,0 70,0 a 35,35 0 1,0 -70,0",
+            "M 180 860 H 240 V 880 H 180 Z",
+            "M 190 870 H 230",
+            "M 180 730 V 710 H 220 V 700"
+          ]
+        }
+      ]
+    },
+    robot: {
+      title: "OTONOM ROBOT (ALT/ÜST ANALİZ)",
+      // Viewbox dikey olarak iki katına çıkarıldı (500x1000)
+      viewBox: "0 0 500 1000",
+      parts: [
+        // --- ÜST GÖRÜNÜM (İÇ AKSAM) - MERKEZ (250, 250) ---
+        {
+          id: "mainboard_top",
+          label: "Ana Kontrol ve Sensör Kartı",
+          subtitle: "ÜST GÖRÜNÜM (İÇ)",
+          desc: "Sıvı temasına aşırı duyarlı ana işlemci ve sensör yönetim kartı. Lidar ve diğer modüller buraya bağlanır.",
+          specs: [{ label: "Risk", value: "Sıvı Teması" }, { label: "Onarım", value: "Komponent" }],
+          icon: Cpu,
+          path: "M 130 130 Q 250 30 370 130 V 240 Q 370 340 250 340 H 130 V 130 Z",
+          detail: [
+            "M 160 160 H 210 V 210 H 160 Z", // CPU
+            "M 290 160 H 340 V 200 H 290 Z", // Wi-Fi Modülü
+            "M 220 140 H 280 M 220 150 H 280 M 150 260 H 200", // Veri Yolları
+            "M 180 280 H 220 V 320 H 180 Z" // Motor Sürücü Entegresi
+          ]
+        },
+        {
+          id: "lidar_top",
+          label: "LDS Lazer Navigasyon Ünitesi",
+          subtitle: "ÜST GÖRÜNÜM (İÇ)",
+          desc: "Darbe sonrası sıkça arızalanan hassas optik/mekanik kule. Motor ve kayış değişimi veya lens kalibrasyonu gerekir.",
+          specs: [{ label: "Hata", value: "Kule Dönmüyor" }, { label: "Tip", value: "Mekanik" }],
+          icon: Scan,
+          path: "M 250 250 m -55 0 a 55,55 0 1,0 110,0 a 55,55 0 1,0 -110,0",
+          detail: [
+            "M 250 250 m -40 0 a 40,40 0 1,0 80,0 a 40,40 0 1,0 -80,0", // İç Mekanizma
+            "M 250 250 m -12 0 a 12,12 0 1,0 24,0 a 12,12 0 1,0 -24,0", // Lazer Diyot
+            "M 200 280 L 185 305 M 300 280 L 315 305", // Tahrik Kayışı
+            "M 180 240 H 160 V 260 H 180 Z" // Kule Motoru
+          ]
+        },
+        {
+          id: "dustbin_fan_top",
+          label: "Toz Haznesi ve Vakum Fanı",
+          subtitle: "ÜST GÖRÜNÜM (İÇ)",
+          desc: "Yüksek devirli emiş fanı ve filtre tıkanıklığına duyarlı toz haznesi. Fan motoru arızaları yaygındır.",
+          specs: [{ label: "Sorun", value: "Fan Hatası" }, { label: "Bakım", value: "Filtre" }],
+          icon: Trash2,
+          // Toz Haznesi ve Fan Alanı
+          path: "M 140 320 H 360 V 450 H 140 V 320 Z M 200 380 V 460 H 300 V 380 Z",
+          detail: [
+             "M 150 330 H 350 V 370 H 150 Z", // HEPA Filtre Alanı
+             "M 160 340 H 340 M 160 350 H 340 M 160 360 H 340", // Filtre Pilleri
+             "M 250 420 m -25 0 a 25,25 0 1,0 50,0 a 25,25 0 1,0 -50,0", // Fan Pervanesi
+             "M 250 420 L 230 400 M 250 420 L 270 400 M 250 420 L 250 450" // Fan Kanatları
+          ]
+        },
+        {
+            id: "battery_top",
+            label: "Batarya Bloğu",
+            subtitle: "ÜST GÖRÜNÜM (İÇ)",
+            desc: "Şarj tutmama veya aniden kapanma sorunlarının kaynağı. Çok hücreli Li-Ion pil paketi.",
+            specs: [{ label: "Ömür", value: "2-3 Yıl" }, { label: "Hücre", value: "Li-Ion" }],
+            icon: BatteryCharging,
+            path: "M 60 180 H 120 V 320 H 60 V 180 Z",
+            detail: [
+                "M 70 190 H 110 V 210 H 70 Z", // Hücre 1
+                "M 70 220 H 110 V 240 H 70 Z", // Hücre 2
+                "M 70 250 H 110 V 270 H 70 Z", // Hücre 3
+                "M 70 280 H 110 V 300 H 70 Z", // BMS Devresi
+                "M 120 250 H 130" // Kablo
+            ]
+        },
+
+        // --- ALT GÖRÜNÜM (YÜRÜYEN AKSAM) - MERKEZ (250, 750) ---
+        // Tüm Y koordinatlarına +500 eklendi.
+        {
+          id: "wheels_bottom",
+          label: "Tekerlek ve Tahrik Modülleri",
+          subtitle: "ALT GÖRÜNÜM (DIŞ)",
+          desc: "Kıllanma ve dişli aşınması nedeniyle sıkışan ana tekerlekler ve yönlendirici ön sarhoş tekerlek.",
+          specs: [{ label: "Sorun", value: "Tekerlek Sıkışması" }, { label: "Onarım", value: "Modül Değişimi" }],
+          icon: Move,
+          // Ana Tekerlekler (Sol ve Sağ)
+          path: "M 60 710 H 100 V 810 H 60 Z M 400 710 H 440 V 810 H 400 Z",
+          detail: [
+            "M 70 720 V 800 M 80 720 V 800 M 90 720 V 800", // Sol Dişler
+            "M 410 720 V 800 M 420 720 V 800 M 430 720 V 800", // Sağ Dişler
+            // Ön Sarhoş Teker (Caster)
+            "M 250 580 m -20 0 a 20,20 0 1,0 40,0 a 20,20 0 1,0 -40,0", // Yuva
+            "M 250 580 m -12 0 a 12,12 0 1,0 24,0 a 12,12 0 1,0 -24,0", // Tekerlek
+            "M 250 560 V 550" // Mil
+          ]
+        },
+        {
+            id: "brushes_bottom",
+            label: "Ana ve Yan Fırça Grubu",
+            subtitle: "ALT GÖRÜNÜM (DIŞ)",
+            desc: "Temizlik performansını belirleyen ana fırça kafesi ve yan fırça motoru. Kıl dolanması ve motor arızaları sık görülür.",
+            specs: [{ label: "Bakım", value: "Kıl Temizliği" }, { label: "Parça", value: "Sarf Malzeme" }],
+            icon: Wrench,
+            // Ana Fırça Kafesi ve Yan Fırça Motoru
+            path: "M 140 800 H 360 V 870 H 140 V 800 Z M 380 600 m -15 0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0",
+            detail: [
+                // Ana Fırça Kafesi Detayları
+                "M 150 810 H 350", // Fırça Mili
+                "M 160 800 V 870 M 200 800 V 870 M 250 800 V 870 M 300 800 V 870 M 340 800 V 870", // Tel Korumalar
+                "M 150 820 L 160 850 M 180 820 L 190 850 M 220 820 L 230 850", // Fırça Kılları
+                // Yan Fırça Kolları
+                "M 380 600 L 350 570 M 380 600 L 410 570 M 380 600 L 380 630" 
+            ]
+        },
+        {
+            id: "sensors_contacts_bottom",
+            label: "Sensörler ve Şarj Kontakları",
+            subtitle: "ALT GÖRÜNÜM (DIŞ)",
+            desc: "Merdivenlerden düşmeyi önleyen 4 adet optik sensör ve şarj istasyonu bağlantı plakaları. Kirlenme hatalara yol açar.",
+            specs: [{ label: "Sensör", value: "Cliff (Düşme)" }, { label: "Temizlik", value: "Gerekli" }],
+            icon: Eye,
+            // Şarj Kontakları
+            path: "M 230 540 H 245 V 560 H 230 Z M 255 540 H 270 V 560 H 255 Z",
+            detail: [
+                // Düşme (Cliff) Sensörleri - 4 Adet
+                "M 150 540 H 180 V 555 H 150 Z", // Ön Sol
+                "M 320 540 H 350 V 555 H 320 Z", // Ön Sağ
+                "M 100 750 H 115 V 780 H 100 Z", // Yan Sol
+                "M 385 750 H 400 V 780 H 385 Z", // Yan Sağ
+                // Halı Sensörü (Ultrasonic)
+                "M 200 600 m -8 0 a 8,8 0 1,0 16,0 a 8,8 0 1,0 -16,0"
+            ]
+        }
+      ]
+    },
+    laptop: {
+      title: "GAMING LAPTOP (TERMİNAL BAKIM)",
+      viewBox: "0 0 600 400",
+      parts: [
+        {
+          id: "cooling",
+          label: "Termal Soğutma Bloğu",
+          subtitle: "AŞIRI ISINMA ÇÖZÜMÜ",
+          desc: "Kurumuş termal macun ve tozlanmış fanlar performans düşüşüne neden olur. Profesyonel temizlik ve macun değişimi şarttır.",
+          specs: [{ label: "İşlem", value: "Termal Bakım" }, { label: "Risk", value: "Aşırı Isınma" }],
+          icon: Fan,
+          path: "M 30 30 H 120 V 120 H 30 Z M 480 30 H 570 V 120 H 480 Z M 120 50 H 480 V 90 H 120 Z",
+          detail: ["M 75 75 m -35 0 a 35,35 0 1,0 70,0 a 35,35 0 1,0 -70,0", "M 525 75 m -35 0 a 35,35 0 1,0 70,0 a 35,35 0 1,0 -70,0"]
+        },
+        {
+          id: "gpu_lap",
+          label: "Grafik İşlemci (GPU BGA)",
+          subtitle: "ÇİP SEVİYESİ ONARIM",
+          desc: "Anakarta lehimli BGA grafik yongası. Görüntü gitmesi veya artefakt sorunlarında profesyonel BGA rework/reballing gerekir.",
+          specs: [{ label: "Onarım", value: "BGA Rework" }, { label: "Uzmanlık", value: "Yüksek" }],
+          icon: Monitor,
+          path: "M 320 130 H 460 V 260 H 320 V 130 Z",
+          detail: ["M 350 160 H 430 V 230 H 350 V 160 Z"]
+        },
+        {
+          id: "cpu_lap",
+          label: "Merkezi İşlemci (CPU)",
+          subtitle: "KRİTİK BİLEŞEN",
+          desc: "Anakarta entegre işlemci. Voltaj besleme devresi arızaları veya fiziksel hasar durumunda ileri seviye müdahale gerekir.",
+          specs: [{ label: "Tip", value: "Entegre BGA" }, { label: "Hata", value: "Besleme/Isı" }],
+          icon: Cpu,
+          path: "M 140 130 H 300 V 260 H 140 V 130 Z",
+          detail: ["M 170 160 H 270 V 230 H 170 V 160 Z"]
+        },
+        {
+          id: "storage_lap",
+          label: "Batarya ve Depolama",
+          subtitle: "GÜÇ & VERİ",
+          desc: "Şişmiş batarya değişimi ve arızalı SSD'den profesyonel veri kurtarma hizmetleri.",
+          specs: [{ label: "Batarya", value: "Değişim" }, { label: "Veri", value: "Kurtarma" }],
+          icon: HardDrive,
+          path: "M 30 280 H 570 V 380 H 30 V 280 Z",
+          detail: ["M 50 300 H 150 V 360 H 50 V 300 Z", "M 170 290 H 430 V 370 H 170 V 290 Z"]
+        }
+      ]
+    },
+    desktop: {
+        title: "CUSTOM LOOP PC (UZMAN SERVİS)",
+        viewBox: "0 0 600 700",
+        parts: [
+          {
+            id: "loop_desk",
+            label: "Sıvı Soğutma Döngüsü",
+            subtitle: "PERİYODİK BAKIM & ONARIM",
+            desc: "Sızıntı tespiti, sıvı değişimi, blok temizliği ve pompa arızası onarımı. Özel ekipman ve tecrübe gerektirir.",
+            specs: [{ label: "Hizmet", value: "Döngü Bakımı" }, { label: "Risk", value: "Sıvı Teması" }],
+            icon: Droplet,
+            path: "M 450 150 H 520 V 550 H 450 V 150 Z M 200 150 H 320 V 270 H 200 V 150 Z M 50 30 H 350 V 80 H 50 V 30 Z",
+            detail: ["M 470 180 V 520 M 500 180 V 520", "M 230 280 V 320 H 100 V 150 H 180", "M 280 180 H 320 V 80", "M 100 80 V 120 H 380"]
+          },
+          {
+            id: "gpu_desk",
+            label: "Ekran Kartı (GPU) Bloğu",
+            subtitle: "HASSAS MONTAJ",
+            desc: "Sıvı soğutma bloğu montaj hataları veya termal ped sorunları karta kalıcı hasar verebilir. Uzman montaj şarttır.",
+            specs: [{ label: "İşlem", value: "Blok Montajı" }, { label: "Dikkat", value: "Termal Temas" }],
+            icon: Monitor,
+            path: "M 150 280 H 300 V 520 H 150 V 280 Z M 150 520 H 300 V 550 H 100 V 530 H 150 Z",
+            detail: ["M 170 300 H 280 V 500 H 170 V 300 Z", "M 120 535 H 280 M 120 545 H 280"]
+          },
+          {
+            id: "mb_desk",
+            label: "Anakart ve BIOS",
+            subtitle: "DERİNLEMESİNE ANALİZ",
+            desc: "Açılmama, görüntü gelmeme gibi sorunlarda devre şeması üzerinden arıza tespiti, BIOS yazımı ve soket değişimi.",
+            specs: [{ label: "Hizmet", value: "Devre Analizi" }, { label: "Onarım", value: "BIOS/IO" }],
+            icon: Component,
+            path: "M 50 50 H 420 V 550 H 50 V 50 Z",
+            detail: ["M 340 100 H 355 V 250 H 340 Z M 360 100 H 375 V 250 H 360 Z", "M 70 70 H 180 V 200 H 70 Z"]
+          },
+          {
+            id: "psu_desk",
+            label: "Güç Kaynağı (PSU)",
+            subtitle: "KRİTİK GÜÇ ÜNİTESİ",
+            desc: "Sistemin kalbi. Voltaj dalgalanmaları diğer bileşenlere zarar verebilir. Test ve gerekirse değişimi yapılmalıdır.",
+            specs: [{ label: "Test", value: "Voltaj/Yük" }, { label: "Önem", value: "Kritik" }],
+            icon: Zap,
+            path: "M 30 520 H 470 V 670 H 30 V 520 Z",
+            detail: ["M 300 540 H 450 V 650 H 300 V 540 Z", "M 50 540 H 150 V 600 H 50 Z"]
+          }
+        ]
       }
-    ]
   };
 
-  const selectedPartData = selectedPartId ? deviceData.parts.find(p => p.id === selectedPartId) : null;
+  const currentDevice = deviceData[activeDevice];
+  const activePart = currentDevice.parts.find(p => p.id === selectedPartId);
 
   return (
-    <section className="py-24 bg-[#020408] relative overflow-hidden border-t border-white/5">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#22d3ee0a_1px,transparent_1px),linear-gradient(to_bottom,#22d3ee0a_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none opacity-30"></div>
+    <section className="py-24 bg-[#010205] relative overflow-hidden border-t border-white/5 font-sans" id="teknik-uzmanlik">
+      {/* Arka Plan */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
       
       <div className="container mx-auto px-6 relative z-10">
-        <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/30 border border-cyan-500/20 text-cyan-400 text-xs font-bold tracking-widest uppercase mb-4 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
-                <Scan size={14} className="animate-pulse"/> X-RAY DIAGNOSTICS v3.0
+        
+        {/* BAŞLIK & YENİLENMİŞ ÖNYAZI METNİ */}
+        <div className="flex flex-col items-center mb-20 animate-in fade-in zoom-in duration-700">
+            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border bg-opacity-20 backdrop-blur-md text-[10px] font-bold tracking-[0.25em] uppercase mb-8 transition-colors duration-500`} style={{ borderColor: `${accentColor}40`, backgroundColor: `${accentColor}10`, color: accentColor }}>
+                <ShieldCheck size={12} /> SERTİFİKALI MÜHENDİSLİK
             </div>
-            <h2 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight">
-                Cihazın <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 filter drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">Anatomisi</span>
+            
+            <h2 className="text-4xl md:text-6xl font-black text-white leading-tight text-center mb-8 drop-shadow-2xl">
+                TEKNOLOJİNİN <span className="transition-colors duration-500" style={{ color: accentColor }}>DERİNLİKLERİNE HAKİMİZ</span>
             </h2>
-            <p className="text-slate-400 mt-6 max-w-2xl mx-auto text-sm md:text-lg font-light leading-relaxed">
-                Laboratuvarımızdaki mühendislik yaklaşımını keşfedin. Cihazınızın iç dünyasına interaktif bir bakış atın.
-            </p>
+
+            {/* YENİLENMİŞ ÖNYAZI STİLİ (Serif, Italic, Daha Büyük) */}
+            <div className="max-w-4xl text-center relative">
+                <span className="absolute -top-4 -left-4 text-6xl text-white/10 font-serif">“</span>
+                <p className="text-slate-400 text-lg md:text-xl font-serif italic leading-relaxed opacity-90 px-8">
+                    Biz sadece parça değiştirmiyoruz; cihazlarınızın karmaşık mühendislik mimarisini anlıyor ve en zorlu arızaları bile anakart seviyesinde, cerrah hassasiyetiyle onarıyoruz. Teknolojiye olan tutkumuz, uzmanlığımızın temelidir.
+                </p>
+                <span className="absolute -bottom-4 -right-4 text-6xl text-white/10 font-serif leading-none">”</span>
+            </div>
+            
+            <div className={`w-24 h-1 rounded-full mt-10 transition-colors duration-500`} style={{ backgroundColor: accentColor }}></div>
+
+            {/* SEÇİCİ BUTONLAR */}
+            <div className="flex flex-wrap justify-center gap-2 p-1.5 bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-xl relative shadow-2xl max-w-3xl mx-auto mt-12">
+                <button onClick={() => setActiveDevice('phone')} className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${activeDevice === 'phone' ? 'bg-cyan-600 text-white shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}><Smartphone size={18}/> Telefon</button>
+                <button onClick={() => setActiveDevice('robot')} className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${activeDevice === 'robot' ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}><Bot size={18}/> Robot</button>
+                <button onClick={() => setActiveDevice('laptop')} className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${activeDevice === 'laptop' ? 'bg-amber-600 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}><Laptop size={18}/> Laptop</button>
+                <button onClick={() => setActiveDevice('desktop')} className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${activeDevice === 'desktop' ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}><Server size={18}/> Custom PC</button>
+            </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-12 items-start">
+        <div className="flex flex-col lg:flex-row items-start justify-center gap-16 min-h-[650px]">
             
-            {/* SOL TARAF: X-RAY SVG */}
-            <div className="flex-1 w-full relative group outline-none px-4">
-                <div className="relative w-full max-w-[320px] mx-auto aspect-[9/16] bg-[#050810] rounded-[3rem] border-4 border-[#1e293b] shadow-[0_0_50px_rgba(6,182,212,0.1)] overflow-hidden transition-all duration-500 group-hover:border-cyan-500/30 group-hover:shadow-[0_0_80px_rgba(6,182,212,0.2)]">
-                    <div className="absolute top-0 left-0 w-full h-[2px] bg-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.8)] z-20 animate-scanline opacity-70 pointer-events-none"></div>
-                    <svg className="absolute inset-0 w-full h-full z-10" viewBox="0 0 320 568" xmlns="http://www.w3.org/2000/svg">
+            {/* SOL: VEKTÖREL ŞEMA (BLUEPRINT) */}
+            <div className="relative group w-full max-w-[550px] perspective-1000 flex justify-center items-start transition-all duration-500">
+                {/* Dış Çerçeve Neon Efekti */}
+                <div className="absolute -inset-1 blur-2xl opacity-20 transition-all duration-700" 
+                     style={{ 
+                        background: `linear-gradient(to bottom, ${accentColor}, transparent)`,
+                        borderRadius: activeDevice === 'phone' ? '3rem' : activeDevice === 'robot' ? '40px' : activeDevice === 'desktop' ? '1rem' : '2rem',
+                        height: activeDevice === 'robot' ? '100%' : 'auto'
+                     }}></div>
+                
+                {/* Şema Konteyneri */}
+                <div className={`relative w-full bg-[#030407] border-2 shadow-2xl overflow-hidden transition-all duration-500`} 
+                     style={{ 
+                        borderColor: `${accentColor}30`,
+                        aspectRatio: activeDevice === 'laptop' ? '16/10' : activeDevice === 'robot' ? '1/2' : activeDevice === 'desktop' ? '5/7' : '9/19.5',
+                        borderRadius: activeDevice === 'phone' ? '3rem' : activeDevice === 'robot' ? '30px' : activeDevice === 'desktop' ? '1rem' : '2rem'
+                     }}>
+                    
+                    {/* SVG Çizim */}
+                    <svg className="absolute inset-0 w-full h-full p-6" viewBox={currentDevice.viewBox} xmlns="http://www.w3.org/2000/svg">
                         <defs>
-                            <pattern id="blueprint-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#22d3ee" strokeWidth="0.5" opacity="0.1"/>
+                            <pattern id="grid-small" width="10" height="10" patternUnits="userSpaceOnUse">
+                                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#1e293b" strokeWidth="0.5"/>
                             </pattern>
-                            <linearGradient id="selected-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="rgba(6, 182, 212, 0.4)" />
-                                <stop offset="100%" stopColor="rgba(34, 211, 238, 0.1)" />
-                            </linearGradient>
                         </defs>
-                        <rect width="100%" height="100%" fill="url(#blueprint-grid)" />
-                        <rect x="10" y="10" width="300" height="548" rx="35" fill="none" stroke="#334155" strokeWidth="3" opacity="0.5"/>
-                        {deviceData.parts.map((part) => {
+
+                        {/* Arka Plan Grid */}
+                        <rect width="100%" height="100%" fill="url(#grid-small)" opacity="0.4" />
+
+                        {/* Dış Çerçeveler */}
+                        {activeDevice === 'phone' && (
+                             <>
+                                <path d="M 0 50 Q 0 0 50 0 H 370 Q 420 0 420 50 V 870 Q 420 920 370 920 H 50 Q 0 920 0 870 Z" fill="none" stroke="#334155" strokeWidth="3" />
+                                <rect x="125" y="20" width="170" height="45" rx="22" fill="#0f172a" stroke="#334155" strokeWidth="1.5" />
+                             </>
+                        )}
+                        {activeDevice === 'robot' && (
+                             <>
+                             {/* Üst Daire (İç Aksam) */}
+                             <circle cx="250" cy="250" r="240" fill="none" stroke="#334155" strokeWidth="3" strokeDasharray="5,5" />
+                             <text x="250" y="520" textAnchor="middle" fill={accentColor} fontSize="14" fontFamily="monospace" fontWeight="bold" letterSpacing="2">İÇ AKSAM (ÜST GÖRÜNÜM)</text>
+                             
+                             {/* Alt Daire (Yürüyen Aksam) */}
+                             <circle cx="250" cy="750" r="240" fill="none" stroke="#334155" strokeWidth="3" strokeDasharray="5,5" />
+                             <text x="250" y="1020" textAnchor="middle" fill={accentColor} fontSize="14" fontFamily="monospace" fontWeight="bold" letterSpacing="2">YÜRÜYEN AKSAM (ALT GÖRÜNÜM)</text>
+                             
+                             {/* Ayırıcı Çizgi */}
+                             <line x1="50" y1="540" x2="450" y2="540" stroke="#334155" strokeWidth="1" strokeDasharray="2,2"/>
+                             </>
+                        )}
+                        {activeDevice === 'laptop' && (
+                             <rect x="10" y="10" width="580" height="380" rx="20" fill="none" stroke="#334155" strokeWidth="3" />
+                        )}
+                        {activeDevice === 'desktop' && (
+                             <>
+                                <rect x="10" y="10" width="580" height="680" rx="10" fill="none" stroke="#334155" strokeWidth="4" />
+                                <path d="M 560 50 V 650" fill="none" stroke="#334155" strokeWidth="2" strokeDasharray="5,5" />
+                             </>
+                        )}
+
+                        {/* PARÇALAR (İNTERAKTİF) */}
+                        {currentDevice.parts.map((part) => {
                             const isSelected = selectedPartId === part.id;
                             return (
                                 <g key={part.id} onClick={() => setSelectedPartId(isSelected ? null : part.id)} className="cursor-pointer group/part transition-all duration-300">
-                                    <path d={part.svgPath} fill={isSelected ? "url(#selected-gradient)" : "transparent"} stroke={isSelected ? "#22d3ee" : "#475569"} strokeWidth={isSelected ? "2" : "1.5"} className={`transition-all duration-300 ${isSelected ? 'filter drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'group-hover/part:stroke-cyan-400 group-hover/part:fill-cyan-500/10'}`} strokeDasharray={isSelected ? "none" : "5,5"}/>
-                                    {!isSelected && (<circle cx={part.centerX} cy={part.centerY} r="4" fill="#22d3ee" className="opacity-0 group-hover/part:opacity-100 transition-opacity animate-pulse" />)}
-                                    {isSelected && (<g transform={`translate(${part.centerX - 12}, ${part.centerY - 12})`}><circle cx="12" cy="12" r="16" fill="#06b6d4" fillOpacity="0.2" className="animate-pulse" /><Microscope size={24} className="text-cyan-400" /></g>)}
+                                    <path d={part.path} fill={isSelected ? `${accentColor}30` : "#080b14"} stroke={isSelected ? accentColor : "#475569"} strokeWidth={isSelected ? "2.5" : "1.5"} className="transition-all duration-300" style={{ filter: isSelected ? `drop-shadow(0 0 15px ${accentColor})` : 'none' }}/>
+                                    {part.detail?.map((dPath, i) => (
+                                        <path key={i} d={dPath} fill="none" stroke={isSelected ? accentColor : "#334155"} strokeWidth={isSelected ? (activeDevice === 'desktop' && part.id === 'loop_desk' ? "2" : (activeDevice === 'phone' && part.id === 'logic' ? "1" : "1.2")) : "1"} opacity={isSelected ? 1 : (activeDevice === 'phone' && part.id === 'logic' ? 0.4 : 0.6)}/>
+                                    ))}
                                 </g>
                             );
                         })}
                     </svg>
-                    <div className="absolute bottom-6 left-0 w-full text-center pointer-events-none">
-                        <span className="text-[10px] font-mono text-cyan-500/60 tracking-widest uppercase">MODEL: {deviceData.name}</span>
+                    
+                    {/* Alt Sürüm Bilgisi */}
+                    <div className="absolute bottom-4 w-full text-center">
+                        <span className="text-[9px] font-mono tracking-[0.2em] uppercase" style={{ color: `${accentColor}80` }}>
+                            SERVICE_SCHEMATIC: {activeDevice.toUpperCase()}_PRO_REV.X
+                        </span>
                     </div>
                 </div>
             </div>
 
-            {/* SAĞ TARAF: DETAYLI BİLGİ PANELİ */}
-            <div className="flex-1 w-full">
-                <div className={`h-full bg-[#0a0e17]/80 backdrop-blur-xl border rounded-3xl p-8 relative overflow-hidden transition-all duration-500 ${selectedPartData ? 'border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)]' : 'border-white/10'}`}>
-                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,rgba(6,182,212,0.05)_50%,transparent_52%)] bg-[size:20px_20px] pointer-events-none"></div>
-                    {selectedPartData ? (
-                        <div className="relative z-10 h-full flex flex-col animate-in fade-in slide-in-from-right-4 duration-500">
-                            <div className="flex items-start justify-between mb-6 pb-6 border-b border-cyan-500/20">
-                                <div><h3 className="text-2xl md:text-3xl font-black text-white leading-tight">{selectedPartData.label}</h3></div>
-                                <Cpu size={32} className="text-cyan-500/50" />
-                            </div>
-                            <div className="mb-8">
-                                <p className="text-white text-lg font-medium mb-2">{selectedPartData.shortDesc}</p>
-                                <p className="text-slate-400 text-sm leading-relaxed">{selectedPartData.fullDesc}</p>
-                            </div>
-                            <div className="bg-[#0f1420] rounded-xl border border-white/5 p-4 mb-6">
-                                <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2"><Terminal size={16} className="text-cyan-400"/> Teknik Veriler</h4>
-                                <div className="space-y-3">
-                                    {selectedPartData.specs.map((spec, i) => (
-                                        <div key={i} className="flex justify-between items-center text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                                            <span className="text-slate-500 font-mono">{spec.key}:</span>
-                                            <span className="text-cyan-50 font-bold">{spec.val}</span>
-                                        </div>
-                                    ))}
+            {/* SAĞ: BİLGİ KARTI (SERVİS DETAY) */}
+            <div className="w-full max-w-md sticky top-24">
+                <div className={`bg-[#080a0f]/90 backdrop-blur-xl border rounded-2xl p-8 relative overflow-hidden transition-all duration-500 min-h-[450px] flex flex-col ${selectedPartId ? 'shadow-2xl' : 'border-white/10'}`} style={{ borderColor: selectedPartId ? `${accentColor}40` : 'rgba(255,255,255,0.1)' }}>
+                    
+                    {/* Arka Plan Işığı */}
+                    <div className="absolute -right-20 -top-20 w-64 h-64 blur-[80px] rounded-full pointer-events-none transition-colors duration-500" style={{ backgroundColor: `${accentColor}15` }}></div>
+
+                    {activePart ? (
+                        <div className="relative z-10 animate-in fade-in slide-in-from-right-4 duration-500 flex flex-col h-full">
+                            
+                            {/* Header */}
+                            <div className="flex items-start justify-between mb-6 pb-6 border-b border-white/5">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: accentColor }}></div>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: accentColor }}>
+                                            Uzman Servis Analizi
+                                        </span>
+                                    </div>
+                                    <h3 className="text-2xl font-black text-white mb-1">{activePart.label}</h3>
+                                    <span className="text-xs text-slate-500 font-mono uppercase tracking-wider">{activePart.subtitle}</span>
+                                </div>
+                                <div className="p-3 rounded-xl border" style={{ backgroundColor: `${accentColor}10`, borderColor: `${accentColor}20`, color: accentColor }}>
+                                    <activePart.icon size={28} />
                                 </div>
                             </div>
-                             <div className="mt-auto pt-4">
-                                <Link href="/onarim-talebi" className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-cyan-500/25 group">
-                                    <Wrench size={18} className="group-hover:rotate-12 transition-transform"/> Onarım Talep Et
-                                </Link>
-                             </div>
+
+                            {/* Açıklama (Servis Odaklı) */}
+                            <div className="mb-8 pl-4 border-l-2 border-white/10">
+                                <p className="text-slate-300 text-sm leading-relaxed font-light">
+                                    {activePart.desc}
+                                </p>
+                            </div>
+
+                            {/* Teknik Özellikler / Servis Notları */}
+                            <div className="grid grid-cols-2 gap-3 mb-8">
+                                {activePart.specs.map((spec, i) => (
+                                    <div key={i} className="bg-[#0f141e] border border-white/5 p-3 rounded-lg group hover:border-white/10 transition-colors">
+                                        <span className="text-[9px] text-slate-500 uppercase font-bold block mb-1 flex items-center gap-1"><Gauge size={10}/> {spec.label}</span>
+                                        <span className="text-white text-sm font-mono font-bold">{spec.value}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Buton - Servis Çağrısı */}
+                            <Link href="/onarim-talebi" className="mt-auto w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all text-white group shadow-lg hover:scale-[1.02]" 
+                                style={{ background: `linear-gradient(to right, ${
+                                    activeDevice === 'phone' ? '#0891b2, #2563eb' : 
+                                    activeDevice === 'robot' ? '#9333ea, #db2777' : 
+                                    activeDevice === 'laptop' ? '#d97706, #dc2626' :
+                                    '#b91c1c, #ef4444'
+                                })` }}>
+                                <Wrench size={18} className="group-hover:rotate-12 transition-transform"/> 
+                                <span className="tracking-wider">UZMAN ONARIM BAŞLAT</span>
+                            </Link>
                         </div>
                     ) : (
-                        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-500 min-h-[300px]">
-                             <div className="w-24 h-24 bg-cyan-950/30 rounded-full flex items-center justify-center mb-6 border border-cyan-500/20 relative">
-                                <div className="absolute inset-0 bg-cyan-500/20 rounded-full animate-ping-slow opacity-50"></div>
-                                <Scan size={40} className="text-cyan-400" />
-                             </div>
-                             <h3 className="text-2xl font-bold text-white mb-3">Sistem Hazır</h3>
-                             <p className="text-slate-400 max-w-sm leading-relaxed mb-6">Analiz etmek istediğiniz donanım bileşeninin üzerine gelin veya tıklayın.</p>
-                             <div className="flex gap-2 text-xs font-mono text-slate-500 bg-[#0f1420] px-4 py-2 rounded-lg border border-white/5">
-                                 <Activity size={14} className="text-cyan-500 animate-pulse"/> AWAITING_USER_INPUT...
-                             </div>
+                        <div className="flex flex-col items-center justify-center h-full text-center opacity-40">
+                            <Box size={48} className="mb-4 text-slate-500"/>
+                            <h4 className="text-white font-bold mb-2 text-lg">Arıza Tespiti İçin Seçim Yapın</h4>
+                            <p className="text-sm text-slate-500 max-w-[240px]">Servis prosedürlerini ve uzmanlık detaylarını görüntülemek için soldaki şemadan bir bileşene tıklayın.</p>
                         </div>
                     )}
                 </div>
             </div>
+
         </div>
       </div>
     </section>
@@ -292,7 +653,7 @@ function XrayDiagnostics() {
 // -----------------------------------------------------------------------------
 // 2. BİLEŞEN: GELİŞMİŞ CİHAZ ANATOMİSİ (TELEFON & ROBOT)
 // -----------------------------------------------------------------------------
-function DeviceAnatomy() {
+function UzmanlıkAlanlarımız() {
   const [activeTab, setActiveTab] = useState<'phone' | 'robot'>('phone');
   const [activePart, setActivePart] = useState<string | null>(null);
 
@@ -478,7 +839,6 @@ function DeviceAnatomy() {
     </section>
   );
 }
-
 // -----------------------------------------------------------------------------
 // 3. YENİ BİLEŞEN: AURA DIAGNOSTICS (ARIZA SİHİRBAZI)
 // -----------------------------------------------------------------------------
@@ -1369,9 +1729,10 @@ export default function Home() {
     return gradients[index % gradients.length];
   };
 
- return (
-    <div className="relative bg-[#020617] text-white font-sans selection:bg-cyan-500/30 min-h-screen w-full overflow-x-hidden">
-      {/* NAVBAR - TAMAMI GÜNCELLENMİŞ VERSİYON */}
+  return (
+    <div className="relative bg-[#020617] text-white font-sans selection:bg-cyan-500/30 min-h-screen overflow-x-hidden">
+      
+      {/* NAVBAR */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${scrolled ? "bg-[#020617]/95 backdrop-blur-xl border-white/5 h-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" : "bg-[#020617] border-transparent h-24"} print:hidden`}>
         <div className="container mx-auto px-6 h-full flex items-center justify-between">
           
@@ -1400,7 +1761,7 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* DESKTOP MENÜ LİNKLERİ (Sadece PC'de görünür) */}
+          {/* DESKTOP MENÜ LİNKLERİ */}
           <div className="hidden xl:flex items-center gap-8">
               {[ { href: "/", label: "Ana Sayfa" }, { href: "/destek", label: "Destek" }, { href: "/hakkimizda", label: "Hakkımızda" }, { href: "/sss", label: "S.S.S" }, { href: "/iletisim", label: "İletişim" } ].map((link) => (
                 <Link key={link.href} href={link.href} className={`text-[14px] font-bold transition-all relative py-2 px-1 group ${isActive(link.href) ? "text-cyan-400" : "text-slate-300 hover:text-white"}`}>
@@ -1410,9 +1771,10 @@ export default function Home() {
               ))}
           </div>
 
-          {/* SAĞ TARAF BUTONLARI (Desktop) */}
+          {/* SAĞ TARAF BUTONLARI (KURUMSAL EKLENDİ) */}
           <div className="flex items-center gap-3 shrink-0">
-              {/* Kurumsal Butonu (Desktop) */}
+              
+              {/* YENİ KURUMSAL BUTONU */}
               <Link href="/kurumsal-cozumler" className="hidden lg:flex items-center gap-2 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 hover:from-white hover:to-amber-200 text-black px-5 py-2.5 rounded-xl font-black text-xs transition-all shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:shadow-[0_0_30px_rgba(251,191,36,0.6)] hover:-translate-y-0.5 border border-yellow-300/50 group">
                   <Building2 size={16} className="text-black/80 fill-black/10"/> 
                   <span className="tracking-wide">KURUMSAL</span>
@@ -1431,59 +1793,33 @@ export default function Home() {
                   <span>ONARIM BAŞLAT</span>
               </Link>
               
-              {/* HAMBURGER BUTONU (Sadece Mobilde Görünür) */}
               <button onClick={() => setMenuAcik(!menuAcik)} className="xl:hidden p-2 text-slate-300 hover:text-white transition-colors">
                   {menuAcik ? <X size={28}/> : <Menu size={28}/>}
               </button>
           </div>
         </div>
         
-        {/* MOBİL MENÜ (AÇILIR KISIM - TÜM BUTONLAR EKLENDİ) */}
+        {/* MOBİL MENÜ (KURUMSAL EKLENDİ) */}
         {menuAcik && (
-          <div className="xl:hidden fixed top-20 left-0 w-full bg-[#0b0e14]/95 backdrop-blur-xl border-b border-white/10 p-6 flex flex-col gap-4 shadow-2xl animate-in slide-in-from-top-2 z-50 overflow-y-auto max-h-[calc(100vh-80px)]">
-              
-              {/* Navigasyon Linkleri */}
-              <div className="grid grid-cols-2 gap-2">
-                 {[ 
-                     { href: "/", label: "Ana Sayfa", icon: HomeIcon }, 
-                     { href: "/destek", label: "Destek", icon: LifeBuoy },
-                     { href: "/hakkimizda", label: "Hakkımızda", icon: Info },
-                     { href: "/iletisim", label: "İletişim", icon: Phone }
-                 ].map((item) => (
-                   <Link key={item.href} href={item.href} onClick={() => setMenuAcik(false)} className="py-3 px-4 rounded-lg font-bold flex items-center gap-3 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors text-sm">
-                       <item.icon size={18} className="text-cyan-500"/> {item.label}
-                   </Link>
-                 ))}
-              </div>
-
-              <div className="h-px w-full bg-white/10 my-1"></div>
-
-              {/* Aksiyon Butonları (Mobilde Eksik Olanlar Buraya Eklendi) */}
-              <div className="space-y-3">
-                  <Link href="/kurumsal-cozumler" onClick={() => setMenuAcik(false)} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 text-black px-4 py-3 rounded-xl font-black text-sm shadow-[0_0_15px_rgba(251,191,36,0.3)]">
-                      <Building2 size={18} className="text-black/80"/> KURUMSAL ÇÖZÜMLER
-                  </Link>
-
-                  <div className="grid grid-cols-2 gap-3">
-                      <Link href="/cihaz-sorgula" onClick={() => setMenuAcik(false)} className="flex items-center justify-center gap-2 border border-slate-700 bg-[#0f172a] text-white px-3 py-3 rounded-xl font-bold text-xs">
-                          <Search size={16} className="text-cyan-400"/> CİHAZ SORGULA
-                      </Link>
-                      
-                      <Link href="/magaza" onClick={() => setMenuAcik(false)} className="flex items-center justify-center gap-2 border border-slate-700 bg-[#0f172a] text-white px-3 py-3 rounded-xl font-bold text-xs">
-                          <ShoppingBag size={16} className="text-purple-400"/> MAĞAZA
-                      </Link>
-                  </div>
-
-                  <Link href="/onarim-talebi" onClick={() => setMenuAcik(false)} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-lg shadow-cyan-900/20">
-                      <Wrench size={18}/> ONARIM BAŞLAT
-                  </Link>
-              </div>
+          <div className="xl:hidden fixed top-20 left-0 w-full bg-[#0b0e14] border-b border-white/10 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top-2 z-50">
+              {[ 
+                  { href: "/", label: "Ana Sayfa", icon: HomeIcon }, 
+                  { href: "/kurumsal-cozumler", label: "Kurumsal Çözümler", icon: Building2 }, // Mobil menüye eklendi
+                  { href: "/cihaz-sorgula", label: "Cihaz Sorgula", icon: Search }, 
+                  { href: "/magaza", label: "Mağaza", icon: ShoppingBag } 
+              ].map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setMenuAcik(false)} className={`py-4 px-4 rounded-lg font-bold flex items-center gap-4 hover:bg-white/5 transition-colors ${item.href === '/kurumsal-cozumler' ? 'text-amber-400' : 'text-slate-400 hover:text-white'}`}>
+                    <item.icon size={20}/> {item.label}
+                </Link>
+              ))}
           </div>
         )}
       </nav>
+
       {/* ARKA PLAN DEKORASYON */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0"></div>
-     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[800px] h-[500px] md:h-[600px] bg-cyan-600/15 rounded-full blur-[100px] md:blur-[150px] pointer-events-none z-0 animate-pulse-slow"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-cyan-600/15 rounded-full blur-[150px] pointer-events-none z-0 animate-pulse-slow"></div>
+
       {/* HERO SECTION */}
       <section className="relative pt-44 pb-20 z-10 overflow-hidden">
         <div className="container mx-auto px-6 text-center relative">
@@ -1500,29 +1836,29 @@ export default function Home() {
             Roborock, iPhone ve Gaming PC donanımlarında <span className="text-cyan-400 font-bold">%99 başarı oranı</span>.
           </p>
           <div className="max-w-xl mx-auto relative group mb-20">
-             <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-2xl blur-md opacity-40 group-hover:opacity-80 transition duration-500 group-hover:duration-200 animate-tilt"></div>
-             <form onSubmit={sorgula} className="relative bg-[#0a0e17] p-2 rounded-2xl flex items-center shadow-2xl border border-white/10 backdrop-blur-xl">
+              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-2xl blur-md opacity-40 group-hover:opacity-80 transition duration-500 group-hover:duration-200 animate-tilt"></div>
+              <form onSubmit={sorgula} className="relative bg-[#0a0e17] p-2 rounded-2xl flex items-center shadow-2xl border border-white/10 backdrop-blur-xl">
                 <div className="pl-4 text-cyan-500"><Search size={22}/></div>
                 <input type="text" placeholder="Cihaz Takip No (Örn: 83785)" className="w-full h-14 bg-transparent px-4 outline-none text-white placeholder:text-slate-500 font-medium text-lg" value={takipNo} onChange={(e) => setTakipNo(e.target.value)} />
                 <button type="submit" className="h-14 px-8 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] uppercase tracking-wide">Sorgula</button>
-             </form>
+              </form>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
-             {[{ val: "%100", label: "Müşteri Memnuniyeti", icon: Users, color: "text-cyan-400", shadow: "shadow-cyan-500/20", border: "border-cyan-500/30" }, { val: "Onaylı", label: "Orijinal Parça", icon: Tag, color: "text-purple-400", shadow: "shadow-purple-500/20", border: "border-purple-500/30" }, { val: "6 Ay", label: "Garanti Süresi", icon: ShieldCheck, color: "text-green-400", shadow: "shadow-green-500/20", border: "border-green-500/30" }, { val: "15K+", label: "Başarılı İşlem", icon: CheckCircle2, color: "text-yellow-400", shadow: "shadow-yellow-500/20", border: "border-yellow-500/30" }].map((stat, i) => (
+              {[{ val: "%100", label: "Müşteri Memnuniyeti", icon: Users, color: "text-cyan-400", shadow: "shadow-cyan-500/20", border: "border-cyan-500/30" }, { val: "Onaylı", label: "Orijinal Parça", icon: Tag, color: "text-purple-400", shadow: "shadow-purple-500/20", border: "border-purple-500/30" }, { val: "6 Ay", label: "Garanti Süresi", icon: ShieldCheck, color: "text-green-400", shadow: "shadow-green-500/20", border: "border-green-500/30" }, { val: "15K+", label: "Başarılı İşlem", icon: CheckCircle2, color: "text-yellow-400", shadow: "shadow-yellow-500/20", border: "border-yellow-500/30" }].map((stat, i) => (
                <div key={i} className={`bg-[#0a0e17]/60 backdrop-blur-md border ${stat.border} p-8 rounded-3xl hover:bg-[#111620] transition-all group cursor-default hover:shadow-[0_0_30px_rgba(0,0,0,0.3)] hover:scale-105 ${stat.shadow.replace('/20','/40')}`}>
                   <div className={`text-4xl font-black text-white mb-2 group-hover:${stat.color.replace('text-', '')} transition-colors drop-shadow-lg`}>{stat.val}</div>
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-center gap-2"><stat.icon size={16} className={stat.color} /> {stat.label}</div>
                </div>
-             ))}
+              ))}
           </div>
         </div>
       </section>
 
-      
-
+    
       {/* MARKALAR (Infinite Scroll) */}
       <section className="relative py-24 bg-[#010205] border-b border-white/5 overflow-hidden">
-<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[600px] h-[300px] bg-indigo-900/20 blur-[100px] rounded-full pointer-events-none"></div>        <div className="container mx-auto px-6 relative z-10 text-center mb-12">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-900/20 blur-[100px] rounded-full pointer-events-none"></div>
+        <div className="container mx-auto px-6 relative z-10 text-center mb-12">
             <span className="text-cyan-500 font-bold tracking-widest text-xs uppercase mb-2 block">Global Partners</span>
             <h2 className="text-3xl md:text-5xl font-black text-white mb-6">Hizmet Verilen <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">Teknoloji Devleri</span></h2>
             <p className="text-slate-400 max-w-xl mx-auto mb-8">Dünyanın önde gelen teknoloji markalarının tüm modellerine laboratuvar standartlarında müdahale ediyoruz.</p>
@@ -1582,21 +1918,26 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- DEVICE ANATOMY --- */}
-      <DeviceAnatomy />
+{/* --- UzmanlıkAlanlarımız --- */}
+      <UzmanlıkAlanlarımız />
+ 
 
-      {/* --- AURA DIAGNOSTICS (YENİ) --- */}
+      
+      {/* --- AURA DIAGNOSTICS --- */}
       <AuraDiagnostics />
 
+       {/* --- DEVICE ANATOMY --- */}
+      <DeviceAnatomy />
 
-      {/* --- MACRO GALLERY (YENİ VEKTÖREL) --- */}
+      
+      {/* --- MACRO GALLERY --- */}
       <MacroGallery />
 
       {/* --- THERMAL VISION --- */}
       <ThermalVision />
+      
 
-      {/* X-RAY DIAGNOSTICS (YENİ) */}
-      <XrayDiagnostics />
+     
 
       {/* --- AURA STORE VİTRİNİ --- */}
       <section className="py-28 relative overflow-hidden bg-[#050810]">
@@ -1641,8 +1982,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- FAQ --- */}
-      <FAQ />
+     
 
       {/* --- PREMIUM HAKKIMIZDA & DNA --- */}
       <section className="relative py-32 bg-[#020611] border-t border-white/5 overflow-hidden">
@@ -1681,10 +2021,12 @@ export default function Home() {
       </section>
 
     
-    
+     {/* --- FAQ --- */}
+      <FAQ />
       
    
 
     </div>
   );
 }
+
