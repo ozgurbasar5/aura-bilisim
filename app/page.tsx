@@ -1830,6 +1830,7 @@ export default function Home() {
           <h1 className="text-5xl md:text-8xl font-black mb-8 leading-tight tracking-tight drop-shadow-2xl">
             <GlitchText text="Teknolojiniz" /> <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-500 to-purple-500 filter drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">Sınırların Ötesinde.</span>
+    
           </h1>
           <p className="text-slate-300 text-lg md:text-2xl max-w-3xl mx-auto mb-12 leading-relaxed font-light">
             Sıradan bir işlem değil, <strong className="text-white">hassas kalibrasyon ve optimizasyon.</strong> <br className="hidden md:block"/>

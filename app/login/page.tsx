@@ -1,52 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { supabase } from "@/app/lib/supabase"; 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Mail, Key, LogIn, Loader2, ShieldAlert } from "lucide-react";
 
-export default function LoginPage() {
+// Google İkonu (Bağımlılık olmaması için elle çizdik)
+const GoogleIcon = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+    <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
+      <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" />
+      <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" />
+      <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.734 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.489 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.989 -25.464 56.619 L -21.484 53.529 Z" />
+      <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" />
+    </g>
+  </svg>
+);
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true); 
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Sayfa yüklendiğinde oturum kontrolü
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Eğer oturum varsa, bu kişinin bayi olup olmadığını kontrol et
-        const isDealer = await checkIsDealer(session.user.email);
-        if (isDealer) {
-            // Bayi ise oturumu kapat ve uyar
-            await supabase.auth.signOut();
-            setPageLoading(false);
-        } else {
-            // Personelse panele al
-            router.replace("/epanel");
-        }
-      } else {
-        setPageLoading(false);
+         // Oturum varsa direkt panele fırlat (window.location kullanarak zorla)
+         window.location.href = "/epanel";
       }
     };
     checkSession();
-  }, [router]);
-
-  // Yardımcı Fonksiyon: Email bir bayiye mi ait?
-  const checkIsDealer = async (userEmail: string | undefined) => {
-    if (!userEmail) return false;
-    
-    // 'bayi_basvurulari' tablosunda bu email var mı diye bakıyoruz
-    const { data } = await supabase
-        .from('bayi_basvurulari')
-        .select('id')
-        .eq('email', userEmail)
-        .maybeSingle(); // single() yerine maybeSingle() hata fırlatmaz, null döner
-    
-    return !!data; // Varsa true, yoksa false döner
-  };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,105 +43,92 @@ export default function LoginPage() {
     setErrorMsg("");
 
     try {
-      // 1. Önce Giriş Yapmayı Dene
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      // 2. GÜVENLİK KONTROLÜ: Giren kişi Bayi mi?
-      // Eğer bayiyse, sistemden atacağız.
-      const isDealer = await checkIsDealer(email);
+      // Bayi Kontrolü
+      const { data: dealerData } = await supabase
+        .from('bayi_basvurulari')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
 
-      if (isDealer) {
-        // Oturumu hemen sonlandır
+      if (dealerData) {
         await supabase.auth.signOut();
-        throw new Error("DEALER_DETECTED");
+        setErrorMsg("Bayi girişi için lütfen Bayi Portalını kullanın.");
+        setLoading(false);
+        return;
       }
 
-      // 3. Personelse İçeri Al
-      router.replace("/epanel");
+      // BAŞARILI: Zorla yönlendir
+      window.location.href = "/epanel";
 
     } catch (error: any) {
-      if (error.message === "DEALER_DETECTED") {
-        setErrorMsg("Bayi hesapları buradan giremez! Lütfen 'Bayi Portal' girişini kullanın.");
-      } else {
-        setErrorMsg("Giriş başarısız! E-posta veya şifre hatalı.");
-      }
-    } finally {
+      console.error("Login Hatası:", error);
+      setErrorMsg("Giriş başarısız! Bilgilerinizi kontrol edin.");
       setLoading(false);
     }
   };
 
-  if (pageLoading) {
-    return (
-        <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
-            <Loader2 className="animate-spin text-cyan-500 w-8 h-8" />
-        </div>
-    );
-  }
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${origin}/epanel`,
+        queryParams: { access_type: 'offline', prompt: 'consent' },
+      },
+    });
+  };
 
   return (
-    <main className="min-h-screen bg-[#0F172A] flex items-center justify-center px-4">
-      <div className="bg-[#1E293B] p-8 rounded-3xl border border-slate-700 shadow-2xl w-full max-w-md relative overflow-hidden animate-in zoom-in-95 duration-300">
-        
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-500 to-purple-500"></div>
-
+    <div className="bg-[#1E293B] p-8 rounded-3xl border border-slate-700 shadow-2xl w-full max-w-md relative z-10 animate-in zoom-in-95 duration-300">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-cyan-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-cyan-500/30">
-            <Lock className="w-10 h-10 text-cyan-400" />
+          <div className="w-16 h-16 bg-cyan-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-cyan-500/30">
+            <Lock className="w-8 h-8 text-cyan-400" />
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tighter">AURA YÖNETİM</h1>
-          <p className="text-slate-400 text-sm">Yetkili personel girişi</p>
+          <h1 className="text-2xl font-black text-white">AURA YÖNETİM</h1>
+          <p className="text-slate-400 text-sm">Personel Girişi</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          
           <div className="relative">
             <Mail className="absolute left-4 top-3.5 text-slate-500" size={20} />
-            <input 
-              type="email" 
-              placeholder="E-Posta Adresi" 
-              className="w-full bg-[#0F172A] border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:border-cyan-500 outline-none transition-all"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <input type="email" placeholder="E-Posta" className="w-full bg-[#0F172A] border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:border-cyan-500 outline-none" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
-
           <div className="relative">
             <Key className="absolute left-4 top-3.5 text-slate-500" size={20} />
-            <input 
-              type="password" 
-              placeholder="Parola" 
-              className="w-full bg-[#0F172A] border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:border-cyan-500 outline-none transition-all"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <input type="password" placeholder="Parola" className="w-full bg-[#0F172A] border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:border-cyan-500 outline-none" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
 
           {errorMsg && (
-            <div className="text-red-400 text-sm text-center bg-red-500/10 p-3 rounded-lg border border-red-500/20 flex flex-col items-center gap-1 animate-in slide-in-from-top-2">
-              <div className="flex items-center gap-2 font-bold">
-                 <ShieldAlert size={16}/> ERIŞIM ENGELLENDI
-              </div>
-              {errorMsg}
+            <div className="text-red-400 text-sm text-center bg-red-500/10 p-3 rounded-lg border border-red-500/20 flex items-center justify-center gap-2">
+              <ShieldAlert size={16}/> {errorMsg}
             </div>
           )}
 
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 disabled:opacity-50"
-          >
-            {loading ? "KONTROL EDİLİYOR..." : <><LogIn size={20}/> GİRİŞ YAP</>}
+          <button type="submit" disabled={loading} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50">
+            {loading ? <Loader2 className="animate-spin" size={20}/> : <><LogIn size={20}/> GİRİŞ YAP</>}
           </button>
         </form>
 
-      </div>
+        <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-700"></div></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-[#1E293B] px-2 text-slate-500 font-bold">Veya</span></div>
+        </div>
+
+        
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <main className="min-h-screen bg-[#0F172A] flex items-center justify-center px-4 relative overflow-hidden">
+      <Suspense fallback={<div className="text-cyan-500"><Loader2 className="animate-spin" size={32}/></div>}>
+        <LoginForm />
+      </Suspense>
     </main>
   );
 }
