@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, Plus, Wrench, Clock, ArrowRight, User, MessageSquare, Mail } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
+import { buildServisWhatsappMessage } from "@/utils/servisWhatsappMesaji";
 
 export default function AtolyeListesi() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -35,21 +36,15 @@ export default function AtolyeListesi() {
     if (!phone.startsWith('90')) phone = '90' + phone;
 
     // Şablon Mesaj (Kurumsal Dil)
-    const message = `
-*Sayın ${job.customer},*
-
-Aura Bilişim Teknik Servis hizmetini tercih ettiğiniz için teşekkür ederiz.
-
-📦 *Cihaz:* ${job.device}
-📄 *Seri No:* ${job.serial_no || '-'}
-🛠 *Durum:* ${job.status?.toUpperCase()}
-💰 *Tutar:* ${job.price ? job.price + ' TL' : 'Henüz Belirlenmedi'}
-
-Cihazınız ile ilgili son durum yukarıdaki gibidir. Detaylı bilgi için bizimle iletişime geçebilirsiniz.
-
-📍 *Adres:* Aura Bilişim / İstanbul
-📞 *İletişim:* 0555 123 45 67
-    `.trim();
+    const message = buildServisWhatsappMessage({
+      customer: job.customer,
+      device: job.device,
+      tracking_code: job.tracking_code,
+      status: job.status || "Bekliyor",
+      issue: job.issue,
+      price: job.price,
+      serial_no: job.serial_no || job.imei,
+    });
 
     // WhatsApp Linki Oluştur ve Aç
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
@@ -137,39 +132,41 @@ Cihazınız ile ilgili son durum yukarıdaki gibidir. Detaylı bilgi için bizim
   });
 
   return (
-    <div className="p-6 text-slate-200 pb-20 animate-in fade-in">
+    <div className="p-4 sm:p-6 text-slate-200 pb-24 motion-reduce:animate-none">
       {/* Üst Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 border-b border-slate-800 pb-6">
+      <div className="flex flex-col gap-4 mb-8 border-b border-slate-800 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-black text-white flex items-center gap-3">
-            <Wrench className="text-cyan-500" size={32}/> ATÖLYE
+          <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+            <Wrench className="text-cyan-500 shrink-0" size={28}/> <span>ATÖLYE</span>
           </h1>
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">TEKNİK SERVİS LİSTESİ</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Teknik servis listesi</p>
         </div>
-        <div className="flex gap-3 w-full md:w-auto">
-          <div className="relative w-full md:w-64">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto sm:min-w-[20rem]">
+          <div className="relative flex-1">
             {/* INPUT PLACEHOLDER GÜNCELLENDİ */}
             <input 
               type="text" 
-              placeholder="Ara (Takip No, İsim, IMEI)..." 
+              placeholder="Takip no, isim, IMEI..." 
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
-              className="w-full bg-[#0a0c10] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-cyan-500 transition-all"
+              className="w-full bg-[#0a0c10] border border-slate-700 rounded-xl py-3 pl-10 pr-3 text-sm text-white outline-none focus:border-cyan-500 transition-colors duration-200"
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={18}/>
           </div>
-          <Link href="/epanel/atolye/yeni">
-            <button className="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 whitespace-nowrap shadow-lg shadow-cyan-900/20"><Plus size={20}/> YENİ GİRİŞ</button>
+          <Link href="/epanel/atolye/yeni" className="shrink-0">
+            <button type="button" className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-cyan-900/20 active:scale-[0.98] transition-transform duration-150"><Plus size={20}/> YENİ GİRİŞ</button>
           </Link>
+        </div>
         </div>
       </div>
 
       {/* Liste */}
-      {loading ? <div className="text-center py-20 text-slate-500">Yükleniyor...</div> : (
-        <div className="grid gap-3">
+      {loading ? <div className="text-center py-20 text-slate-500 animate-pulse">Yükleniyor...</div> : (
+        <div className="grid gap-3 sm:gap-4">
           {filteredJobs.map((job) => (
-            <Link key={job.id} href={`/epanel/atolye/${job.id}`}>
-              <div className="bg-[#151a25] border border-slate-800 p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 hover:border-cyan-500/50 transition-all group cursor-pointer relative overflow-hidden">
+            <Link key={job.id} href={`/epanel/atolye/${job.id}`} className="block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500/60 focus-visible:outline-offset-2">
+              <div className="bg-[#151a25] border border-slate-800 p-4 sm:p-5 rounded-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:border-cyan-500/40 transition-colors duration-200 group cursor-pointer relative overflow-hidden active:scale-[0.99] motion-reduce:active:scale-100">
                 <div className="flex items-center gap-4 w-full md:w-auto">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-black text-lg bg-slate-800 text-slate-400`}>
                     {job.customer?.charAt(0).toUpperCase()}

@@ -1,26 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/app/lib/supabase";
 import { 
   MessageSquare, User, Phone, Mail, Clock, 
-  Trash2, MessageCircle, AlertCircle 
+  Trash2, MessageCircle, AlertCircle, RefreshCw
 } from "lucide-react";
+
+const EPANEL_COUNTER_EVENT = "aura-epanel-refresh-counters";
+
+function refreshEpanelCounters() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(EPANEL_COUNTER_EVENT));
+}
 
 export default function DestekYonetim() {
   const [talepler, setTalepler] = useState<any[]>([]);
   const [yukleniyor, setYukleniyor] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Verileri Yeni Tablodan Çek (destek_talepleri)
   const talepleriGetir = async () => {
-    const { data, error } = await supabase
-      .from('destek_talepleri') // TABLO ADI GÜNCELLENDİ
+    const { data } = await supabase
+      .from('destek_talepleri')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (data) {
-      setTalepler(data);
-    }
+    if (data) setTalepler(data);
     setYukleniyor(false);
   };
 
@@ -28,11 +32,19 @@ export default function DestekYonetim() {
     talepleriGetir();
   }, []);
 
-  // Talebi Silme
+  const durumGuncelle = async (id: number, yeniDurum: string) => {
+    const { error } = await supabase.from('destek_talepleri').update({ durum: yeniDurum }).eq('id', id);
+    if (!error) {
+      setTalepler((prev) => prev.map((t) => (t.id === id ? { ...t, durum: yeniDurum } : t)));
+      refreshEpanelCounters();
+    }
+  };
+
   const talepSil = async (id: number) => {
     if (!confirm("Bu mesajı silmek istediğine emin misin?")) return;
     await supabase.from('destek_talepleri').delete().eq('id', id);
-    talepleriGetir();
+    await talepleriGetir();
+    refreshEpanelCounters();
   };
 
   // WhatsApp Linki
@@ -44,17 +56,56 @@ export default function DestekYonetim() {
     window.open(`https://wa.me/${clean}`, '_blank');
   };
 
+  const filtreliTalepler = useMemo(() => {
+    if (statusFilter === "all") return talepler;
+    return talepler.filter((t) => (t.durum || "Bekliyor") === statusFilter);
+  }, [talepler, statusFilter]);
+
+  const durumRenk = (d: string | undefined) => {
+    const v = d || "Bekliyor";
+    if (v === "Bekliyor") return "text-amber-400 bg-amber-500/10 border-amber-500/20";
+    if (v === "İnceleniyor") return "text-blue-400 bg-blue-500/10 border-blue-500/20";
+    if (v === "Çözüldü") return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+    return "text-slate-400 bg-slate-500/10 border-slate-500/20";
+  };
+
   if (yukleniyor) return <div className="p-10 text-slate-400 text-center animate-pulse">Mesajlar yükleniyor...</div>;
 
   return (
     <div className="p-6 min-h-screen text-slate-200">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <h1 className="text-3xl font-black text-white flex items-center gap-3">
           <MessageSquare className="text-pink-500" size={32} />
           WEB SİTESİ MESAJLARI
         </h1>
-        <div className="bg-pink-500/10 text-pink-400 px-4 py-2 rounded-lg font-bold border border-pink-500/20">
-          {talepler.length} Mesaj
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
+            {["all", "Bekliyor", "İnceleniyor", "Çözüldü"].map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => setStatusFilter(st)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap border transition-colors ${
+                  statusFilter === st
+                    ? "bg-pink-600 border-pink-500 text-white"
+                    : "bg-[#151921] border-slate-700 text-slate-400 hover:border-slate-500"
+                }`}
+              >
+                {st === "all" ? "Tümü" : st}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => { setYukleniyor(true); void talepleriGetir(); }}
+            className="p-2.5 bg-[#151921] border border-slate-700 rounded-xl text-slate-400 hover:text-pink-400 transition-colors"
+            title="Yenile"
+          >
+            <RefreshCw size={18} />
+          </button>
+          <div className="bg-pink-500/10 text-pink-400 px-4 py-2 rounded-lg font-bold border border-pink-500/20">
+            {filtreliTalepler.length} / {talepler.length}
+          </div>
         </div>
       </div>
 
@@ -67,8 +118,14 @@ export default function DestekYonetim() {
           <p className="text-slate-500">Web sitesinden henüz bir form doldurulmadı.</p>
         </div>
       ) : (
+        <>
+          {filtreliTalepler.length === 0 ? (
+            <div className="text-center py-16 bg-[#151921] rounded-3xl border border-slate-800 border-dashed">
+              <p className="text-slate-400 text-sm">Bu filtreye uygun talep yok. Farklı bir durum seçin veya &quot;Tümü&quot;ne dönün.</p>
+            </div>
+          ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {talepler.map((talep) => (
+          {filtreliTalepler.map((talep) => (
             <div key={talep.id} className="bg-[#151921] border border-slate-800 p-6 rounded-2xl hover:border-pink-500/40 transition-all group shadow-lg flex flex-col">
               
               {/* Üst Bilgi */}
@@ -81,9 +138,12 @@ export default function DestekYonetim() {
                     <User size={18} className="text-slate-500"/> {talep.ad_soyad}
                   </h3>
                 </div>
-                <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-800 flex items-center gap-1">
-                  <Clock size={10}/> {new Date(talep.created_at).toLocaleDateString('tr-TR')}
-                </span>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded border ${durumRenk(talep.durum)}`}>{talep.durum || "Bekliyor"}</span>
+                  <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-800 flex items-center gap-1">
+                    <Clock size={10}/> {new Date(talep.created_at).toLocaleDateString('tr-TR')}
+                  </span>
+                </div>
               </div>
 
               {/* Mesaj İçeriği */}
@@ -99,6 +159,24 @@ export default function DestekYonetim() {
                 <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-white/5 overflow-hidden">
                   <Mail size={14} className="text-purple-400"/> <span className="truncate">{talep.email || "-"}</span>
                 </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-4 p-2 bg-[#0b0e14] rounded-xl border border-slate-800/50">
+                <span className="text-[10px] text-slate-500 font-bold uppercase w-full sm:w-auto sm:mr-2 flex items-center">Durum</span>
+                {(["Bekliyor", "İnceleniyor", "Çözüldü"] as const).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => void durumGuncelle(talep.id, st)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                      (talep.durum || "Bekliyor") === st
+                        ? durumRenk(st) + " ring-1 ring-white/10"
+                        : "border-transparent text-slate-500 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
               </div>
 
               {/* Aksiyon Butonları */}
@@ -131,6 +209,8 @@ export default function DestekYonetim() {
             </div>
           ))}
         </div>
+          )}
+        </>
       )}
     </div>
   );

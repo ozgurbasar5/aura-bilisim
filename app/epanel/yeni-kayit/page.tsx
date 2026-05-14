@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase";
 import { useRouter } from "next/navigation";
+import { buildAuraJobInsertPayload } from "@/utils/buildAuraJobInsertPayload";
 import { Save, User, Smartphone, Building2, ScanBarcode, CircuitBoard, Layers } from "lucide-react";
 
 export default function YeniKayit() {
@@ -46,27 +47,39 @@ export default function YeniKayit() {
     // Bayi işlerinde müşteri adı olarak Bayi ismini kullanıyoruz ki bayi panelinde gözüksün.
     // Gerçek son kullanıcı adını açıklamaya ekliyoruz.
     const isDealer = form.cihaz_kaynagi !== "Son Kullanıcı";
-    
-    const jobData = {
-        customer: isDealer ? form.cihaz_kaynagi : form.ad_soyad, // Bayi ise Bayi Adı, değilse Şahıs Adı
-        customer_type: isDealer ? 'Bayi' : 'Bireysel',
-        phone: form.telefon,
-        device: `${form.marka_model} (${form.cihaz_tipi})`, // Marka Model + Tip birleşimi
-        serial_no: form.imei_no,
-        problem_desc: form.sorun_aciklamasi + (isDealer ? `\n\n(Son Kullanıcı: ${form.ad_soyad})` : ""), // Bayi ise son kullanıcıyı nota ekle
-        status: 'Bekliyor', // Varsayılan başlangıç durumu
-        tracking_code: trackingCode,
-        price: 0, // İlk başta fiyat 0
-        approval_status: 'pending', // Onay durumu
-        created_at: new Date().toISOString()
+
+    const categoryMap: Record<string, string> = {
+      "cep telefonu": "Cep Telefonu",
+      "robot süpürge": "Robot Süpürge",
+      bilgisayar: "Bilgisayar",
+      diger: "Diğer",
     };
-    
-    // 2. Aura Jobs Tablosuna Kayıt
-    const { error } = await supabase.from('aura_jobs').insert([jobData]);
+    const category = categoryMap[form.cihaz_tipi] || "Diğer";
+
+    const technicianNote = isDealer
+      ? `Son kullanıcı: ${form.ad_soyad}\n\n${form.sorun_aciklamasi}`
+      : form.sorun_aciklamasi;
+
+    const jobData = buildAuraJobInsertPayload({
+      customer: isDealer ? form.cihaz_kaynagi : form.ad_soyad,
+      customer_type: isDealer ? "Bayi" : "Son Kullanıcı",
+      phone: form.telefon,
+      device: `${form.marka_model} (${form.cihaz_tipi})`,
+      category,
+      serial_no: form.imei_no,
+      issue: form.sorun_aciklamasi,
+      technician_note: technicianNote,
+      status: "Bekliyor",
+      price: 0,
+      tracking_code: trackingCode,
+    });
+
+    const { error } = await supabase.from("aura_jobs").insert([jobData]);
     
     if (!error) {
       alert(`✅ Kayıt Başarıyla Açıldı!\nTakip Kodu: ${trackingCode}`);
-      router.push("/epanel/atolye"); // Kayıttan sonra direkt atölye listesine yönlendir
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("aura-epanel-refresh-counters"));
+      router.push("/epanel/atolye");
     } else {
       console.error("Supabase Hatası:", error);
       alert("Hata oluştu: " + error.message);

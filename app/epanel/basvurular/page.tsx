@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase";
 import { Users, ArrowRight, CheckCircle, Clock, Trash2, MapPin, Phone, Bike, PackageCheck, Truck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { buildAuraJobInsertPayload } from "@/utils/buildAuraJobInsertPayload";
 
 export default function OnlineBasvurular() {
   const router = useRouter();
@@ -71,19 +72,18 @@ export default function OnlineBasvurular() {
     const teslimatNotu = basvuru.teslimat_yontemi === 'kurye' ? " (Kurye İle Geldi)" : " (Elden Teslim)";
 
     // İş kaydı oluştur
-    const { error } = await supabase.from('aura_jobs').insert([{
+    const { error } = await supabase.from('aura_jobs').insert([buildAuraJobInsertPayload({
         customer: basvuru.ad_soyad,
         phone: basvuru.telefon,
         device: `${basvuru.marka_model} (${basvuru.cihaz_tipi})`,
-        problem: basvuru.sorun_aciklamasi, 
+        issue: basvuru.sorun_aciklamasi,
         address: basvuru.adres || "",
         serial_no: imei,
         private_note: `Online Başvuru${teslimatNotu}`,
-        status: 'Bekliyor', 
+        status: 'Bekliyor',
         price: 0,
-        created_at: new Date().toISOString(),
-        tracking_code: yeniTakipKodu 
-    }]);
+        tracking_code: yeniTakipKodu
+    })]);
 
     if (error) { alert("Hata: " + error.message); return; }
 
@@ -94,6 +94,7 @@ export default function OnlineBasvurular() {
     await supabase.from('aura_courier').update({ status: 'Tamamlandı' }).eq('basvuru_id', basvuru.id);
 
     alert(`Cihaz atölyeye alındı!\nTakip No: ${yeniTakipKodu}`);
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("aura-epanel-refresh-counters"));
     router.push(`/epanel/atolye`);
   };
 

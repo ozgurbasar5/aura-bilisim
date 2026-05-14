@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { 
   Wallet, TrendingDown, TrendingUp, Plus, 
   ArrowUpRight, ArrowDownRight, FileText, 
-  PieChart, Trash2, Calendar, Wrench, ShoppingBag, 
+  PieChart, Trash2, Calendar, ShoppingBag, 
   Printer, Filter, Download, ToggleLeft, ToggleRight
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
@@ -29,6 +29,7 @@ export default function FinansYonetimi() {
 
   // Veriler
   const [transactions, setTransactions] = useState<any[]>([]); 
+  const [kasaHareketleri, setKasaHareketleri] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalIncome: 0,
     totalExpense: 0,
@@ -53,7 +54,6 @@ export default function FinansYonetimi() {
     const startISO = `${dateRange.start}T00:00:00`;
     const endISO = `${dateRange.end}T23:59:59`;
 
-    // 1. MAĞAZA SATIŞLARI
     let salesQuery = supabase
       .from('satis_gecmisi')
       .select('*')
@@ -64,46 +64,41 @@ export default function FinansYonetimi() {
         salesQuery = salesQuery.gte('created_at', startISO).lte('created_at', endISO);
     }
 
-    // 2. ATÖLYE (SERVİS) GELİRLERİ
-    let jobsQuery = supabase
-      .from('aura_jobs')
-      .select('*')
-      .or('status.eq.Teslim Edildi,status.eq.Tamamlandı') 
-      .order('created_at', { ascending: false });
-
-    if (useDateFilter) {
-        jobsQuery = jobsQuery.gte('created_at', startISO).lte('created_at', endISO);
-    }
-
-    // 3. GİDERLER
-    let expensesQuery = supabase
+    let finansQuery = supabase
       .from('aura_finans')
       .select('*')
-      .eq('tur', 'Gider')
       .order('created_at', { ascending: false });
 
     if (useDateFilter) {
-        expensesQuery = expensesQuery.gte('created_at', startISO).lte('created_at', endISO);
+        finansQuery = finansQuery.gte('created_at', startISO).lte('created_at', endISO);
     }
 
-    const [salesRes, jobsRes, expensesRes] = await Promise.all([salesQuery, jobsQuery, expensesQuery]);
+    const [salesRes, finansRes] = await Promise.all([salesQuery, finansQuery]);
     
     const sales = salesRes.data || [];
-    const jobs = jobsRes.data || [];
-    const expenses = expensesRes.data || [];
+    const finansRows = finansRes.data || [];
+    setKasaHareketleri(finansRows);
+
+    const finansGelir = finansRows.filter((f: any) => f.tur === 'Gelir');
+    const expenses = finansRows.filter((f: any) => f.tur === 'Gider');
 
     const combined = [
-        ...sales.map(s => ({ 
+        ...sales.map((s: any) => ({ 
             id: `S-${s.id}`, realId: s.id, source: 'store', type: 'income', 
             title: s.urunler || 'Mağaza Satışı', tutar: parseFloat(s.tutar), 
             date: s.created_at, kategori: 'Mağaza'
         })),
-        ...jobs.map(j => ({ 
-            id: `J-${j.id}`, realId: j.id, source: 'service', type: 'income', 
-            title: `${j.device} - ${j.customer}`, tutar: parseFloat(j.price || 0), 
-            date: j.updated_at || j.created_at, kategori: 'Teknik Servis'
+        ...finansGelir.map((f: any) => ({
+            id: `F+${f.id}`,
+            realId: f.id,
+            source: 'finance_in',
+            type: 'income',
+            title: f.baslik || f.aciklama || 'Kasa geliri',
+            tutar: parseFloat(f.tutar) || 0,
+            date: f.created_at,
+            kategori: f.kategori || 'Kasa',
         })),
-        ...expenses.map(e => ({ 
+        ...expenses.map((e: any) => ({ 
             id: `E-${e.id}`, realId: e.id, source: 'expense', type: 'expense', 
             title: e.baslik, tutar: parseFloat(e.tutar), 
             date: e.created_at, kategori: e.kategori 
@@ -123,6 +118,24 @@ export default function FinansYonetimi() {
     setLoading(false);
   };
 
+  const applyDatePreset = (preset: 'today' | 'yesterday' | 'month') => {
+    const t = new Date();
+    if (preset === 'today') {
+      const d = t.toISOString().split('T')[0];
+      setDateRange({ start: d, end: d });
+    } else if (preset === 'yesterday') {
+      const y = new Date(t);
+      y.setDate(y.getDate() - 1);
+      const d = y.toISOString().split('T')[0];
+      setDateRange({ start: d, end: d });
+    } else {
+      const first = new Date(t.getFullYear(), t.getMonth(), 1).toISOString().split('T')[0];
+      const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).toISOString().split('T')[0];
+      setDateRange({ start: first, end: last });
+    }
+    setUseDateFilter(true);
+  };
+
   const handleAddExpense = async () => {
     if (!newExpense.title || !newExpense.amount) return alert("Başlık ve Tutar zorunlu.");
 
@@ -139,6 +152,7 @@ export default function FinansYonetimi() {
         setIsModalOpen(false);
         setNewExpense({ title: "", amount: "", category: "Genel", method: "Nakit" });
         fetchFinanceData();
+        if (typeof window !== "undefined") window.dispatchEvent(new Event("aura-epanel-refresh-counters"));
     } else {
         alert("Hata: " + error.message);
     }
@@ -148,6 +162,7 @@ export default function FinansYonetimi() {
     if(!confirm("Bu gider kaydını silmek istediğine emin misin?")) return;
     await supabase.from('aura_finans').delete().eq('id', id);
     fetchFinanceData();
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("aura-epanel-refresh-counters"));
   };
 
   // --- PDF RAPOR OLUŞTURMA ---
@@ -188,9 +203,11 @@ export default function FinansYonetimi() {
         doc.text("TEKNOLOJI VE YAZILIM USSU", 50, 26);
 
         // --- 4. RAPOR BİLGİLERİ (Sağ Üst) ---
+        const gunSonu = useDateFilter && dateRange.start === dateRange.end;
+
         doc.setFontSize(10);
         doc.setTextColor(255, 255, 255);
-        doc.text("FINANSAL RAPOR", 195, 15, { align: "right" });
+        doc.text(gunSonu ? "GUN SONU KASA" : "FINANSAL RAPOR", 195, 15, { align: "right" });
         
         doc.setFontSize(8);
         doc.setTextColor(203, 213, 225); 
@@ -247,7 +264,7 @@ export default function FinansYonetimi() {
         // --- 6. TABLO ---
         const tableRows = transactions.map(t => [
             new Date(t.date).toLocaleDateString('tr-TR'),
-            t.source === 'service' ? 'SERVIS' : t.source === 'store' ? 'MAGAZA' : 'GIDER',
+            t.source === 'finance_in' ? 'KASA' : t.source === 'store' ? 'MAGAZA' : 'GIDER',
             t.title,
             t.kategori,
             t.type === 'income' ? `+${t.tutar.toLocaleString('tr-TR')} TL` : `-${t.tutar.toLocaleString('tr-TR')} TL`
@@ -300,7 +317,11 @@ export default function FinansYonetimi() {
             doc.text(`Sayfa ${i} / ${pageCount}`, 196, 288, { align: 'right' });
         }
 
-        doc.save(`Aura_Finans_${new Date().toISOString().slice(0,10)}.pdf`);
+        doc.save(
+          useDateFilter && dateRange.start === dateRange.end
+            ? `Aura_GunSonu_${dateRange.start}.pdf`
+            : `Aura_Finans_${dateRange.start}_${dateRange.end}.pdf`
+        );
     
     } catch (error: any) {
         console.error("PDF Hatası:", error);
@@ -358,7 +379,13 @@ export default function FinansYonetimi() {
                 </div>
             )}
             
-            <div className="h-6 w-[1px] bg-white/10 mx-2"></div>
+            <div className="h-6 w-[1px] bg-white/10 mx-2 hidden sm:block"></div>
+
+            <button type="button" onClick={() => applyDatePreset('today')} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg font-bold text-[10px] sm:text-xs transition-all">BUGÜN</button>
+            <button type="button" onClick={() => applyDatePreset('yesterday')} className="bg-amber-900/40 hover:bg-amber-800/50 text-amber-200 px-3 py-2 rounded-lg font-bold text-[10px] sm:text-xs border border-amber-700/30 transition-all">GÜN SONU (DÜN)</button>
+            <button type="button" onClick={() => applyDatePreset('month')} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg font-bold text-[10px] sm:text-xs transition-all">BU AY</button>
+
+            <div className="h-6 w-[1px] bg-white/10 mx-2 hidden sm:block"></div>
 
             <button onClick={generatePDF} className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20">
                 <Printer size={16}/> RAPOR (PDF)
@@ -394,7 +421,7 @@ export default function FinansYonetimi() {
               <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">GELİR TOPLAMI</p>
               <h2 className="text-3xl font-bold text-green-400">+{stats.totalIncome.toLocaleString('tr-TR')} ₺</h2>
               <p className="text-[10px] text-slate-500 mt-2 flex gap-2 font-mono">
-                  <span>Atölye + Mağaza</span>
+                  <span>Mağaza + kasa (servis teslimleri)</span>
               </p>
           </div>
 
@@ -450,7 +477,7 @@ export default function FinansYonetimi() {
                                   {new Date(tx.date).toLocaleDateString('tr-TR')}
                               </td>
                               <td className="p-4">
-                                   {tx.source === 'service' && <span className="flex items-center gap-1 text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-1 rounded w-fit border border-blue-500/20"><Wrench size={10}/> SERVİS</span>}
+                                   {tx.source === 'finance_in' && <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded w-fit border border-emerald-500/20"><Wallet size={10}/> KASA</span>}
                                    {tx.source === 'store' && <span className="flex items-center gap-1 text-[10px] font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded w-fit border border-purple-500/20"><ShoppingBag size={10}/> MAĞAZA</span>}
                                    {tx.source === 'expense' && <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded w-fit border border-red-500/20"><TrendingDown size={10}/> GİDER</span>}
                               </td>
@@ -459,7 +486,7 @@ export default function FinansYonetimi() {
                               </td>
                               <td className="p-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider">{tx.kategori}</td>
                               <td className={`p-4 font-bold text-right font-mono ${tx.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
-                                  {tx.type === 'income' ? '+' : '-'}{parseFloat(tx.tutar).toLocaleString('tr-TR')} ₺
+                                  {tx.type === 'income' ? '+' : '-'}{Number(tx.tutar).toLocaleString('tr-TR')} ₺
                               </td>
                               <td className="p-4 text-center">
                                   {tx.source === 'expense' ? (
@@ -469,6 +496,47 @@ export default function FinansYonetimi() {
                                   ) : (
                                       <span className="text-[10px] text-slate-600 opacity-50">Oto</span>
                                   )}
+                              </td>
+                          </tr>
+                        ))
+                      )}
+                  </tbody>
+              </table>
+          </div>
+      </div>
+
+      {/* --- KASA DEFTERİ (aura_finans ham kayıt) --- */}
+      <div className="mt-8 bg-[#151a25] border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+          <div className="p-4 sm:p-6 border-b border-slate-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-[#1e2532]">
+              <h3 className="font-bold text-white flex items-center gap-2 text-sm sm:text-base">
+                  <FileText size={18} className="text-cyan-400 shrink-0"/> 
+                  Kasa defteri <span className="text-slate-500 text-xs font-normal">(günlük hareketler — aura_finans)</span>
+              </h3>
+              <span className="text-xs text-slate-500 font-bold bg-[#0b0e14] px-3 py-1 rounded-full w-fit">{kasaHareketleri.length} kayıt</span>
+          </div>
+          <div className="overflow-x-auto max-h-[420px] custom-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[640px]">
+                  <thead className="bg-[#0b0e14] text-[10px] uppercase text-slate-500 font-bold sticky top-0 z-10">
+                      <tr>
+                          <th className="p-3 border-b border-slate-800">Zaman</th>
+                          <th className="p-3 border-b border-slate-800">Tür</th>
+                          <th className="p-3 border-b border-slate-800">Başlık</th>
+                          <th className="p-3 border-b border-slate-800">Ödeme</th>
+                          <th className="p-3 border-b border-slate-800 text-right">Tutar</th>
+                      </tr>
+                  </thead>
+                  <tbody className="text-xs divide-y divide-slate-800">
+                      {kasaHareketleri.length === 0 ? (
+                          <tr><td colSpan={5} className="p-8 text-center text-slate-500">Bu aralıkta kasa kaydı yok.</td></tr>
+                      ) : (
+                        kasaHareketleri.map((row: any) => (
+                          <tr key={row.id} className="hover:bg-slate-800/40">
+                              <td className="p-3 text-slate-400 font-mono whitespace-nowrap">{new Date(row.created_at).toLocaleString('tr-TR')}</td>
+                              <td className="p-3 font-bold">{row.tur}</td>
+                              <td className="p-3 text-slate-200 max-w-[200px] sm:max-w-xs truncate" title={row.aciklama}>{row.baslik || row.aciklama || '—'}</td>
+                              <td className="p-3 text-slate-500">{row.odeme_yontemi || '—'}</td>
+                              <td className={`p-3 text-right font-mono font-bold ${row.tur === 'Gelir' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {row.tur === 'Gelir' ? '+' : '-'}{Number(row.tutar || 0).toLocaleString('tr-TR')} ₺
                               </td>
                           </tr>
                         ))

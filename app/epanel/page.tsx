@@ -10,7 +10,8 @@ import {
   LayoutDashboard, Search, Bell, AlertTriangle, 
   Target, Banknote, Calendar, 
   Activity, RefreshCw, Calculator, Plus, Bike, MapPin, CalendarClock,
-  TrendingUp, TrendingDown, Cpu, ChevronRight, PlayCircle, BarChart3, AlertOctagon, UserCheck, Star, CreditCard, Coins, CheckSquare, PlusCircle, X
+  TrendingUp, TrendingDown, Cpu, ChevronRight, PlayCircle, BarChart3, AlertOctagon, UserCheck, Star, CreditCard, Coins, CheckSquare, PlusCircle, X,
+  LifeBuoy, MessageSquare
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase"; 
 
@@ -97,7 +98,7 @@ const StatCard = ({ title, value, subValue, icon: Icon, color, trend }: any) => 
     const classes = colorMap[color] || "text-slate-400 bg-slate-500/10 border-slate-500/20";
 
     return (
-        <div className={`relative p-5 bg-[#0f1219]/80 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden hover:-translate-y-1 transition-all duration-300 group hover:border-white/10`}>
+        <div className={`relative p-4 sm:p-5 bg-[#0f1219]/80 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 transition-all duration-300 group hover:border-white/10`}>
             <div className="flex justify-between items-start mb-3 relative z-10">
                 <div className={`p-2.5 rounded-xl border ${classes} transition-transform group-hover:rotate-12`}>
                     <Icon size={20} />
@@ -166,97 +167,132 @@ export default function EPanelDashboard() {
             const startDate = new Date(selectedYear, selectedMonth - 1, 1).toISOString();
             const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59).toISOString();
 
-            // 1. JOBS
-            const { data: jobs } = await supabase.from('aura_jobs').select('*').gte('created_at', startDate).lte('created_at', endDate);
-            const { data: activeJobs } = await supabase.from('aura_jobs').select('*').neq('status', 'Teslim Edildi').neq('status', 'İptal').order('created_at', {ascending: false}).limit(5);
-            
-            // 2. FINANS (Ödeme Yöntemi Analizi İçin)
-            const { data: finances } = await supabase.from('aura_finans').select('*').gte('tarih', startDate).lte('tarih', endDate);
+            const sevenStart = new Date();
+            sevenStart.setDate(sevenStart.getDate() - 6);
+            sevenStart.setHours(0, 0, 0, 0);
+            const sevenStartIso = sevenStart.toISOString();
 
-            // 3. COURIER
-            const { data: couriers } = await supabase.from('aura_courier').select('status');
-            
-            // 4. ALERTS
-            const todayStr = new Date().toISOString().split('T')[0];
-            const { count: maintenanceCount } = await supabase.from('aura_jobs').select('*', { count: 'exact', head: true }).eq('status', 'Teslim Edildi').lte('next_maintenance_date', todayStr);
+            const [
+                deliveredMonthRes,
+                openJobsRes,
+                delivered7dRes,
+                activeJobsRes,
+                financesRes,
+                couriersRes,
+                maintenanceRes,
+                timelineRes,
+            ] = await Promise.all([
+                supabase.from('aura_jobs').select('*').eq('status', 'Teslim Edildi').gte('updated_at', startDate).lte('updated_at', endDate),
+                supabase.from('aura_jobs').select('price,status').not('status', 'eq', 'Teslim Edildi').not('status', 'eq', 'İptal').not('status', 'eq', 'İade'),
+                supabase.from('aura_jobs').select('price,updated_at').eq('status', 'Teslim Edildi').gte('updated_at', sevenStartIso),
+                supabase.from('aura_jobs').select('*').neq('status', 'Teslim Edildi').neq('status', 'İptal').order('created_at', { ascending: false }).limit(5),
+                supabase.from('aura_finans').select('*').gte('tarih', startDate).lte('tarih', endDate),
+                supabase.from('aura_courier').select('status'),
+                supabase.from('aura_jobs').select('*', { count: 'exact', head: true }).eq('status', 'Teslim Edildi').lte('next_maintenance_date', new Date().toISOString().split('T')[0]),
+                supabase.from('aura_timeline').select('description, created_at').order('created_at', { ascending: false }).limit(10),
+            ]);
 
-            // 5. TICKER
-            const { data: timeline } = await supabase.from('aura_timeline').select('description, created_at').order('created_at', {ascending: false}).limit(10);
-            if(timeline) setTickerItems(timeline.map(t => `${t.description}`));
+            const deliveredMonth = deliveredMonthRes.data || [];
+            const openJobs = openJobsRes.data || [];
+            const delivered7d = delivered7dRes.data || [];
+            const activeJobs = activeJobsRes.data || [];
+            const finances = financesRes.data || [];
+            const couriers = couriersRes.data || [];
+            const maintenanceCount = maintenanceRes.count || 0;
 
-            // --- CALCULATIONS ---
-            let rev = 0, cost = 0, pending = 0, sCount = 0;
-            let cWaiting = 0, cOnWay = 0;
-            
-            // Son 7 Gün Trendi Hazırla
-            const trend = [0,0,0,0,0,0,0];
+            if (timelineRes.data) setTickerItems(timelineRes.data.map((t) => `${t.description}`));
+
+            let rev = 0;
+            let jobCogs = 0;
+            let sCount = 0;
+            deliveredMonth.forEach((j: any) => {
+                rev += Number(j.price) || 0;
+                jobCogs += Number(j.cost) || 0;
+                sCount++;
+            });
+
+            let pending = 0;
+            openJobs.forEach((j: any) => {
+                pending += Number(j.price) || 0;
+            });
+
+            const trend = [0, 0, 0, 0, 0, 0, 0];
             const last7Days = [...Array(7)].map((_, i) => {
                 const d = new Date();
                 d.setDate(d.getDate() - i);
                 return d.toISOString().split('T')[0];
             }).reverse();
 
-            // Günlük Hedef Sayacı
+            delivered7d.forEach((j: any) => {
+                const jobDate = (j.updated_at || "").split('T')[0];
+                const dayIndex = last7Days.indexOf(jobDate);
+                if (dayIndex !== -1) trend[dayIndex] += Number(j.price) || 0;
+            });
+
+            const todayStr = new Date().toISOString().split('T')[0];
             let dailyDone = 0;
+            deliveredMonth.forEach((j: any) => {
+                if ((j.updated_at || "").split('T')[0] === todayStr) dailyDone++;
+            });
 
-            if (jobs) {
-                jobs.forEach((j: any) => {
-                    const p = Number(j.price) || 0; 
-                    const c = Number(j.cost) || 0;
-                    
-                    if(j.status === 'Teslim Edildi') { 
-                        rev += p; cost += c; sCount++; 
-                        
-                        // Günlük Biten İş
-                        if (j.updated_at?.split('T')[0] === todayStr) dailyDone++;
+            let financeExpense = 0;
+            let cash = 0;
+            let card = 0;
+            finances.forEach((f: any) => {
+                if (f.tur === 'Gelir') {
+                    const amt = Number(f.tutar) || 0;
+                    if (f.odeme_yontemi === 'Nakit') cash += amt;
+                    else card += amt;
+                } else if (f.tur === 'Gider') {
+                    financeExpense += Number(f.tutar) || 0;
+                }
+            });
 
-                        // Trend Grafiği (Son 7 Gün)
-                        const jobDate = j.updated_at?.split('T')[0] || j.created_at.split('T')[0];
-                        const dayIndex = last7Days.indexOf(jobDate);
-                        if (dayIndex !== -1) trend[dayIndex] += p;
-                    } 
-                    else if(j.status !== 'İptal') { pending += p; }
+            const cost = jobCogs + financeExpense;
+            let cWaiting = 0;
+            let cOnWay = 0;
+            if (couriers) {
+                couriers.forEach((c: any) => {
+                    if (c.status === 'Bekliyor') cWaiting++;
+                    else if (c.status && c.status !== 'Tamamlandı') cOnWay++;
                 });
             }
 
-            // Finansal Dağılım (Nakit / Kart)
-            let cash = 0, card = 0;
-            if (finances) {
-                finances.forEach((f: any) => {
-                    if (f.tur === 'Gelir') {
-                        const amt = Number(f.tutar) || 0;
-                        if (f.odeme_yontemi === 'Nakit') cash += amt;
-                        else card += amt;
-                    } else if (f.tur === 'Gider') {
-                        cost += Number(f.tutar) || 0;
-                    }
-                });
-            }
-
-            if (couriers) couriers.forEach((c: any) => c.status === 'Bekliyor' ? cWaiting++ : c.status === 'Tamamlandı' ? null : cOnWay++);
-
-            // Aktif İşler
-            let w = 0, pr = 0, r = 0;
-            if(activeJobs) activeJobs.forEach((j:any) => {
-                const s = (j.status||"").toLowerCase();
-                if(s.includes("bekliyor")) w++; else if(s.includes("hazır")) r++; else pr++;
+            let w = 0;
+            let pr = 0;
+            let r = 0;
+            activeJobs.forEach((j: any) => {
+                const s = (j.status || "").toLowerCase();
+                if (s.includes('bekliyor')) w++;
+                else if (s.includes('hazır')) r++;
+                else pr++;
             });
 
             setStats({
-                monthlyRevenue: rev, monthlyCost: cost, monthlyProfit: rev - cost,
+                monthlyRevenue: rev,
+                monthlyCost: cost,
+                monthlyProfit: rev - cost,
                 profitMargin: rev > 0 ? Math.round(((rev - cost) / rev) * 100) : 0,
-                bekleyenAlacak: pending, serviceCount: sCount,
+                bekleyenAlacak: pending,
+                serviceCount: sCount,
                 activeJobs: activeJobs || [],
-                waiting: w, processing: pr, ready: r,
-                courierWaiting: cWaiting, courierOnWay: cOnWay,
-                maintenanceDue: maintenanceCount || 0,
+                waiting: w,
+                processing: pr,
+                ready: r,
+                courierWaiting: cWaiting,
+                courierOnWay: cOnWay,
+                maintenanceDue: maintenanceCount,
                 targetRevenue: 150000,
                 weeklyTrend: trend,
-                dailyGoal: 5, dailyFinished: dailyDone,
-                paymentSplit: { cash, card }
+                dailyGoal: 5,
+                dailyFinished: dailyDone,
+                paymentSplit: { cash, card },
             });
-
-        } catch (error) { console.error(error); } finally { setLoading(false); }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     }
     fetchData();
   }, [selectedMonth, selectedYear, refreshKey]);
@@ -270,10 +306,29 @@ export default function EPanelDashboard() {
   }
 
   return (
-    <div className="min-h-screen pb-12 animate-in fade-in duration-500">
+        <div className="min-h-screen pb-12 px-3 sm:px-0 animate-in fade-in duration-500 motion-reduce:animate-none">
         
         <div className="mb-6 -mx-6 -mt-6">
             <NewsTicker items={tickerItems} />
+        </div>
+
+        <div className="mb-8 rounded-2xl border border-white/10 bg-[#0f1219]/90 p-3 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Servis ERP — tek tık modüller</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {[
+                    { href: "/epanel/hizli-kayit", label: "Hızlı kayıt", Icon: Zap, accent: "text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10" },
+                    { href: "/epanel/atolye", label: "Atölye", Icon: Wrench, accent: "text-blue-400 border-blue-500/30 hover:bg-blue-500/10" },
+                    { href: "/epanel/finans", label: "Finans & kasa", Icon: Wallet, accent: "text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10" },
+                    { href: "/epanel/satis", label: "Satış", Icon: CreditCard, accent: "text-amber-400 border-amber-500/30 hover:bg-amber-500/10" },
+                    { href: "/epanel/destek", label: "Web destek", Icon: LifeBuoy, accent: "text-pink-400 border-pink-500/30 hover:bg-pink-500/10" },
+                    { href: "/epanel/bayi-destek", label: "Bayi destek", Icon: MessageSquare, accent: "text-purple-400 border-purple-500/30 hover:bg-purple-500/10" },
+                ].map((item) => (
+                    <Link key={item.href} href={item.href} className={`flex items-center gap-2 rounded-xl border bg-[#050810]/80 px-2.5 sm:px-3 py-2.5 text-[11px] sm:text-xs font-bold text-slate-200 transition-colors duration-200 ${item.accent}`}>
+                        <item.Icon size={16} className="shrink-0 opacity-90" />
+                        <span className="truncate">{item.label}</span>
+                    </Link>
+                ))}
+            </div>
         </div>
 
         {/* --- HEADER --- */}
@@ -295,11 +350,17 @@ export default function EPanelDashboard() {
         </div>
 
         {/* --- KPI --- */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <StatCard title="NET CİRO" value={`${stats.monthlyRevenue.toLocaleString()} ₺`} subValue={`${stats.serviceCount} Cihaz`} icon={DollarSign} color="cyan" trend={`%${stats.profitMargin} Kâr`} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+            <StatCard title="NET CİRO" value={`${stats.monthlyRevenue.toLocaleString()} ₺`} subValue={`${stats.serviceCount} teslim (ay)`} icon={DollarSign} color="cyan" trend={`%${stats.profitMargin} Kâr`} />
             <StatCard title="NET KÂR" value={`${stats.monthlyProfit.toLocaleString()} ₺`} subValue={`Gider: ${stats.monthlyCost.toLocaleString()}`} icon={Wallet} color="emerald" />
-            <StatCard title="BEKLEYEN" value={`${stats.bekleyenAlacak.toLocaleString()} ₺`} subValue="Tahsilat" icon={Clock} color="yellow" />
-            <StatCard title="BAKIM" value={`${stats.maintenanceDue} ADET`} subValue="Alarm Veriyor" icon={CalendarClock} color={stats.maintenanceDue > 0 ? "red" : "emerald"} />
+            <StatCard title="BEKLEYEN" value={`${stats.bekleyenAlacak.toLocaleString()} ₺`} subValue="Açık işler (tahmini)" icon={Clock} color="yellow" />
+            <StatCard title="BUGÜN TESLİM" value={`${stats.dailyFinished} ADET`} subValue={`Hedef: ${stats.dailyGoal}`} icon={CalendarClock} color={stats.dailyFinished >= stats.dailyGoal ? "emerald" : "yellow"} />
+        </div>
+        <p className="text-[10px] text-slate-500 mb-4 max-w-4xl leading-relaxed">
+          Net ciro ve teslim adedi, seçili ay içinde <span className="text-slate-400 font-semibold">Teslim Edildi</span> olarak kapanan işlerin <span className="text-slate-400 font-semibold">güncellenme (teslim) tarihine</span> göre hesaplanır. Bekleyen sütunu, halen serviste olan tüm açık işlerin tahmini tutar toplamıdır.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <StatCard title="PERİYODİK BAKIM" value={`${stats.maintenanceDue} ADET`} subValue="Bu tarihe gelen" icon={AlertOctagon} color={stats.maintenanceDue > 0 ? "red" : "emerald"} />
         </div>
 
         {/* --- ANA BENTO GRID --- */}

@@ -1,5 +1,6 @@
 import { supabase } from "@/app/lib/supabase";
 import { NextResponse } from "next/server";
+import { buildAuraJobInsertPayload } from "@/utils/buildAuraJobInsertPayload";
 
 export async function POST(request) {
   try {
@@ -8,18 +9,20 @@ export async function POST(request) {
 
     // 1. ADIM: Başvuruyu 'aura_jobs' (veya senin başvuru tablon) tablosuna kaydet
     // Not: Eğer ayrı bir 'online_basvuru' tablon yoksa, işleri tuttuğun ana tabloya 'Bekliyor' statüsüyle ekliyoruz.
+    const tracking = "WEB-" + Math.floor(100000 + Math.random() * 900000);
+
     const { data: yeniBasvuru, error: basvuruError } = await supabase
-      .from('aura_jobs') 
+      .from("aura_jobs")
       .insert([
-        {
-          customer: `${body.ad} ${body.soyad}`, // Ad ve Soyadı birleştirip customer yapıyoruz
-          device: body.cihaz_modeli || body.cihaz,
-          phone: body.telefon,
-          description: body.ariza || "Online Başvuru",
-          status: 'Bekliyor', // İlk statü
-          tracking_code: 'WEB-' + Math.floor(100000 + Math.random() * 900000), // Rastgele takip kodu
-          // Eklenecek diğer alanların varsa buraya ekle (örn: imei, email vb.)
-        }
+        buildAuraJobInsertPayload({
+          customer: `${body.ad} ${body.soyad}`.trim(),
+          phone: body.telefon || "",
+          email: body.email || "",
+          device: body.cihaz_modeli || body.cihaz || "Belirtilmedi",
+          issue: body.ariza || "Online başvuru",
+          tracking_code: tracking,
+          private_note: "Web API başvurusu",
+        }),
       ])
       .select()
       .single();

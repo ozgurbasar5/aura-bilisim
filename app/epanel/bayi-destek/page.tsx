@@ -7,6 +7,10 @@ import {
   Trash2, X, User, RefreshCw
 } from "lucide-react";
 
+function refreshEpanelCounters() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("aura-epanel-refresh-counters"));
+}
+
 export default function AdminBayiDestekPage() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +45,7 @@ export default function AdminBayiDestekPage() {
       if (!error) {
           setTickets(tickets.map(t => t.id === id ? { ...t, durum: newStatus } : t));
           if(selectedTicket?.id === id) setSelectedTicket((prev: any) => ({...prev, durum: newStatus}));
+          refreshEpanelCounters();
       }
   };
 
@@ -52,6 +57,7 @@ export default function AdminBayiDestekPage() {
       if(!error) {
           setTickets(tickets.filter(t => t.id !== id));
           if(selectedTicket?.id === id) setSelectedTicket(null);
+          refreshEpanelCounters();
       }
   };
 

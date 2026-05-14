@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { buildServisWhatsappMessage } from "@/utils/servisWhatsappMesaji";
 
 // --- TİP TANIMLAMALARI ---
 interface DevicePart {
@@ -365,18 +366,28 @@ export default function ServisDetaySayfasi() {
   };
 
   const generateCorporateReport = () => {
-      const parts = usedParts.map(p => p.aura_stok?.urun_adi).join(", ");
-      const upsells = Array.isArray(formData.sold_upsells) ? formData.sold_upsells.map((u:any) => typeof u === 'object' ? u.name : u).join(", ") : "";
-      
-      let report = `Sayın *${formData.customer}*,\n\n`;
-      report += `Teknik servisimize *${formData.tracking_code}* referans numarası ile kabul edilen *${formData.device}* cihazınızın işlemleri tamamlanmıştır.\n\n`;
-      if (usedParts.length > 0) report += `🔧 *Yapılan Teknik Müdahaleler:*\n${parts}\n\n`;
-      if (upsells.length > 0) report += `✨ *Ek Hizmetler:*\n${upsells}\n\n`;
-      report += `📝 *Teknisyen Notu:*\n${formData.notes || "Genel bakım yapıldı."}\n\n`;
-      report += `🛡️ *Garanti:* ${warrantyDuration} Ay (${warrantyScope || "Genel Kapsam"})\n`;
-      report += `💰 *Toplam Tutar:* ${formData.price} TL\n\n`;
-      report += `Cihazınızı servisimizden teslim alabilirsiniz.\n\n*Aura Bilişim Teknik Servis*`;
-      return report;
+      const parts = usedParts.map(p => p.aura_stok?.urun_adi).filter(Boolean).join(", ");
+      const upsells = Array.isArray(formData.sold_upsells)
+          ? formData.sold_upsells.map((u: any) => (typeof u === "object" ? u.name : u)).filter(Boolean).join(", ")
+          : "";
+      const warrantyLine =
+          formData.status === "Teslim Edildi" || formData.status === "Hazır"
+              ? `🛡️ *Garanti:* ${warrantyDuration} Ay (${warrantyScope === "custom" ? customScope || "Özel" : warrantyScope || "Genel Kapsam"})`
+              : undefined;
+
+      return buildServisWhatsappMessage({
+          customer: formData.customer,
+          device: formData.device,
+          tracking_code: formData.tracking_code,
+          status: formData.status,
+          issue: formData.issue,
+          price: formData.price,
+          serial_no: formData.serialNo,
+          notes: formData.notes || undefined,
+          partsLine: parts || undefined,
+          upsellsLine: upsells || undefined,
+          warrantyLine,
+      });
   };
 
   const sendWhatsAppMessage = () => {
@@ -384,20 +395,23 @@ export default function ServisDetaySayfasi() {
       if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1); 
       if (cleanPhone.length === 10) cleanPhone = '90' + cleanPhone; 
       const message = generateCorporateReport();
-      logToTimeline("WhatsApp Mesajı", "Müşteriye kurumsal durum bildirimi gönderildi."); 
+      logToTimeline("WhatsApp Mesajı", `Müşteriye durum (${formData.status}) bildirimi.`); 
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank"); 
   };
 
   const handlePaymentAndComplete = async () => {
       setLoading(true);
-      if (Number(formData.price) > 0) {
-          await supabase.from('aura_finans').insert([{ 
-              tur: 'Gelir', kategori: 'Servis Hizmeti', tutar: Number(formData.price), 
-              odeme_yontemi: paymentMethod, 
-              aciklama: `${formData.tracking_code} - ${formData.customer} Servis Ücreti`, 
-              tarih: new Date().toISOString().split('T')[0] 
-          }]);
-      }
+      const amount = Number(formData.price) || 0;
+      const nowIso = new Date().toISOString();
+      await supabase.from('aura_finans').insert([{
+          tur: 'Gelir',
+          kategori: 'Servis Hizmeti',
+          baslik: `Teslim: ${formData.tracking_code}`,
+          tutar: amount,
+          odeme_yontemi: paymentMethod,
+          aciklama: `${formData.customer} — ${formData.device} — Kasa (teslim)`,
+          tarih: nowIso,
+      }]);
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + parseInt(warrantyDuration));
       const maintenanceDate = new Date();
@@ -416,7 +430,8 @@ export default function ServisDetaySayfasi() {
       logToTimeline("Teslimat", `Cihaz teslim edildi. ${warrantyDuration} Ay garanti tanımlandı. Ödeme alındı.`);
       setFormData({...formData, status: 'Teslim Edildi', payment_status: 'paid'});
       setIsPaymentModalOpen(false); 
-      setLoading(false); 
+      setLoading(false);
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("aura-epanel-refresh-counters"));
       alert("İşlem tamamlandı! Garanti başlatıldı.");
       if(confirm("Müşteriye garanti mesajı gönderilsin mi?")) sendWhatsAppMessage();
   };
@@ -514,26 +529,29 @@ export default function ServisDetaySayfasi() {
   const laborCost = Math.max(Number(formData.price) - totalPartsCost - totalUpsellsCost, 0);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://aurabilisim.net/cihaz-sorgula?takip=${formData.tracking_code}`)}`;
 
-  if (loading) return <div className="p-20 text-white text-center">Yükleniyor...</div>;
+  if (loading) return <div className="p-20 text-white text-center animate-pulse">Yükleniyor...</div>;
 
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-slate-200 p-6 font-sans relative">
+    <div className="min-h-screen bg-[#0b0e14] text-slate-200 p-3 sm:p-6 font-sans relative motion-reduce:transform-none">
        {/* HEADER */}
-       <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-slate-800 pb-4 sticky top-0 bg-[#0b0e14]/95 backdrop-blur-md z-50 gap-4 print:hidden">
-           <div className="flex items-center gap-4">
-               <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 font-bold text-sm"><ArrowLeft size={18}/> GERİ DÖN</button>
-               <h1 className="text-xl font-black text-white">SERVİS <span className="text-cyan-500">#{formData.tracking_code || "YENİ"}</span></h1>
+       <div className="flex flex-col gap-4 mb-6 border-b border-slate-800 pb-4 sticky top-0 bg-[#0b0e14]/95 backdrop-blur-md z-50 print:hidden supports-[backdrop-filter]:bg-[#0b0e14]/80">
+           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+               <div className="flex flex-wrap items-center gap-2 sm:gap-4 min-w-0">
+                   <button type="button" onClick={() => router.back()} className="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 font-bold text-xs sm:text-sm transition-colors duration-200"><ArrowLeft size={18}/> GERİ</button>
+                   <h1 className="text-lg sm:text-xl font-black text-white truncate">SERVİS <span className="text-cyan-500">#{formData.tracking_code || "YENİ"}</span></h1>
+               </div>
+               <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:justify-end">
+               <button type="button" onClick={sendWhatsAppMessage} className="flex-1 min-w-[7rem] sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 rounded-xl text-white font-bold text-xs sm:text-sm shadow-lg shadow-green-900/20 active:scale-[0.98] transition-transform duration-150"><MessageCircle size={18}/> WP</button>
+               <button type="button" onClick={() => window.print()} className="flex-1 min-w-[7rem] sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-600 text-white font-bold text-xs sm:text-sm active:scale-[0.98] transition-transform duration-150"><Printer size={18}/> YAZDIR</button>
+               {formData.status !== 'Teslim Edildi' && id !== 'yeni' && (<button type="button" onClick={() => setIsPaymentModalOpen(true)} className="flex-1 min-w-[7rem] sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-900/25 active:scale-[0.98] transition-transform duration-150"><CheckCircle2 size={18}/> TESLİM</button>)}
+               {id !== 'yeni' && (<button type="button" onClick={handleDelete} className="px-3 py-2.5 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-xl font-bold shrink-0 transition-colors duration-200"><Trash2 size={18}/></button>)}
+               <button type="button" onClick={handleSave} className="flex-1 min-w-[6rem] sm:flex-none px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold text-white text-xs sm:text-sm shadow-lg shadow-cyan-900/20 active:scale-[0.98] transition-transform duration-150"><Save size={18}/> KAYDET</button>
+               </div>
            </div>
-           <div className="flex gap-3 w-full md:w-auto">
-               <button onClick={sendWhatsAppMessage} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg text-white font-bold text-sm shadow-lg active:scale-95"><MessageCircle size={18}/> WP</button>
-               <button onClick={() => window.print()} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 text-white font-bold text-sm active:scale-95"><Printer size={18}/> YAZDIR</button>
-               {formData.status !== 'Teslim Edildi' && id !== 'yeni' && (<button onClick={() => setIsPaymentModalOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-bold text-sm shadow-lg active:scale-95"><CheckCircle2 size={18}/> TESLİM ET</button>)}
-               {id !== 'yeni' && (<button onClick={handleDelete} className="px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-lg font-bold"><Trash2 size={18}/></button>)}
-               <button onClick={handleSave} className="px-6 py-2 bg-cyan-600 rounded-lg font-bold text-white shadow-lg"><Save size={18}/> KAYDET</button>
-           </div>
+           <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">WP metni seçili <span className="text-cyan-400 font-bold">{formData.status}</span> durumuna göre otomatik oluşur.</p>
        </div>
 
-       <div className="grid grid-cols-12 gap-6 print:hidden">
+       <div className="grid grid-cols-12 gap-4 sm:gap-6 print:hidden">
            {/* SOL KOLON */}
            <div className="col-span-12 lg:col-span-3 space-y-6">
                <div className="bg-[#151921] border border-slate-800 rounded-xl p-5 shadow-lg">

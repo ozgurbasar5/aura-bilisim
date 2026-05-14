@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
@@ -218,6 +218,83 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
   const [myNote, setMyNote] = useState("");
   const [calcDisplay, setCalcDisplay] = useState("");
 
+  const fetchDolar = useCallback(async () => {
+    try { const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=TRY'); const data = await res.json(); setDolarKuru(data.rates.TRY); } catch { setDolarKuru(35.95); }
+  }, []);
+
+  const checkCounts = useCallback(async () => {
+      try {
+        const localData = getWorkshopFromStorage();
+        const localWaiting = localData.filter((x:any) => x.status === 'Bekliyor').length;
+        const { count: dbCount } = await supabase.from('aura_jobs').select('*', { count: 'exact', head: true }).eq('status', 'Bekliyor').neq('category', 'Destek Talebi');
+        setBekleyenSayisi(localWaiting + (dbCount || 0));
+        
+        const { count: formCount } = await supabase.from('aura_online_forms').select('*', { count: 'exact', head: true }).eq('status', 'Okunmadı');
+        setBasvuruSayisi(formCount || 0);
+
+        const { count: webCount } = await supabase.from('destek_talepleri').select('*', { count: 'exact', head: true }).eq('durum', 'Bekliyor');
+        setWebMesajSayisi(webCount || 0);
+
+        const { count: bayiCount } = await supabase.from('bayi_destek').select('*', { count: 'exact', head: true }).eq('durum', 'İnceleniyor');
+        setBayiMesajSayisi(bayiCount || 0);
+
+        const { count: courierCount } = await supabase.from('aura_courier').select('*', { count: 'exact', head: true }).eq('status', 'Bekliyor');
+        setKuryeTalepSayisi(courierCount || 0);
+      } catch {
+        /* sayaçlar sessizce 0 kalır; panel açık kalsın */
+      }
+  }, []);
+
+  const checkNotifications = useCallback(async () => {
+      try {
+        const newNotifs: any[] = [];
+
+        const { data: webReqs } = await supabase.from('destek_talepleri').select('*').eq('durum', 'Bekliyor').order('created_at', {ascending:false}).limit(3);
+        if(webReqs) webReqs.forEach(w => newNotifs.push({
+            id: `web-${w.id}`,
+            type: 'support',
+            title: 'Yeni Destek Talebi',
+            desc: `${w.ad_soyad}: ${w.konu}`,
+            time: new Date(w.created_at),
+            link: '/epanel/destek'
+        }));
+
+        const { data: courierReqs } = await supabase.from('aura_courier').select('*').eq('status', 'Bekliyor').order('created_at', {ascending:false}).limit(3);
+        if(courierReqs) courierReqs.forEach(c => newNotifs.push({
+            id: `courier-${c.id}`,
+            type: 'courier',
+            title: 'Yeni Kurye Talebi',
+            desc: `${c.name}: ${c.device}`,
+            time: new Date(c.created_at),
+            link: '/epanel/kurye-yonetim'
+        }));
+
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        const { data: lateJobs } = await supabase.from('aura_jobs')
+            .select('id, device, customer, created_at')
+            .lt('created_at', threeDaysAgo.toISOString())
+            .neq('status', 'Teslim Edildi')
+            .neq('status', 'İptal')
+            .neq('status', 'İade')
+            .limit(5);
+        
+        if(lateJobs) lateJobs.forEach(j => newNotifs.push({
+            id: `late-${j.id}`,
+            type: 'alert',
+            title: 'Geciken Cihaz Uyarısı',
+            desc: `${j.device} (${j.customer}) 3 gündür serviste!`,
+            time: new Date(j.created_at),
+            link: `/epanel/atolye/${j.id}`
+        }));
+
+        newNotifs.sort((a, b) => b.time.getTime() - a.time.getTime());
+        setNotifications(newNotifs);
+      } catch {
+        setNotifications([]);
+      }
+  }, []);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -225,8 +302,8 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
         if (!session) { router.replace("/login"); return; }
 
         setUserEmail(session.user.email || "");
-        const { data: profile } = await supabase.from('personel_izinleri').select('*').eq('email', session.user.email).single();
-        const fullUser = { ...session.user, ...profile };
+        const { data: profile } = await supabase.from('personel_izinleri').select('*').eq('email', session.user.email).maybeSingle();
+        const fullUser = { ...session.user, ...(profile || {}) };
         setCurrentUserFull(fullUser);
 
         const ADMIN_EMAILS = ["admin@aurabilisim.com", "ozgurbasar5@gmail.com", "patron@aura.com"]; 
@@ -245,101 +322,45 @@ export default function EPanelLayout({ children }: { children: React.ReactNode }
     checkAuth();
     const pingInterval = setInterval(() => setPing(Math.floor(Math.random() * (45 - 15 + 1) + 15)), 2000);
     return () => clearInterval(pingInterval);
-  }, [router]);
+  }, [router, checkCounts, checkNotifications, fetchDolar]);
+
+  useEffect(() => {
+    if (!authorized || loadingCheck) return;
+    void checkCounts();
+    void checkNotifications();
+  }, [pathname, authorized, loadingCheck, checkCounts, checkNotifications]);
+
+  useEffect(() => {
+    if (!authorized || loadingCheck) return;
+    const onRefresh = () => {
+      void checkCounts();
+      void checkNotifications();
+    };
+    window.addEventListener("aura-epanel-refresh-counters", onRefresh);
+    return () => window.removeEventListener("aura-epanel-refresh-counters", onRefresh);
+  }, [authorized, loadingCheck, checkCounts, checkNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) { setShowResultBox(false); }
         if (notifRef.current && !notifRef.current.contains(event.target as Node)) { setIsNotifOpen(false); }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => { window.removeEventListener('keydown', handleKeyDown); document.removeEventListener('mousedown', handleClickOutside); };
-  }, []);
-
-  const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); searchInputRef.current?.focus(); }
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') { e.preventDefault(); setShowTerminal(prev => !prev); }
-      if (e.key === 'Escape') { 
-          setShowResultBox(false); setShowCalc(false); setShowNotes(false); 
-          setIsNotifOpen(false); setShowUserMenu(false); setIsSettingsOpen(false); 
+      if (e.key === 'Escape') {
+          setShowResultBox(false); setShowCalc(false); setShowNotes(false);
+          setIsNotifOpen(false); setShowUserMenu(false); setIsSettingsOpen(false);
           setShowTerminal(false);
       }
-  };
-
-  const fetchDolar = async () => {
-    try { const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=TRY'); const data = await res.json(); setDolarKuru(data.rates.TRY); } catch { setDolarKuru(35.95); }
-  };
-
-  // --- GLOBAL SAYAÇLAR ---
-  const checkCounts = async () => {
-      const localData = getWorkshopFromStorage();
-      const localWaiting = localData.filter((x:any) => x.status === 'Bekliyor').length;
-      const { count: dbCount } = await supabase.from('aura_jobs').select('*', { count: 'exact', head: true }).eq('status', 'Bekliyor').neq('category', 'Destek Talebi');
-      setBekleyenSayisi(localWaiting + (dbCount || 0));
-      
-      const { count: formCount } = await supabase.from('aura_online_forms').select('*', { count: 'exact', head: true }).eq('status', 'Okunmadı');
-      setBasvuruSayisi(formCount || 0);
-
-      const { count: webCount } = await supabase.from('destek_talepleri').select('*', { count: 'exact', head: true }).eq('durum', 'Bekliyor');
-      setWebMesajSayisi(webCount || 0);
-
-      const { count: bayiCount } = await supabase.from('bayi_destek').select('*', { count: 'exact', head: true }).eq('durum', 'İnceleniyor');
-      setBayiMesajSayisi(bayiCount || 0);
-
-      // YENİ: Kurye Talepleri
-      const { count: courierCount } = await supabase.from('aura_courier').select('*', { count: 'exact', head: true }).eq('status', 'Bekliyor');
-      setKuryeTalepSayisi(courierCount || 0);
-  };
-
-  // --- %100 ENTEGRE BİLDİRİM SİSTEMİ ---
-  const checkNotifications = async () => {
-      const newNotifs: any[] = [];
-
-      // 1. Web Destek Talepleri
-      const { data: webReqs } = await supabase.from('destek_talepleri').select('*').eq('durum', 'Bekliyor').order('created_at', {ascending:false}).limit(3);
-      if(webReqs) webReqs.forEach(w => newNotifs.push({
-          id: `web-${w.id}`,
-          type: 'support',
-          title: 'Yeni Destek Talebi',
-          desc: `${w.ad_soyad}: ${w.konu}`,
-          time: new Date(w.created_at),
-          link: '/epanel/destek'
-      }));
-
-      // 2. Kurye Talepleri (YENİ)
-      const { data: courierReqs } = await supabase.from('aura_courier').select('*').eq('status', 'Bekliyor').order('created_at', {ascending:false}).limit(3);
-      if(courierReqs) courierReqs.forEach(c => newNotifs.push({
-          id: `courier-${c.id}`,
-          type: 'courier',
-          title: 'Yeni Kurye Talebi',
-          desc: `${c.name}: ${c.device}`,
-          time: new Date(c.created_at),
-          link: '/epanel/kurye-yonetim'
-      }));
-
-      // 3. GECİKEN CİHAZLAR (KRİTİK UYARI)
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-      const { data: lateJobs } = await supabase.from('aura_jobs')
-          .select('id, device, customer, created_at')
-          .lt('created_at', threeDaysAgo.toISOString())
-          .neq('status', 'Teslim Edildi')
-          .neq('status', 'İptal')
-          .neq('status', 'İade')
-          .limit(5);
-      
-      if(lateJobs) lateJobs.forEach(j => newNotifs.push({
-          id: `late-${j.id}`,
-          type: 'alert',
-          title: 'Geciken Cihaz Uyarısı',
-          desc: `${j.device} (${j.customer}) 3 gündür serviste!`,
-          time: new Date(j.created_at),
-          link: `/epanel/atolye/${j.id}`
-      }));
-
-      newNotifs.sort((a, b) => b.time.getTime() - a.time.getTime());
-      setNotifications(newNotifs);
-  };
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // --- GELİŞTİRİLMİŞ ARAMA SİSTEMİ (DÜZELTİLDİ: IMEI, TAKİP NO, İSİM) ---
   const handleGlobalSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
