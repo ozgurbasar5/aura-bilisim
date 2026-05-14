@@ -1,11 +1,24 @@
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  swcMinify: true,
+  // Geliştirme aşamasında (localhost) sürekli cache yapıp seni çıldırtmaması için dev ortamında kapatıyoruz:
+  disable: process.env.NODE_ENV === "development", 
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Atölye ERP için gerekebilecek ek ayarlar
   images: {
-    unoptimized: true, // Statik çıktılar veya hızlı yükleme için
+    unoptimized: true, 
   },
-  // Vercel build hatalarını minimize etmek için gerekirse buraya ekleme yapılabilir
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

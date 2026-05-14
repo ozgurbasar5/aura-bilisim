@@ -7,10 +7,10 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   Search, CheckCircle2, AlertTriangle, User, MessageCircle, 
-  ShoppingBag, Plus, Wrench, Cpu, Battery, Clock, Radio, AlertCircle, Smartphone, Activity, Loader2, Package, ShieldCheck, Camera, Eye, X, Printer, CreditCard, Star, Send
+  ShoppingBag, Plus, Wrench, Cpu, Battery, Clock, Radio, AlertCircle, Smartphone, Activity, Loader2, Package, ShieldCheck, Camera, Eye, X, Printer, CreditCard, Star, Send, Phone
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
-import confetti from 'canvas-confetti'; // Konfeti kütüphanesi
+import confetti from 'canvas-confetti';
 
 // --- FİRMA BİLGİLERİ ---
 const COMPANY_INFO = {
@@ -110,6 +110,9 @@ function CihazSorgulaContent() {
   const [error, setError] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // Müşteri Onay Notu State
+  const [customerApprovalNote, setCustomerApprovalNote] = useState("");
+
   // Değerlendirme State'leri
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -139,26 +142,18 @@ function CihazSorgulaContent() {
     if (urlCode) { setSearchInput(urlCode); performSearch(urlCode); }
   }, [urlCode]);
 
-  // KONFETİ EFEKTİ
   useEffect(() => {
     if (result) {
         const isDone = checkStatus(result.status, 'Hazır') || checkStatus(result.status, 'Teslim');
         if (isDone) {
-            // Küçük bir gecikme ile patlat
             setTimeout(() => {
                 const duration = 3 * 1000;
                 const animationEnd = Date.now() + duration;
                 const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
-
                 const random = (min: number, max: number) => Math.random() * (max - min) + min;
-
                 const interval: any = setInterval(function() {
                     const timeLeft = animationEnd - Date.now();
-
-                    if (timeLeft <= 0) {
-                        return clearInterval(interval);
-                    }
-
+                    if (timeLeft <= 0) return clearInterval(interval);
                     const particleCount = 50 * (timeLeft / duration);
                     confetti({ ...defaults, particleCount, origin: { x: random(0.1, 0.3), y: Math.random() - 0.2 } });
                     confetti({ ...defaults, particleCount, origin: { x: random(0.7, 0.9), y: Math.random() - 0.2 } });
@@ -168,28 +163,14 @@ function CihazSorgulaContent() {
     }
   }, [result]);
 
-  // DEĞERLENDİRME GÖNDER
   const handleReviewSubmit = async () => {
       if(rating === 0) { alert("Lütfen puan veriniz."); return; }
-      
       try {
-        const { error } = await supabase.from('aura_reviews').insert([{
-            job_id: result.id,
-            tracking_code: result.tracking_code,
-            customer_name: result.customer_name,
-            rating: rating,
-            comment: comment
-        }]);
-
+        const { error } = await supabase.from('aura_reviews').insert([{ job_id: result.id, tracking_code: result.tracking_code, customer_name: result.customer_name, rating: rating, comment: comment }]);
         if(error) throw error;
         setReviewSubmitted(true);
-        // Konfeti patlat
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-
-      } catch (err:any) {
-          console.error(err);
-          alert("Yorum gönderilirken hata oluştu.");
-      }
+      } catch (err:any) { console.error(err); alert("Yorum gönderilirken hata oluştu."); }
   };
 
   const performSearch = async (val: string) => {
@@ -210,7 +191,6 @@ function CihazSorgulaContent() {
         if (error) throw error;
         if (data) {
             setResult(data);
-            // Zaten yorum yapılmış mı kontrol et
             const { data: existingReview } = await supabase.from('aura_reviews').select('*').eq('job_id', data.id).single();
             if(existingReview) setReviewSubmitted(true);
         } else {
@@ -231,30 +211,40 @@ function CihazSorgulaContent() {
       const newRec = currentRec.filter((i:any) => i.id !== item.id);
       const newSold = [...currentSold, item];
 
-      const { error } = await supabase.from('aura_jobs').update({ 
-          price: String(newPrice), 
-          sold_upsells: JSON.stringify(newSold), 
-          recommended_upsells: JSON.stringify(newRec) 
-      }).eq('id', result.id);
-
-      if(!error) {
-          setResult({ 
-              ...result, 
-              price: newPrice, 
-              sold_upsells: JSON.stringify(newSold), 
-              recommended_upsells: JSON.stringify(newRec) 
-          }); 
-      }
+      const { error } = await supabase.from('aura_jobs').update({ price: String(newPrice), sold_upsells: JSON.stringify(newSold), recommended_upsells: JSON.stringify(newRec) }).eq('id', result.id);
+      if(!error) { setResult({ ...result, price: newPrice, sold_upsells: JSON.stringify(newSold), recommended_upsells: JSON.stringify(newRec) }); }
       setLoading(false);
   };
 
   const handleClientApproval = async (decision: 'approved' | 'rejected') => {
-      if (!confirm("Emin misiniz?")) return; setLoading(true);
+      if (!confirm(`İşlemi ${decision === 'approved' ? 'ONAYLAMAK' : 'REDDETMEK'} istediğinize emin misiniz?`)) return; 
+      setLoading(true);
+      
       const newStatus = decision === 'approved' ? 'İşlemde' : 'İptal/Reddedildi';
-      const updatePayload: any = { approval_status: decision, status: newStatus };
-      if(decision === 'approved' && result.approval_amount) updatePayload.price = String(Number(result.price) + Number(result.approval_amount));
+      let noteAppend = "";
+      
+      if (customerApprovalNote.trim() !== "") {
+          noteAppend = `\n\n👤 MÜŞTERİ NOTU (${decision === 'approved' ? 'ONAY' : 'RED'}): ${customerApprovalNote}`;
+      } else {
+          noteAppend = `\n\n👤 Müşteri ekstra işlemi ${decision === 'approved' ? 'onayladı' : 'reddetti'}.`;
+      }
+
+      const updatePayload: any = { 
+          approval_status: decision, 
+          status: newStatus,
+          technician_note: (result.technician_note || "") + noteAppend 
+      };
+      
+      if(decision === 'approved' && result.approval_amount) {
+          updatePayload.price = String(Number(result.price) + Number(result.approval_amount));
+      }
+
       const { error } = await supabase.from('aura_jobs').update(updatePayload).eq('id', result.id);
-      if (!error) setResult({...result, ...updatePayload}); 
+      
+      if (!error) {
+          setResult({...result, ...updatePayload}); 
+          alert(decision === 'approved' ? 'Onayınız başarıyla iletildi. İşlemlere devam ediliyor.' : 'Red işleminiz iletildi. Cihazınız iade sürecine girecektir.');
+      }
       setLoading(false);
   };
 
@@ -351,6 +341,51 @@ function CihazSorgulaContent() {
                         </div>
                     </div>
 
+               {/* EKSTRA İŞLEM ONAY ALANI (Müşteri Notu ile Birlikte) */}
+                    {(result.approval_status === 'pending' || checkStatus(result.status, 'Onay')) && result.approval_status !== 'approved' && result.approval_status !== 'rejected' && (
+                        <div className="bg-yellow-950/20 border border-yellow-500/30 rounded-3xl p-6 relative overflow-hidden group no-print animate-in slide-in-from-bottom-6">
+                             <div className="absolute inset-0 bg-yellow-500/5 group-hover:bg-yellow-500/10 transition-colors"></div>
+                             <div className="relative z-10">
+                                <div className="flex items-center gap-3 mb-3 text-yellow-400">
+                                    <AlertTriangle size={24} className="animate-bounce"/>
+                                    <h3 className="text-lg font-bold">İşlem Onayınız Bekleniyor</h3>
+                                </div>
+                                <p className="text-slate-300 text-sm mb-4 bg-black/40 p-4 rounded-xl border border-yellow-500/20 leading-relaxed">
+                                    {result.approval_desc || "Cihazınızdaki işlemlerin devam edebilmesi için onayınız gerekmektedir."}
+                                </p>
+                                
+                                <div className="mb-6">
+                                    <label className="text-xs font-bold text-slate-400 mb-2 block uppercase tracking-wider flex items-center gap-2">
+                                        <MessageCircle size={14} /> Bize Bir Not Bırakın (İsteğe Bağlı)
+                                    </label>
+                                    <textarea 
+                                        value={customerApprovalNote}
+                                        onChange={(e) => setCustomerApprovalNote(e.target.value)}
+                                        placeholder="Varsa eklemek istediklerinizi buraya yazabilirsiniz..."
+                                        className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-3 text-white text-sm outline-none focus:border-yellow-500 resize-none h-20"
+                                    ></textarea>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800 pt-4">
+                                    <div className="text-center sm:text-left">
+                                        {Number(result.approval_amount) > 0 ? (
+                                            <>
+                                                <div className="text-2xl font-black text-white">+{result.approval_amount} ₺</div>
+                                                <div className="text-xs font-bold text-slate-400">EKSTRA İŞLEM ÜCRETİ</div>
+                                            </>
+                                        ) : (
+                                            <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-2">Genel İşlem Onayı</div>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-3 w-full sm:w-auto">
+                                        <button onClick={() => handleClientApproval('rejected')} className="flex-1 sm:flex-none px-6 py-3 rounded-xl border border-slate-600 text-slate-300 hover:text-white hover:bg-slate-800 text-sm font-bold transition-all">Reddet</button>
+                                        <button onClick={() => handleClientApproval('approved')} className="flex-1 sm:flex-none px-8 py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-black text-sm shadow-lg shadow-yellow-500/20 transition-all">İşlemi Onayla</button>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>
+                    )}
+                    
                     {/* MÜŞTERİ YORUM ALANI (SADECE TESLİM EDİLDİYSE) */}
                     {checkStatus(result.status, "Teslim") && (
                         <div className="bg-gradient-to-br from-indigo-900/10 to-blue-900/10 border border-indigo-500/20 rounded-3xl p-6 no-print animate-in slide-in-from-bottom-6">
@@ -453,20 +488,6 @@ function CihazSorgulaContent() {
                         </div>
                     )}
 
-                    {result.approval_status === 'pending' && (
-                        <div className="bg-yellow-950/20 border border-yellow-500/30 rounded-2xl p-6 relative overflow-hidden group no-print">
-                             <div className="absolute inset-0 bg-yellow-500/5 group-hover:bg-yellow-500/10 transition-colors"></div>
-                             <div className="relative z-10">
-                                <div className="flex items-center gap-3 mb-3 text-yellow-400"><AlertTriangle size={24} className="animate-bounce"/><h3 className="text-lg font-bold">Ekstra İşlem Onayı Gerekiyor</h3></div>
-                                <p className="text-slate-300 text-sm mb-4 bg-black/20 p-3 rounded-lg border border-yellow-500/10">{result.approval_desc}</p>
-                                <div className="flex items-center justify-between">
-                                    <div className="text-xl font-black text-white">+{result.approval_amount} ₺ <span className="text-xs font-normal text-slate-400">Ek Ücret</span></div>
-                                    <div className="flex gap-2"><button onClick={() => handleClientApproval('rejected')} className="px-4 py-2 rounded-lg border border-slate-600 text-slate-400 hover:text-white hover:bg-slate-800 text-sm font-bold">Reddet</button><button onClick={() => handleClientApproval('approved')} className="px-6 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm shadow-lg shadow-yellow-500/20">Onayla</button></div>
-                                </div>
-                             </div>
-                        </div>
-                    )}
-
                     <div className="bg-[#151921] border border-slate-800 rounded-2xl p-6 no-print">
                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-4 flex items-center gap-2"><Wrench size={14} className="text-purple-500"/> Yapılan İşlemler & Notlar</h3>
                         <div className="bg-[#0b0e14] rounded-xl p-4 border border-slate-700">
@@ -526,10 +547,19 @@ function CihazSorgulaContent() {
                         </div>
                     )}
 
-                    <div className="no-print pt-4">
-                        <a href={`https://wa.me/905396321429?text=Merhaba, SRV-${result.tracking_code} nolu cihazım hakkında görüşmek istiyorum.`} target="_blank" className="flex items-center justify-center gap-2 py-4 bg-[#25D366] hover:bg-[#20bd5a] text-[#0a3319] font-black rounded-xl transition-transform hover:scale-[1.02] shadow-lg shadow-green-500/20">
-                            <MessageCircle size={20}/> WHATSAPP DESTEK
-                        </a>
+                    {/* YENİ: İLETİŞİM VE DESTEK MODÜLÜ */}
+                    <div className="bg-[#151921] border border-slate-800 rounded-3xl p-6 shadow-xl no-print mt-6">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><Phone size={14}/> İletişim & Destek</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <a href="tel:08501234567" className="flex items-center gap-3 bg-[#0b0e14] p-4 rounded-xl border border-slate-700 hover:border-cyan-500 transition-colors group">
+                                <div className="bg-cyan-500/10 text-cyan-500 p-3 rounded-lg group-hover:bg-cyan-500 group-hover:text-white transition-colors"><Phone size={20}/></div>
+                                <div><div className="text-xs text-slate-400 font-bold">Müşteri Hizmetleri</div><div className="text-white font-bold">{COMPANY_INFO.phone}</div></div>
+                            </a>
+                            <a href={`https://wa.me/905396321429?text=Merhaba, SRV-${result.tracking_code} nolu cihazım hakkında görüşmek istiyorum.`} target="_blank" className="flex items-center gap-3 bg-[#0b0e14] p-4 rounded-xl border border-slate-700 hover:border-green-500 transition-colors group">
+                                <div className="bg-green-500/10 text-green-500 p-3 rounded-lg group-hover:bg-green-500 group-hover:text-white transition-colors"><MessageCircle size={20}/></div>
+                                <div><div className="text-xs text-slate-400 font-bold">WhatsApp Destek</div><div className="text-white font-bold">0539 632 14 29</div></div>
+                            </a>
+                        </div>
                     </div>
                 </div>
                 

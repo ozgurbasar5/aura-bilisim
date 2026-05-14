@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { 
   ArrowLeft, Save, Printer, User, Zap, Box, 
@@ -137,6 +137,44 @@ export default function ServisDetaySayfasi() {
     try { return JSON.parse(val) || []; } catch { return []; }
   };
 
+  // CALLBACK KORUMALARI EKLENDİ
+  const checkExpertise = useCallback(async (imei: string) => {
+      if (!imei) { setExpertiseId(null); return; }
+      const { data } = await supabase.from('aura_expertise').select('id').eq('serial_no', imei).single();
+      if (data) setExpertiseId(data.id); else setExpertiseId(null);
+  }, []);
+
+  const fetchTimeline = useCallback(async (jobId: string) => {
+      const { data } = await supabase.from('aura_timeline').select('*').eq('job_id', jobId).order('created_at', { ascending: false });
+      if(data) setTimelineLogs(data);
+  }, []);
+
+  const fetchUsedParts = useCallback(async (jobId: string) => {
+      // 1. Önce kullanılan parçaları servis tablosundan çek
+      const { data: parts, error } = await supabase.from('aura_servis_parcalari').select('*').eq('job_id', String(jobId)); 
+      
+      if(error) { console.error("Parça çekme hatası:", error); return; }
+      if(!parts || parts.length === 0) { setUsedParts([]); return; }
+
+      // 2. Bu parçaların stok ID'lerini bir diziye topla
+      const stokIds = parts.map(p => p.stok_id);
+
+      // 3. Stok tablosundan bu ID'lere ait isimleri manuel olarak çek (Supabase relation hatasını bypass ediyoruz)
+      const { data: stockData } = await supabase.from('aura_stok').select('id, urun_adi').in('id', stokIds);
+
+      // 4. Verileri birleştir ve state'e at
+      const enrichedParts = parts.map(part => {
+          const stockItem = stockData?.find(s => s.id === part.stok_id);
+          return {
+              ...part,
+              // Frontend'in beklediği formatta sahte bir relation (aura_stok) objesi oluşturuyoruz:
+              aura_stok: { urun_adi: stockItem ? stockItem.urun_adi : 'Bilinmeyen Parça' }
+          };
+      });
+
+      setUsedParts(enrichedParts);
+  }, []);
+
   useEffect(() => {
       const init = async () => {
           const { data: { user } } = await supabase.auth.getUser(); if (user?.email) setCurrentUserEmail(user.email);
@@ -154,7 +192,6 @@ export default function ServisDetaySayfasi() {
           } else {
               const { data } = await supabase.from('aura_jobs').select('*').eq('id', id).single();
               if (data) {
-                  // --- KRİTİK: private_note içindeki Metin ve JSON verisini ayır ---
                   let cleanPrivateNote = "";
                   let visualParts = [];
                   if (data.private_note && data.private_note.includes("|||")) {
@@ -162,11 +199,9 @@ export default function ServisDetaySayfasi() {
                       cleanPrivateNote = parts[0];
                       visualParts = parseArray(parts[1]);
                   } else if (data.private_note && data.private_note.startsWith("[")) {
-                      // Eğer eski format (sadece JSON) ise
                       visualParts = parseArray(data.private_note);
                       cleanPrivateNote = "";
                   } else {
-                      // Sadece metin ise
                       cleanPrivateNote = data.private_note || "";
                   }
 
@@ -178,9 +213,9 @@ export default function ServisDetaySayfasi() {
                       finalCheck: parseArray(data.final_checks), images: parseArray(data.images),
                       recommended_upsells: parseArray(data.recommended_upsells), sold_upsells: parseArray(data.sold_upsells),
                       serialNo: data.serial_no || "",
-                      notes: data.technician_note || "", // Rapor buraya
-                      privateNote: cleanPrivateNote, // Özel Not buraya
-                      selectedVisualParts: visualParts // Görsel seçimler buraya
+                      notes: data.technician_note || "", 
+                      privateNote: cleanPrivateNote, 
+                      selectedVisualParts: visualParts 
                   });
                   if (data.serial_no) checkExpertise(data.serial_no);
                   fetchUsedParts(data.id);
@@ -193,7 +228,7 @@ export default function ServisDetaySayfasi() {
           }
       };
       init();
-  }, [id]);
+  }, [id, checkExpertise, fetchUsedParts, fetchTimeline]);
 
   useEffect(() => {
       if (showScanner && isStockModalOpen) {
@@ -212,34 +247,12 @@ export default function ServisDetaySayfasi() {
       else setFormData({ ...formData, customer: selectedDealerName });
   };
 
-  const checkExpertise = async (imei: string) => {
-      if (!imei) { setExpertiseId(null); return; }
-      const { data } = await supabase.from('aura_expertise').select('id').eq('serial_no', imei).single();
-      if (data) setExpertiseId(data.id); else setExpertiseId(null);
-  };
-
-  const fetchTimeline = async (jobId: string) => {
-      const { data } = await supabase.from('aura_timeline').select('*').eq('job_id', jobId).order('created_at', { ascending: false });
-      if(data) setTimelineLogs(data);
-  };
-
   const logToTimeline = async (action: string, desc: string) => {
       if (id === 'yeni') return; 
       const now = new Date().toISOString();
       const newLog = { job_id: id, action_type: action, description: desc, created_by: currentUserEmail, created_at: now };
       setTimelineLogs(prev => [newLog, ...prev]);
       await supabase.from('aura_timeline').insert([newLog]);
-  };
-
-  const fetchUsedParts = async (jobId: string) => {
-      // İlişkili veri çekme (Stok Adını almak için)
-      // DİKKAT: Stok tablosu ile ilişki (foreign key) kurulu olmalı.
-      const { data, error } = await supabase.from('aura_servis_parcalari')
-        .select(`*, aura_stok(urun_adi)`)
-        .eq('job_id', String(jobId)); 
-      
-      if(error) console.error("Parça çekme hatası:", error);
-      if(data) setUsedParts(data);
   };
 
   const handleStockSearch = async (termOverride?: string) => {
@@ -254,7 +267,6 @@ export default function ServisDetaySayfasi() {
       if(!confirm(`${part.urun_adi} stoktan düşülecek. Onaylıyor musunuz?`)) return;
 
       try {
-          // 1. İlişki tablosuna ekle
           const { error: insertError } = await supabase.from('aura_servis_parcalari').insert([{ 
               job_id: id, 
               stok_id: part.id, 
@@ -264,10 +276,8 @@ export default function ServisDetaySayfasi() {
           }]);
           if(insertError) throw insertError;
 
-          // 2. Stoktan düş
           await supabase.from('aura_stok').update({ stok_adedi: part.stok_adedi - 1 }).eq('id', part.id);
           
-          // 3. Fiyat güncelle
           const newCost = Number(formData.cost) + Number(part.alis_fiyati);
           const newPrice = Number(formData.price) + Number(part.satis_fiyati);
           
@@ -276,7 +286,6 @@ export default function ServisDetaySayfasi() {
           setFormData({ ...formData, price: newPrice, cost: newCost });
           logToTimeline("Parça Kullanıldı", `${part.urun_adi} stoktan düşüldü.`);
           
-          // Listeyi yenile
           await fetchUsedParts(id); 
           setIsStockModalOpen(false);
           alert("Parça eklendi!");
@@ -416,8 +425,8 @@ export default function ServisDetaySayfasi() {
     if (!formData.customer) { alert("Müşteri adı zorunlu!"); return; }
     setLoading(true);
     
-    // --- ÖNEMLİ: Özel Not ile Görsel Verisini Birleştir ---
-    // Ayraç: ||| (Böylece okurken geri ayırabiliriz)
+    // GÜVENLİK YAMASI: Numara sadece kayıt yepyeni ise ve tam veritabanına giderken oluşturulur.
+    const finalTrackingCode = formData.tracking_code || `SRV-${Math.floor(10000 + Math.random() * 90000)}`;
     const combinedPrivateNote = (formData.privateNote || "") + "|||" + JSON.stringify(formData.selectedVisualParts || []);
 
     const payload = {
@@ -431,8 +440,8 @@ export default function ServisDetaySayfasi() {
         serial_no: formData.serialNo, 
         password: formData.password,
         issue: formData.issue, 
-        technician_note: formData.notes, // Rapor Buraya
-        private_note: combinedPrivateNote, // Özel Not + Görsel Çizim Buraya
+        technician_note: formData.notes,
+        private_note: combinedPrivateNote,
         status: formData.status, 
         price: String(formData.price), 
         cost: Number(formData.cost), 
@@ -459,8 +468,6 @@ export default function ServisDetaySayfasi() {
     if (!res.error) { 
         alert("Kaydedildi!"); 
         if (id === 'yeni' && res.data) router.push(`/epanel/atolye/${res.data[0].id}`); 
-        // DİKKAT: Sayfa yenilemeyi kaldırdık ki veri anlık kalsın, kullanıcı isterse yeniler
-        // else window.location.reload(); 
     } else { 
         console.error(res.error); 
         alert("Hata: " + res.error.message); 
@@ -487,7 +494,6 @@ export default function ServisDetaySayfasi() {
     setFormData({ ...formData, images: newImages }); logToTimeline("Fotoğraf Yüklendi", `${files.length} adet yeni fotoğraf eklendi.`); setUploading(false);
   };
   
-  // --- GÜVENLİ SİLME ---
   const handleDelete = async () => { 
       if(!confirm("DİKKAT: Bu kayıt silinecek. Emin misiniz?")) return; 
       setLoading(true); 
@@ -611,6 +617,7 @@ export default function ServisDetaySayfasi() {
                         <div className="grid grid-cols-2 gap-4"><div className="relative"><input type="text" value={formData.serialNo} onChange={e => { const val = e.target.value; setFormData((p:any)=>({...p, serialNo: val})); checkExpertise(val); }} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm font-mono uppercase outline-none focus:border-cyan-500" placeholder="IMEI / SERİ NO"/>{(formData.serialNo || "").length > 5 && (<div className="absolute right-1 top-1 bottom-1">{expertiseId ? (<button onClick={() => router.push(`/epanel/ekspertiz/detay/${expertiseId}`)} className="h-full px-3 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><FileText size={12}/> RAPOR VAR</button>) : (<button onClick={() => router.push(`/epanel/ekspertiz?yeni=${formData.serialNo}`)} className="h-full px-3 bg-slate-700 hover:bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-1 shadow-lg hover:scale-105 transition-transform"><PlusCircle size={12}/> RAPOR EKLE</button>)}</div>)}</div><input type="text" value={formData.password} onChange={e => setFormData((p:any)=>({...p, password: e.target.value}))} className="w-full bg-[#0b0e14] border border-red-900/30 text-red-400 rounded-lg p-3 font-bold outline-none focus:border-red-500" placeholder="Şifre"/></div>
                         <div><div className="flex justify-between items-center mb-1 ml-1"><label className="text-[10px] text-slate-500 font-bold">ŞİKAYET / ARIZA</label><button onClick={() => { setIsWikiModalOpen(true); setWikiSearchTerm(formData.device); handleWikiSearch(); }} className="text-[10px] flex items-center gap-1 text-purple-400 hover:text-purple-300 font-bold bg-purple-900/20 px-2 py-0.5 rounded border border-purple-500/30"><Book size={10}/> Wiki'de Ara</button></div><textarea value={formData.issue} onChange={e => setFormData((p:any)=>({...p, issue: e.target.value}))} className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg p-3 text-sm h-24 outline-none resize-none focus:border-cyan-500" placeholder="Arıza detayını giriniz..."></textarea></div>
                         <div className="bg-black/20 p-3 rounded-xl border border-slate-800"><label className="text-[10px] text-cyan-500 font-bold uppercase mb-2 block">Teslim Alınanlar</label><div className="flex flex-wrap gap-2">{catInfo.accessories.map((acc: string) => { const accArray = Array.isArray(formData.accessories) ? formData.accessories : []; const isSelected = accArray.includes(acc); return (<button key={acc} onClick={() => toggleArrayItem("accessories", acc)} className={`px-2 py-1 rounded border text-[10px] font-bold transition-all ${isSelected ? 'bg-cyan-900/40 border-cyan-500 text-cyan-400 scale-105' : 'bg-[#0b0e14] border-slate-500 hover:border-slate-600'}`}>{acc}</button>); })}</div></div>
+                        <button onClick={() => setIsVisualDiagnosticOpen(true)} className="w-full mt-2 py-3 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/50 rounded-lg font-bold text-sm flex justify-center items-center gap-2 transition-all shadow-lg"><Monitor size={18}/> GÖRSEL TEŞHİS BAŞLAT</button>
                     </div>
                 </div>
 

@@ -25,17 +25,15 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Sayfa yüklendiğinde oturum kontrolü
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-         // Oturum varsa direkt panele fırlat (window.location kullanarak zorla)
-         window.location.href = "/epanel";
-      }
-    };
-    checkSession();
-  }, []);
+ useEffect(() => {
+  const checkSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+       router.replace("/epanel");  // window.location yerine router kullan
+    }
+  };
+  checkSession();
+}, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -12,7 +12,7 @@ export default function HizliKayit() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  // Form Verileri
+  // Form Verileri (State)
   const [formData, setFormData] = useState({
     customer: "",
     phone: "",
@@ -28,6 +28,7 @@ export default function HizliKayit() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // GÜVENLİK: Zorunlu alan kontrolü
     if (!formData.customer || !formData.device) {
       alert("Lütfen Müşteri Adı ve Cihaz Modelini giriniz.");
       return;
@@ -35,7 +36,10 @@ export default function HizliKayit() {
 
     setLoading(true);
 
-    // 1. VERİYİ SUPABASE'E GÖNDER
+    // KRİTİK DÜZELTME: Takip kodu tam kaydetme anında oluşturulur (Çakışmayı önler)
+    const newTrackingCode = `SRV-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    // 1. VERİYİ SUPABASE'E GÖNDER (Sütun isimleri düzeltildi)
     const { error } = await supabase
       .from('aura_jobs')
       .insert([
@@ -44,21 +48,24 @@ export default function HizliKayit() {
           phone: formData.phone,
           device: formData.device,
           category: formData.category,
-          fault: formData.fault,
-          pattern_lock: formData.password,
-          price: Number(formData.price) || 0,
+          issue: formData.fault,          // DÜZELTME: fault -> issue
+          password: formData.password,    // DÜZELTME: pattern_lock -> password
+          price: String(Number(formData.price) || 0), // DÜZELTME: price string olarak gitmeli
           cost: Number(formData.cost) || 0,
-          notes: formData.notes,
-          status: "Bekliyor"
+          technician_note: formData.notes, // DÜZELTME: notes -> technician_note
+          status: "Bekliyor",
+          tracking_code: newTrackingCode, // EKSİK OLAN KRİTİK VERİ EKLENDİ
+          payment_status: "unpaid",
+          approval_status: "none"
         }
       ]);
 
     if (error) {
-      console.error(error);
-      alert("Kayıt oluşturulurken bir hata oluştu!");
+      console.error("Supabase Hatası:", error);
+      alert(`Kayıt oluşturulurken hata: ${error.message}`);
     } else {
-      // Başarılı
-      router.push("/epanel/atolye"); // Listeye yönlendir
+      // Başarılı -> Atölye listesine dön
+      router.push("/epanel/atolye"); 
     }
     
     setLoading(false);
